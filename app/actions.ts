@@ -6,6 +6,7 @@ import { draftFromExtraction } from "@/lib/extractor";
 import { extractJobFromText } from "@/lib/text-extractor";
 import {
   archiveJobRecord,
+  deleteJobRecord,
   getDailyGoalsState,
   getJobsByPool,
   insertJob,
@@ -127,6 +128,11 @@ export async function updateJobComments(id: string, comments: string) {
 
 export async function archiveJobToRejected(id: string) {
   await archiveJobRecord(id);
+  revalidateAllJobViews(id);
+}
+
+export async function deleteJobPermanently(id: string) {
+  await deleteJobRecord(id);
   revalidateAllJobViews(id);
 }
 

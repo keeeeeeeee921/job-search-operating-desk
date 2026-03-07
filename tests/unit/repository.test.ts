@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   archiveJobRecord,
+  deleteJobRecord,
   getActiveJobById,
   getDailyGoalsState,
   getJobsByPool,
@@ -43,6 +44,21 @@ describe("repository", () => {
 
     expect(afterArchive).toBeNull();
     expect(rejected.some((item) => item.id === target.id)).toBe(true);
+  });
+
+  it("deletes records permanently", async () => {
+    const active = await getJobsByPool("active");
+    const target = active[0];
+
+    await deleteJobRecord(target.id);
+
+    const afterDelete = await getActiveJobById(target.id);
+    const nextActive = await getJobsByPool("active");
+    const rejected = await getJobsByPool("rejected");
+
+    expect(afterDelete).toBeNull();
+    expect(nextActive.some((item) => item.id === target.id)).toBe(false);
+    expect(rejected.some((item) => item.id === target.id)).toBe(false);
   });
 
   it("increments and updates daily goals in the database", async () => {

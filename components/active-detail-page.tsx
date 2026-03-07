@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { JobDetailPanel } from "@/components/job-detail-panel";
 import { Surface } from "@/components/ui/surface";
@@ -14,12 +15,28 @@ export function ActiveDetailPageClient({
   record: JobRecord | null;
 }) {
   const pushToast = useJobDeskStore((state) => state.pushToast);
+  const router = useRouter();
   const [currentRecord, setCurrentRecord] = useState(record);
 
   return (
     <AppShell currentPath="/active">
       {currentRecord ? (
         <JobDetailPanel
+          onDelete={async () => {
+            const response = await fetch(`/api/jobs/${currentRecord.id}`, {
+              method: "DELETE"
+            });
+
+            if (!response.ok) {
+              pushToast("Record could not be deleted", "error");
+              return;
+            }
+
+            pushToast("Record deleted", "success");
+            setCurrentRecord(null);
+            router.push("/active");
+            router.refresh();
+          }}
           onSaveComments={async (comments) => {
             if (comments === currentRecord.comments) {
               return;

@@ -1,5 +1,6 @@
 export {
   archiveJobRecord,
+  deleteJobRecord,
   getDailyGoalsState,
   getJobsByPool,
   insertJob,

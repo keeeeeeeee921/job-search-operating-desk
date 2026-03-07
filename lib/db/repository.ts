@@ -2,6 +2,7 @@ import { count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
   archiveLocalJob,
+  deleteLocalJob,
   ensureLocalStoreReady,
   getAllLocalRecords,
   getLocalDailyGoalsState,
@@ -257,6 +258,17 @@ export async function archiveJobRecord(id: string) {
   }
 
   await getDb().update(jobsTable).set({ pool: "rejected" }).where(eq(jobsTable.id, id));
+}
+
+export async function deleteJobRecord(id: string) {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    await deleteLocalJob(id);
+    return;
+  }
+
+  await getDb().delete(jobsTable).where(eq(jobsTable.id, id));
 }
 
 export async function getDailyGoalsState() {

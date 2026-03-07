@@ -191,6 +191,12 @@ export async function archiveLocalJob(id: string) {
   });
 }
 
+export async function deleteLocalJob(id: string) {
+  await mutateLocalStore(async (store) => {
+    store.jobs = store.jobs.filter((job) => job.id !== id);
+  });
+}
+
 export async function getLocalDailyGoalsState() {
   const today = getEasternDateKey();
 

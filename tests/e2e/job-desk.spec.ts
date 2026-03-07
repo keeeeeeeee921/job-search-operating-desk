@@ -86,6 +86,17 @@ test("comments persist after blur", async ({ page }) => {
   );
 });
 
+test("active records can be deleted from the detail page", async ({ page }) => {
+  await page.goto("/active");
+  await page.getByRole("link", { name: "Logistics Planning Engineer" }).click();
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Delete record" }).click();
+  await page.waitForURL("**/active");
+  await expect(
+    page.getByRole("link", { name: "Logistics Planning Engineer" })
+  ).toHaveCount(0);
+});
+
 test("update by email archives manually", async ({ page }) => {
   await page.goto("/update-by-email");
   await page.getByRole("button", { name: "Tesla rejection demo" }).click();

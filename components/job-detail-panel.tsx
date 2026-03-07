@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import type { JobRecord } from "@/lib/types";
@@ -12,9 +13,11 @@ function getDraftStorageKey(id: string) {
 
 export function JobDetailPanel({
   record,
+  onDelete,
   onSaveComments
 }: {
   record: JobRecord;
+  onDelete: () => Promise<void>;
   onSaveComments: (comments: string) => Promise<void>;
 }) {
   const [comments, setComments] = useState(record.comments);
@@ -75,6 +78,22 @@ export function JobDetailPanel({
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
           Record
         </p>
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Delete this job record permanently? This cannot be undone."
+                )
+              ) {
+                void onDelete();
+              }
+            }}
+            tone="danger"
+          >
+            Delete record
+          </Button>
+        </div>
         <div className="mt-5 space-y-5">
           <Field label="Role Title" value={record.roleTitle} />
           <Field label="Company" value={record.company} />
