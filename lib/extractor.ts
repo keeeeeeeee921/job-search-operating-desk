@@ -25,47 +25,176 @@ function emptyFieldOrigins(): Partial<Record<JobField, FieldOrigin>> {
   };
 }
 
-function deriveFromUrl(normalizedUrl: string): {
-  fields: PartialFieldMap;
-  fieldOrigins: Partial<Record<JobField, FieldOrigin>>;
-  candidateValues: Partial<Record<JobField, string[]>>;
-} {
-  const parsed = new URL(normalizedUrl);
-  const slug = parsed.pathname
-    .split("/")
-    .filter(Boolean)
-    .slice(-2)
-    .join(" ");
-  const cleanedSlug = slug.replace(/[-_]/g, " ").trim();
-  const probableRole = cleanedSlug
-    .replace(/\b(job|jobs|careers|career|apply|detail|listing)\b/gi, "")
+function cleanUrlChunk(value: string) {
+  return decodeURIComponent(value)
+    .replace(/[+_]/g, " ")
+    .replace(/-/g, " ")
+    .replace(/\b(job|jobs|career|careers|apply|application|details|detail|listing|view)\b/gi, " ")
+    .replace(/\s+/g, " ")
     .trim();
-  const companyCandidate = hostToCompany(parsed.hostname);
+}
 
-  const fields: PartialFieldMap = {
-    link: normalizedUrl,
-    company: companyCandidate || "",
-    roleTitle: probableRole ? capitalizeWords(probableRole) : "",
-    location: "",
-    jobDescription: ""
-  };
+function providerHostCompany(hostname: string) {
+  const normalized = hostname.toLowerCase();
+
+  if (normalized.endsWith(".myworkdayjobs.com")) {
+    return capitalizeWords(normalized.split(".")[0] ?? "");
+  }
+
+  return "";
+}
+
+function deriveLinkedInHints(parsed: URL) {
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const viewIndex = segments.findIndex((segment) => segment.toLowerCase() === "view");
+  const slug = viewIndex >= 0 ? segments[viewIndex + 1] ?? "" : "";
+  const easyApply =
+    parsed.pathname.toLowerCase().includes("easy-apply") ||
+    parsed.searchParams.has("currentJobId");
+
+  if (!slug || /^\d+$/.test(slug)) {
+    return {
+      fields: {},
+      fieldOrigins: emptyFieldOrigins(),
+      candidateValues: {},
+      unsupportedReason: easyApply
+        ? "LinkedIn Easy Apply links do not expose enough public detail here. Paste the posting URL with the title slug if possible, or fill the missing fields manually."
+        : "LinkedIn pages are restricted, so this link needs manual review.",
+      notes: [
+        easyApply
+          ? "LinkedIn Easy Apply links are restricted and often only expose a job ID."
+          : "LinkedIn does not expose enough public metadata for reliable extraction."
+      ]
+    };
+  }
+
+  const withoutId = slug.replace(/-\d{6,}$/, "");
+  const lower = withoutId.toLowerCase();
+  const atIndex = lower.lastIndexOf("-at-");
+  const roleChunk = atIndex >= 0 ? withoutId.slice(0, atIndex) : withoutId;
+  const companyChunk = atIndex >= 0 ? withoutId.slice(atIndex + 4) : "";
+  const roleTitle = capitalizeWords(cleanUrlChunk(roleChunk));
+  const company = capitalizeWords(cleanUrlChunk(companyChunk));
 
   const fieldOrigins = emptyFieldOrigins();
+  const fields: PartialFieldMap = {
+    link: parsed.toString(),
+    roleTitle,
+    company
+  };
   fieldOrigins.link = "confirmed";
-  if (fields.company) {
-    fieldOrigins.company = "derived";
-  }
-  if (fields.roleTitle) {
+  if (roleTitle) {
     fieldOrigins.roleTitle = "derived";
+  }
+  if (company) {
+    fieldOrigins.company = "derived";
   }
 
   return {
     fields,
     fieldOrigins,
     candidateValues: {
-      company: companyCandidate ? [companyCandidate] : [],
-      roleTitle: probableRole ? [capitalizeWords(probableRole)] : []
+      roleTitle: roleTitle ? [roleTitle] : [],
+      company: company ? [company] : []
+    },
+    unsupportedReason: easyApply
+      ? "LinkedIn Easy Apply links are restricted. The URL slug provided a few hints, but manual review is still required."
+      : "LinkedIn pages are restricted, so this link still needs manual review.",
+    notes: [
+      easyApply
+        ? "Only LinkedIn URL hints were available from an Easy Apply link."
+        : "Only LinkedIn URL hints were available."
+    ]
+  };
+}
+
+function deriveProviderHints(
+  normalizedUrl: string,
+  sourceType: ReturnType<typeof detectSource>["sourceType"]
+): {
+  fields: PartialFieldMap;
+  fieldOrigins: Partial<Record<JobField, FieldOrigin>>;
+  candidateValues: Partial<Record<JobField, string[]>>;
+  unsupportedReason?: string;
+  notes?: string[];
+} {
+  const parsed = new URL(normalizedUrl);
+
+  if (sourceType === "linkedin") {
+    return deriveLinkedInHints(parsed);
+  }
+
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const lastSegment = segments.at(-1) ?? "";
+  const previousSegment = segments.at(-2) ?? "";
+  const fieldOrigins = emptyFieldOrigins();
+  const fields: PartialFieldMap = {
+    link: normalizedUrl
+  };
+  fieldOrigins.link = "confirmed";
+
+  let roleTitle = "";
+  let company = "";
+
+  if (sourceType === "greenhouse") {
+    company = capitalizeWords(cleanUrlChunk(segments[0] ?? ""));
+    roleTitle = capitalizeWords(cleanUrlChunk(/^\d+$/.test(lastSegment) ? previousSegment : lastSegment));
+  } else if (sourceType === "lever") {
+    company = capitalizeWords(cleanUrlChunk(segments[0] ?? ""));
+    roleTitle = capitalizeWords(cleanUrlChunk(lastSegment));
+  } else if (sourceType === "workday") {
+    company = providerHostCompany(parsed.hostname);
+    roleTitle = capitalizeWords(
+      cleanUrlChunk(lastSegment.replace(/_[A-Z0-9-]+$/i, ""))
+    );
+  } else {
+    const slug = segments.slice(-2).join(" ");
+    roleTitle = capitalizeWords(cleanUrlChunk(slug));
+    if (sourceType === "company" || sourceType === "unknown") {
+      company = hostToCompany(parsed.hostname);
     }
+  }
+
+  if (roleTitle) {
+    fields.roleTitle = roleTitle;
+    fieldOrigins.roleTitle = "derived";
+  }
+
+  if (company) {
+    fields.company = company;
+    fieldOrigins.company = "derived";
+  }
+
+  return {
+    fields,
+    fieldOrigins,
+    candidateValues: {
+      roleTitle: roleTitle ? [roleTitle] : [],
+      company: company ? [company] : []
+    }
+  };
+}
+
+function deriveFromUrl(normalizedUrl: string): {
+  fields: PartialFieldMap;
+  fieldOrigins: Partial<Record<JobField, FieldOrigin>>;
+  candidateValues: Partial<Record<JobField, string[]>>;
+  unsupportedReason?: string;
+  notes?: string[];
+} {
+  const source = detectSource(normalizedUrl);
+  const derived = deriveProviderHints(normalizedUrl, source.sourceType);
+
+  return {
+    fields: {
+      location: "",
+      jobDescription: "",
+      ...derived.fields
+    },
+    fieldOrigins: derived.fieldOrigins,
+    candidateValues: derived.candidateValues,
+    unsupportedReason: derived.unsupportedReason,
+    notes: derived.notes
   };
 }
 
@@ -120,14 +249,15 @@ export function buildFallbackExtraction(rawUrl: string): ExtractionResult {
     extractionStatus: "needs_review",
     supported: source.sourceType !== "linkedin",
     unsupportedReason:
-      source.sourceType === "linkedin"
+      derived.unsupportedReason ??
+      (source.sourceType === "linkedin"
         ? "LinkedIn pages are restricted, so this link needs manual review."
-        : undefined,
+        : undefined),
     fields: derived.fields,
     fieldOrigins: derived.fieldOrigins,
     candidateValues: derived.candidateValues,
     issues: [],
-    notes: ["Only low-confidence URL hints were available."]
+    notes: derived.notes ?? ["Only low-confidence URL hints were available."]
   };
 
   return withValidation(result);

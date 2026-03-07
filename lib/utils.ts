@@ -76,10 +76,32 @@ export function hostToCompany(hostname: string) {
 }
 
 export function capitalizeWords(input: string) {
+  const tokenMap: Record<string, string> = {
+    ai: "AI",
+    api: "API",
+    csv: "CSV",
+    fedex: "FedEx",
+    llm: "LLM",
+    ml: "ML",
+    oa: "OA",
+    qa: "QA",
+    tiktok: "TikTok",
+    linkedin: "LinkedIn",
+    github: "GitHub"
+  };
+
   return input
     .split(/\s+/)
     .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => {
+      const normalized = part.toLowerCase();
+      const mapped = tokenMap[normalized];
+      if (mapped) {
+        return mapped;
+      }
+
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
     .join(" ");
 }
 
