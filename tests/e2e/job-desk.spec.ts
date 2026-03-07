@@ -29,18 +29,17 @@ test("requires review when extraction is incomplete", async ({ page }) => {
 test("saves pasted job text without requiring a link", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Paste job text" }).click();
-  await page
-    .getByPlaceholder("Paste job text here. Press Cmd/Ctrl + Enter to process.")
-    .fill(`Req ID: P25-321635-2
+  const textarea = page.getByPlaceholder(
+    "Paste the copied job text here. Press Enter to process, or Shift + Enter for a new line."
+  );
+  await textarea.fill(`Req ID: P25-321635-2
 Data Science Intern (Summer 2026)
 Company: Federal Express Corporation
 Location:
 Remote
 Description
 As a FedEx Intern, you will be working on projects gaining valuable, real-world experience.`);
-  await page
-    .getByPlaceholder("Paste job text here. Press Cmd/Ctrl + Enter to process.")
-    .press("Control+Enter");
+  await textarea.press("Enter");
 
   await expect(page.getByText("Added to Active").first()).toBeVisible();
   await page.goto("/active");
