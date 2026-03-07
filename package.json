@@ -1,0 +1,53 @@
+{
+  "name": "job-search-operating-desk",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "env:pull": "pnpm dlx vercel env pull .env.local",
+    "test": "vitest run",
+    "test:postgres": "vitest run tests/integration/postgres-smoke.test.ts",
+    "test:watch": "vitest",
+    "test:e2e": "rm -rf .data/job-desk-e2e && DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true pnpm build && DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true playwright test"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.6",
+    "cheerio": "^1.0.0",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.43.1",
+    "framer-motion": "^12.4.10",
+    "lucide-react": "^0.511.0",
+    "next": "^15.3.0",
+    "postgres": "^3.4.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.2.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.15.21",
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.20",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "^9.26.0",
+    "eslint-config-next": "^15.3.0",
+    "jsdom": "^26.1.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  },
+  "packageManager": "pnpm@10.6.5"
+}

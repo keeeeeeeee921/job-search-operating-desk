@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.data/
+.tooling/
+test-results/
+.env.local
+.env*.local
+.vercel/
+playwright-report/
+coverage/
+dist/

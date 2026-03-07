@@ -1,0 +1,4 @@
+{
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "if [ \"$VERCEL_ENV\" = \"preview\" ]; then pnpm db:migrate; fi && pnpm build"
+}
