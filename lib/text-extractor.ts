@@ -305,6 +305,62 @@ function extractRoleTitle(lines: string[]) {
   return "";
 }
 
+function looksLikeCompanyName(line: string, roleTitle: string) {
+  if (!line || line === roleTitle) {
+    return false;
+  }
+
+  if (isMetadataLine(line)) {
+    return false;
+  }
+
+  if (line.includes("·") || line.includes("|") || line.includes(":")) {
+    return false;
+  }
+
+  if (
+    /(minutes ago|hours ago|days ago|clicked apply|applicants|remote|on-site|hybrid|full-time|part-time|contract)/i.test(
+      line
+    )
+  ) {
+    return false;
+  }
+
+  return /^[A-Za-z0-9&.,'()\-\/\s]+$/.test(line);
+}
+
+function extractCompanyName(lines: string[], roleTitle: string) {
+  const companyResult = extractLabeledValue(lines, "Company");
+  if (companyResult?.value) {
+    return companyResult.value;
+  }
+
+  const summaryLine = extractSummaryLine(lines);
+  const summaryCompany = parseCompanyAndLocationFromSummary(summaryLine).company;
+  if (summaryCompany) {
+    return summaryCompany;
+  }
+
+  const topLines = lines.slice(0, 8);
+  for (let index = 0; index < topLines.length; index += 1) {
+    const line = topLines[index];
+    if (!looksLikeCompanyName(line, roleTitle)) {
+      continue;
+    }
+
+    const next = topLines[index + 1] ?? "";
+    if (
+      next === roleTitle ||
+      looksLikeRoleTitle(next) ||
+      /(minutes ago|hours ago|days ago|clicked apply|applicants)/i.test(next)
+    ) {
+      return line;
+    }
+  }
+
+  return "";
+}
+
 function extractLocationCandidates(lines: string[]) {
   const locationIndex = lines.findIndex((line) =>
     line.toLowerCase().startsWith("location:")
@@ -493,10 +549,9 @@ export function extractJobFromText(rawText: string): ExtractionResult {
   const lines = normalizeLines(trimmedText);
   const source = detectTextSource(trimmedText);
   const roleTitle = extractRoleTitle(lines);
-  const companyResult = extractLabeledValue(lines, "Company");
   const summaryLine = extractSummaryLine(lines);
   const summary = parseCompanyAndLocationFromSummary(summaryLine);
-  const company = companyResult?.value ?? summary.company;
+  const company = extractCompanyName(lines, roleTitle) || summary.company;
   const locationCandidates = extractLocationCandidates(lines);
   const description = cleanDescriptionText(extractDescription(lines), {
     roleTitle,

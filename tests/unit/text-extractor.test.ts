@@ -98,4 +98,19 @@ Mission of Pi3AI:
     expect(result.fields.location).toBe("United States (Remote)");
     expect(result.issues.some((issue) => issue.field === "location")).toBe(false);
   });
+
+  it("falls back to a standalone company line when the summary line is missing", () => {
+    const result = extractJobFromText(`
+Emma of Torre.ai
+Entry-Level Implementation Analyst | Fintech | Remote US
+United States · 16 minutes ago · 5 people clicked apply
+About the job
+You'll drive financial automation and digital transformation for global clients.
+Location:
+Remote: USA
+    `);
+
+    expect(result.fields.company).toBe("Emma of Torre.ai");
+    expect(result.issues.some((issue) => issue.field === "company")).toBe(false);
+  });
 });

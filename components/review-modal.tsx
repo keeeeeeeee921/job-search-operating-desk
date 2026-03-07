@@ -47,14 +47,25 @@ export function ReviewModal({
 
   return (
     <Dialog
-      className="h-[min(92vh,980px)]"
+      className="h-[min(82vh,860px)] sm:h-[min(86vh,920px)]"
       description="Required fields are missing or low-confidence. Confirm the record before it can be saved to Active."
       onOpenChange={onOpenChange}
       open={open}
       title="Missing fields need review"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-2">
+        <div className="mb-4 flex shrink-0 justify-end gap-3 border-b border-border/80 bg-white/95 pb-4 backdrop-blur">
+          <Button onClick={onCancel} tone="ghost">
+            Cancel
+          </Button>
+          <Button
+            disabled={localDraft.issues.length > 0}
+            onClick={() => onSave(localDraft)}
+          >
+            Save to Active
+          </Button>
+        </div>
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-scroll overscroll-contain pr-2">
           {localDraft.unsupportedReason ? (
             <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {localDraft.unsupportedReason}
