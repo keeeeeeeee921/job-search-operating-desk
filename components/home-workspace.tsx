@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createJobFromLink, createJobFromText, saveReviewedJob } from "@/app/actions";
@@ -108,9 +109,23 @@ export function HomeWorkspace({
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               Main Input
             </p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
-              Paste a job link. Keep the working pool honest.
-            </h1>
+            <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <h1 className="text-4xl font-semibold tracking-tight text-foreground">
+                  Paste a job link. Keep the working pool honest.
+                </h1>
+              </div>
+              <div className="flex justify-center lg:justify-end">
+                <Image
+                  alt="A bear sitting in an office chair surrounded by paper stacks."
+                  className="h-auto w-28 shrink-0 object-contain sm:w-32 lg:w-36"
+                  height={160}
+                  src="/pool-honest-bear.gif"
+                  unoptimized
+                  width={160}
+                />
+              </div>
+            </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
               This desk separates input, extraction, and saved records. If required fields are missing or the source is restricted, the app stops and asks for review instead of pretending extraction succeeded.
             </p>
