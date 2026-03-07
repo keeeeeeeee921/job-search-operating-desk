@@ -47,14 +47,14 @@ export function ReviewModal({
 
   return (
     <Dialog
-      className="max-h-[min(90vh,980px)]"
+      className="h-[min(92vh,980px)]"
       description="Required fields are missing or low-confidence. Confirm the record before it can be saved to Active."
       onOpenChange={onOpenChange}
       open={open}
       title="Missing fields need review"
     >
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="min-h-0 space-y-5 overflow-y-auto pr-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-2">
           {localDraft.unsupportedReason ? (
             <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
               {localDraft.unsupportedReason}
@@ -135,7 +135,7 @@ export function ReviewModal({
             );
           })}
         </div>
-        <div className="mt-5 flex shrink-0 justify-end gap-3 border-t border-border/80 bg-white pt-4">
+        <div className="sticky bottom-0 mt-5 flex shrink-0 justify-end gap-3 border-t border-border/80 bg-white/95 pt-4 backdrop-blur">
           <Button onClick={onCancel} tone="ghost">
             Cancel
           </Button>
