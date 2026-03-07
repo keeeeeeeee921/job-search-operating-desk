@@ -59,11 +59,15 @@ function deriveLinkedInHints(parsed: URL) {
       candidateValues: {},
       unsupportedReason: easyApply
         ? "LinkedIn Easy Apply links do not expose enough public detail here. Paste the posting URL with the title slug if possible, or fill the missing fields manually."
-        : "LinkedIn pages are restricted, so this link needs manual review.",
+        : slug && /^\d+$/.test(slug)
+          ? "This LinkedIn job link only exposes a numeric job ID, not a readable role/company slug. Manual review is required."
+          : "LinkedIn pages are restricted, so this link needs manual review.",
       notes: [
         easyApply
           ? "LinkedIn Easy Apply links are restricted and often only expose a job ID."
-          : "LinkedIn does not expose enough public metadata for reliable extraction."
+          : slug && /^\d+$/.test(slug)
+            ? "This LinkedIn view link contains only a numeric job ID."
+            : "LinkedIn does not expose enough public metadata for reliable extraction."
       ]
     };
   }

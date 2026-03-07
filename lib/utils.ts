@@ -59,8 +59,28 @@ export function normalizeUrl(rawUrl: string) {
       : new URL(`https://${value}`);
 
     parsed.hash = "";
-    if (parsed.searchParams.has("utm_source")) {
-      parsed.searchParams.delete("utm_source");
+    const hostname = parsed.hostname.toLowerCase();
+    const pathname = parsed.pathname.toLowerCase();
+
+    if (hostname.includes("linkedin.com") && pathname.includes("/jobs/view/")) {
+      parsed.search = "";
+      return parsed.toString();
+    }
+
+    const trackedKeys = Array.from(parsed.searchParams.keys()).filter(
+      (key) =>
+        key.startsWith("utm_") ||
+        [
+          "alternatechannel",
+          "ebp",
+          "refid",
+          "trackingid",
+          "trk"
+        ].includes(key.toLowerCase())
+    );
+
+    for (const key of trackedKeys) {
+      parsed.searchParams.delete(key);
     }
 
     return parsed.toString();

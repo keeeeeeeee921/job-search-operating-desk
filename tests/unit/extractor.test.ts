@@ -27,4 +27,15 @@ describe("buildFallbackExtraction", () => {
     expect(result.fields.company).toBeUndefined();
     expect(result.unsupportedReason).toContain("Easy Apply");
   });
+
+  it("explains when a LinkedIn view link only has a numeric job id", () => {
+    const result = buildFallbackExtraction(
+      "https://www.linkedin.com/jobs/view/4376823404/?alternateChannel=search&trk=flagship3"
+    );
+
+    expect(result.normalizedUrl).toBe(
+      "https://www.linkedin.com/jobs/view/4376823404/"
+    );
+    expect(result.unsupportedReason).toContain("numeric job ID");
+  });
 });
