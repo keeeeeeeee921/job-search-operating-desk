@@ -71,6 +71,37 @@ function cleanLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+function normalizeLocationCandidate(value: string): string {
+  const cleaned = cleanLine(value.replace(/^location:\s*/i, ""));
+
+  if (!cleaned) {
+    return "";
+  }
+
+  const remotePrefixed = cleaned.match(/^remote:\s*(.+)$/i);
+  if (remotePrefixed) {
+    const base = normalizeLocationCandidate(remotePrefixed[1]);
+    return base ? `${base} (Remote)` : "Remote";
+  }
+
+  const remoteWrapped = cleaned.match(/^(.+?)\s*\((remote)\)$/i);
+  if (remoteWrapped) {
+    const base = normalizeLocationCandidate(remoteWrapped[1]);
+    return base ? `${base} (Remote)` : "Remote";
+  }
+
+  const nonRemoteWrapped = cleaned.match(/^(.+?)\s*\((on-site|hybrid)\)$/i);
+  if (nonRemoteWrapped) {
+    return normalizeLocationCandidate(nonRemoteWrapped[1]);
+  }
+
+  if (/^(usa|us|united states)$/i.test(cleaned)) {
+    return "United States";
+  }
+
+  return cleaned.replace(/, United States$/i, ", US");
+}
+
 function isNoiseLine(line: string) {
   const trimmed = cleanLine(line);
 
@@ -216,16 +247,16 @@ function parseCompanyAndLocationFromSummary(summaryLine: string) {
 
   const [companyPart, locationPart] = summaryLine.split(" · ");
   const company = cleanLine(companyPart ?? "");
-  const primaryLocation = cleanLine(
-    (locationPart ?? "").replace(/\((?:On-site|Remote|Hybrid)\)/gi, "")
+  const rawLocation = cleanLine(locationPart ?? "");
+  const primaryLocation = normalizeLocationCandidate(
+    rawLocation.replace(/\((?:On-site|Remote|Hybrid)\)/gi, "")
   );
-  const workplaceTypeMatch = summaryLine.match(/\((On-site|Remote|Hybrid)\)/i);
-  const workplaceType = workplaceTypeMatch?.[1] ?? "";
+  const normalizedFullLocation = normalizeLocationCandidate(rawLocation);
 
   return {
     company,
     locationCandidates: uniqueValues(
-      [primaryLocation, workplaceType].filter(Boolean)
+      [normalizedFullLocation, primaryLocation].filter(Boolean)
     )
   };
 }
@@ -281,17 +312,24 @@ function extractLocationCandidates(lines: string[]) {
 
   if (locationIndex >= 0) {
     const line = lines[locationIndex];
-    const inlineValue = cleanLine(line.slice("Location:".length));
+    const inlineValue = normalizeLocationCandidate(line.slice("Location:".length));
     const candidates = inlineValue ? [inlineValue] : [];
 
     for (let nextIndex = locationIndex + 1; nextIndex < lines.length; nextIndex += 1) {
       const next = lines[nextIndex];
       const nextLower = next.toLowerCase();
+      const labeledMatch = next.match(/^([^:]+):\s*(.*)$/);
 
-      if (
-        isSectionHeader(next) ||
-        (next.includes(":") && metadataLabels.has(next.split(":")[0].toLowerCase()))
-      ) {
+      if (isSectionHeader(next)) {
+        break;
+      }
+
+      if (labeledMatch) {
+        const label = labeledMatch[1].toLowerCase();
+        if (label === "remote") {
+          candidates.push(next);
+          continue;
+        }
         break;
       }
 
@@ -306,13 +344,15 @@ function extractLocationCandidates(lines: string[]) {
       candidates.push(next);
     }
 
-    return uniqueValues(
-      candidates.map((candidate) =>
-        candidate.includes("United States")
-          ? candidate.replace(", United States", ", US")
-          : candidate
-      )
+    const normalizedCandidates = uniqueValues(
+      candidates
+        .map((candidate) => normalizeLocationCandidate(candidate))
+        .filter(Boolean)
     );
+
+    if (normalizedCandidates.length > 0) {
+      return normalizedCandidates;
+    }
   }
 
   const summary = extractSummaryLine(lines);
@@ -368,6 +408,12 @@ function cleanDescriptionText(
     context.company ? `Company: ${context.company}` : "",
     context.location ? `Location: ${context.location}` : ""
   ].filter(Boolean);
+  const genericLeadingMetadata = [
+    /^Position:\s*.+?(?=\s+(?:Job Title:|Company:|Location:|Summary:)|$)/i,
+    /^Job Title:\s*.+?(?=\s+(?:Position:|Company:|Location:|Summary:)|$)/i,
+    /^Company:\s*.+?(?=\s+(?:Position:|Job Title:|Location:|Summary:)|$)/i,
+    /^Location:\s*.+?(?=\s+(?:Position:|Job Title:|Company:|Summary:)|$)/i
+  ];
 
   let changed = true;
   while (changed) {
@@ -385,6 +431,13 @@ function cleanDescriptionText(
     if (summaryRegex.test(next)) {
       next = next.replace(summaryRegex, "").trim();
       changed = true;
+    }
+
+    for (const regex of genericLeadingMetadata) {
+      if (regex.test(next)) {
+        next = next.replace(regex, "").trim();
+        changed = true;
+      }
     }
   }
 

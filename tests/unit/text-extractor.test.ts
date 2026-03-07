@@ -77,4 +77,25 @@ Position: Junior SQL Analyst Location: 100% REMOTE Summary: Seeking a Junior SQL
       "Seeking a Junior SQL Analyst to write, optimize, and maintain SQL queries to support reporting, analytics, and data validation."
     );
   });
+
+  it("normalizes Remote: USA location blocks from Torre-style pasted text", () => {
+    const result = extractJobFromText(`
+Emma of Torre.ai
+Entry-Level Implementation Analyst | Fintech | Remote US
+Emma of Torre.ai · United States (Remote)
+About the job
+You'll drive financial automation and digital transformation for global clients, accelerating your fintech career.
+Location:
+Remote: USA
+Mission of Pi3AI:
+"To empower businesses with reliable, cutting-edge technology."
+    `);
+
+    expect(result.fields.roleTitle).toBe(
+      "Entry-Level Implementation Analyst | Fintech | Remote US"
+    );
+    expect(result.fields.company).toBe("Emma of Torre.ai");
+    expect(result.fields.location).toBe("United States (Remote)");
+    expect(result.issues.some((issue) => issue.field === "location")).toBe(false);
+  });
 });
