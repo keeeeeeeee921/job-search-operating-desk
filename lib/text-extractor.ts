@@ -348,6 +348,49 @@ function extractDescription(lines: string[]) {
   return collected.join("\n\n").trim();
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function cleanDescriptionText(
+  description: string,
+  context: {
+    roleTitle: string;
+    company: string;
+    location: string;
+  }
+) {
+  let next = description.trim();
+
+  const removablePrefixes = [
+    context.roleTitle ? `Position: ${context.roleTitle}` : "",
+    context.roleTitle ? `Job Title: ${context.roleTitle}` : "",
+    context.company ? `Company: ${context.company}` : "",
+    context.location ? `Location: ${context.location}` : ""
+  ].filter(Boolean);
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    for (const prefix of removablePrefixes) {
+      const regex = new RegExp(`^${escapeRegExp(prefix)}\\s*`, "i");
+      if (regex.test(next)) {
+        next = next.replace(regex, "").trim();
+        changed = true;
+      }
+    }
+
+    const summaryRegex = /^Summary:\s*/i;
+    if (summaryRegex.test(next)) {
+      next = next.replace(summaryRegex, "").trim();
+      changed = true;
+    }
+  }
+
+  return next;
+}
+
 function buildDraft(result: ExtractionResult): JobDraft {
   return {
     inputMode: "text",
@@ -402,7 +445,11 @@ export function extractJobFromText(rawText: string): ExtractionResult {
   const summary = parseCompanyAndLocationFromSummary(summaryLine);
   const company = companyResult?.value ?? summary.company;
   const locationCandidates = extractLocationCandidates(lines);
-  const description = extractDescription(lines);
+  const description = cleanDescriptionText(extractDescription(lines), {
+    roleTitle,
+    company,
+    location: locationCandidates[0] ?? ""
+  });
   const fieldOrigins = emptyFieldOrigins();
 
   if (roleTitle) {

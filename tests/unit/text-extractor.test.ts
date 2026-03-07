@@ -64,4 +64,17 @@ Strong SQL abilities, including comfort with complex queries
     expect(result.fields.jobDescription).not.toContain("Resume Match");
     expect(result.fields.jobDescription).not.toContain("Save Junior Data Engineer");
   });
+
+  it("removes repeated metadata prefixes from pasted descriptions", () => {
+    const result = extractJobFromText(`
+Junior SQL Analyst
+Paradigm Technology · 100% REMOTE (Remote)
+About the job
+Position: Junior SQL Analyst Location: 100% REMOTE Summary: Seeking a Junior SQL Analyst to write, optimize, and maintain SQL queries to support reporting, analytics, and data validation.
+    `);
+
+    expect(result.fields.jobDescription).toBe(
+      "Seeking a Junior SQL Analyst to write, optimize, and maintain SQL queries to support reporting, analytics, and data validation."
+    );
+  });
 });
