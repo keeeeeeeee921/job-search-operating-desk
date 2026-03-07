@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { findDuplicateCandidates } from "@/lib/duplicateDetection";
 import { draftFromExtraction } from "@/lib/extractor";
+import { extractJobFromText } from "@/lib/text-extractor";
 import {
   archiveJobRecord,
   getDailyGoalsState,
@@ -62,6 +63,26 @@ function revalidateAllJobViews(recordId?: string) {
 export async function createJobFromLink(rawUrl: string): Promise<CreateJobResult> {
   const { extractJobOnServer } = await import("@/lib/server/extraction-service");
   const extraction = await extractJobOnServer(rawUrl);
+  const draft = draftFromExtraction(extraction);
+
+  if (draft.issues.length > 0) {
+    return { status: "review", draft };
+  }
+
+  const activeJobs = await getJobsByPool("active");
+  const candidates = findDuplicateCandidates(draft, activeJobs);
+  if (candidates.length > 0) {
+    return { status: "duplicate", draft, candidates };
+  }
+
+  const record = createRecordFromDraft(draft);
+  await insertJob(record);
+  revalidateAllJobViews(record.id);
+  return { status: "saved", record };
+}
+
+export async function createJobFromText(rawText: string): Promise<CreateJobResult> {
+  const extraction = extractJobFromText(rawText);
   const draft = draftFromExtraction(extraction);
 
   if (draft.issues.length > 0) {

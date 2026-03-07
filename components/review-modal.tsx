@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { labelForField } from "@/lib/recordValidation";
+import {
+  isFieldRequiredForDraft,
+  labelForField
+} from "@/lib/recordValidation";
 import { mergeDraftField } from "@/lib/extractor";
 import {
   requiredJobFields,
@@ -87,7 +90,9 @@ export function ReviewModal({
                         ))
                       ) : (
                         <p className="text-xs text-muted-foreground">
-                          Ready to save.
+                          {field === "link" && !isFieldRequiredForDraft(localDraft, field)
+                            ? "Optional for pasted job text."
+                            : "Ready to save."}
                         </p>
                       )}
                     </div>

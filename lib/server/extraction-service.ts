@@ -130,6 +130,7 @@ function extractCandidates(html: string, normalizedUrl: string) {
 
   const result: ExtractionResult = {
     normalizedUrl,
+    inputMode: "link",
     sourceType: detectSource(normalizedUrl).sourceType,
     sourceConfidence: detectSource(normalizedUrl).sourceConfidence,
     extractionStatus: "needs_review",
@@ -169,6 +170,7 @@ function extractCandidates(html: string, normalizedUrl: string) {
   };
 
   const draft = {
+    inputMode: "link" as const,
     roleTitle: result.fields.roleTitle ?? "",
     company: result.fields.company ?? "",
     location: result.fields.location ?? "",
@@ -204,6 +206,7 @@ function extractMockJob(url: string) {
 
   return {
     normalizedUrl: url,
+    inputMode: "link",
     sourceType: "company" as const,
     sourceConfidence: "low" as const,
     extractionStatus: "confirmed" as const,

@@ -23,10 +23,22 @@ function isWeakRoleTitle(value: string) {
   return !normalized || weakRoleWords.has(normalized);
 }
 
+export function isFieldRequiredForDraft(draft: JobDraft, field: JobField) {
+  if (field === "link" && draft.inputMode === "text") {
+    return false;
+  }
+
+  return requiredJobFields.includes(field);
+}
+
 export function validateJobDraft(draft: JobDraft) {
   const issues: ValidationIssue[] = [];
 
   requiredJobFields.forEach((field) => {
+    if (!isFieldRequiredForDraft(draft, field)) {
+      return;
+    }
+
     const value = draft[field].trim();
     if (!value) {
       issues.push({
@@ -54,7 +66,7 @@ export function validateJobDraft(draft: JobDraft) {
     });
   }
 
-  if (!normalizeUrl(draft.link)) {
+  if (draft.link.trim() && !normalizeUrl(draft.link)) {
     issues.push({
       field: "link",
       type: "suspicious",

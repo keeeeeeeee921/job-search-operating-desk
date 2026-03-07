@@ -47,14 +47,18 @@ export function DuplicateModal({
                 Saved {formatDate(candidate.record.timestamp)}
               </p>
             </div>
-            <a
-              className="mt-3 block break-all text-sm text-accent"
-              href={candidate.record.link}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {candidate.record.link}
-            </a>
+            {candidate.record.link ? (
+              <a
+                className="mt-3 block break-all text-sm text-accent"
+                href={candidate.record.link}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {candidate.record.link}
+              </a>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground">Link not saved</p>
+            )}
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {truncate(candidate.record.jobDescription, 180)}
             </p>

@@ -25,7 +25,7 @@ function scoreDuplicate(draft: JobDraft, record: JobRecord) {
     reasons.push("Job description overlaps");
   }
 
-  if (normalizeText(draft.link) === normalizeText(record.link)) {
+  if (draft.link.trim() && normalizeText(draft.link) === normalizeText(record.link)) {
     score += 0.3;
     reasons.push("Link matches exactly");
   }

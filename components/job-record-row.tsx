@@ -46,14 +46,18 @@ export function JobRecordRow({
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Link
         </p>
-        <a
-          className="mt-2 block break-all text-sm text-accent transition hover:opacity-80"
-          href={record.link}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {record.link}
-        </a>
+        {record.link ? (
+          <a
+            className="mt-2 block break-all text-sm text-accent transition hover:opacity-80"
+            href={record.link}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {record.link}
+          </a>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">Link not saved</p>
+        )}
       </div>
       <div className="xl:border-l xl:border-border/70 xl:pl-4">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">

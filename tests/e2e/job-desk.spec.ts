@@ -23,7 +23,31 @@ test("requires review when extraction is incomplete", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Missing fields need review" })
   ).toBeVisible();
-  await expect(page.getByText("LinkedIn pages are restricted").first()).toBeVisible();
+  await expect(page.getByText("numeric job ID").first()).toBeVisible();
+});
+
+test("saves pasted job text without requiring a link", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Paste job text" }).click();
+  await page
+    .getByPlaceholder("Paste job text here. Press Cmd/Ctrl + Enter to process.")
+    .fill(`Req ID: P25-321635-2
+Data Science Intern (Summer 2026)
+Company: Federal Express Corporation
+Location:
+Remote
+Description
+As a FedEx Intern, you will be working on projects gaining valuable, real-world experience.`);
+  await page
+    .getByPlaceholder("Paste job text here. Press Cmd/Ctrl + Enter to process.")
+    .press("Control+Enter");
+
+  await expect(page.getByText("Added to Active").first()).toBeVisible();
+  await page.goto("/active");
+  await expect(
+    page.getByRole("link", { name: "Data Science Intern (Summer 2026)" }).first()
+  ).toBeVisible();
+  await expect(page.getByText("Link not saved").first()).toBeVisible();
 });
 
 test("shows duplicate modal and respects cancel or continue", async ({ page, baseURL }) => {

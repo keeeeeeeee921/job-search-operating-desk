@@ -85,14 +85,20 @@ export function JobDetailPanel({
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
               Link
             </p>
-            <a
-              className="mt-2 block break-all text-sm text-accent"
-              href={record.link}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {record.link}
-            </a>
+            {record.link ? (
+              <a
+                className="mt-2 block break-all text-sm text-accent"
+                href={record.link}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {record.link}
+              </a>
+            ) : (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Link not saved for this record.
+              </p>
+            )}
           </div>
         </div>
       </Surface>

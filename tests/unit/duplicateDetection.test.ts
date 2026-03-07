@@ -6,6 +6,7 @@ import type { JobDraft } from "@/lib/types";
 describe("findDuplicateCandidates", () => {
   it("finds likely duplicates from company, role, and description overlap", () => {
     const draft: JobDraft = {
+      inputMode: "link",
       roleTitle: "Data Analyst",
       company: "TikTok",
       location: "San Jose, CA",

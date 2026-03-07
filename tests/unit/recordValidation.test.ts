@@ -3,6 +3,7 @@ import { validateJobDraft } from "@/lib/recordValidation";
 import type { JobDraft } from "@/lib/types";
 
 const baseDraft: JobDraft = {
+  inputMode: "link",
   roleTitle: "Data Analyst",
   company: "Aurora Labs",
   location: "Toronto, ON",
@@ -41,5 +42,19 @@ describe("validateJobDraft", () => {
 
     expect(issues.some((issue) => issue.field === "location")).toBe(true);
     expect(issues.some((issue) => issue.field === "roleTitle")).toBe(true);
+  });
+
+  it("allows missing link for pasted job text", () => {
+    const issues = validateJobDraft({
+      ...baseDraft,
+      inputMode: "text",
+      link: "",
+      fieldOrigins: {
+        ...baseDraft.fieldOrigins,
+        link: "missing"
+      }
+    });
+
+    expect(issues.some((issue) => issue.field === "link")).toBe(false);
   });
 });

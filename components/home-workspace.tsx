@@ -2,18 +2,21 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createJobFromLink, saveReviewedJob } from "@/app/actions";
+import { createJobFromLink, createJobFromText, saveReviewedJob } from "@/app/actions";
 import { DailyGoalsWidget } from "@/components/daily-goals-widget";
 import { DuplicateModal } from "@/components/duplicate-modal";
 import { JobLinkInput } from "@/components/job-link-input";
+import { JobTextInput } from "@/components/job-text-input";
 import { ProcessingStatus } from "@/components/processing-status";
 import { RecentItemsList } from "@/components/recent-items-list";
 import { ReviewModal } from "@/components/review-modal";
+import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { useJobDeskStore } from "@/lib/store";
 import type {
   DailyGoalsState,
   DuplicateCandidate,
+  InputMode,
   JobDraft,
   JobRecord
 } from "@/lib/types";
@@ -28,7 +31,9 @@ export function HomeWorkspace({
   const router = useRouter();
   const pushToast = useJobDeskStore((state) => state.pushToast);
 
-  const [inputValue, setInputValue] = useState("");
+  const [inputMode, setInputMode] = useState<InputMode>("link");
+  const [linkValue, setLinkValue] = useState("");
+  const [textValue, setTextValue] = useState("");
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState<JobDraft | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<JobDraft | null>(null);
@@ -65,7 +70,8 @@ export function HomeWorkspace({
     setRecentItems((current) => [result.record, ...current].slice(0, 4));
     pushToast("Added to Active", "success");
     setProcessingStatus(null);
-    setInputValue("");
+    setLinkValue("");
+    setTextValue("");
     setReviewDraft(null);
     setDuplicateDraft(null);
     setDuplicateCandidates([]);
@@ -73,15 +79,25 @@ export function HomeWorkspace({
   };
 
   const handleProcess = async () => {
-    if (!inputValue.trim()) {
+    const activeValue = inputMode === "link" ? linkValue : textValue;
+    if (!activeValue.trim()) {
+      return;
+    }
+
+    if (inputMode === "link") {
+      setProcessingStatus("Processing...");
+      setProcessingStatus("Detecting source...");
+      setProcessingStatus("Preparing job record...");
+      setProcessingStatus("Checking duplicates...");
+      handleServerResult(await createJobFromLink(linkValue));
       return;
     }
 
     setProcessingStatus("Processing...");
-    setProcessingStatus("Detecting source...");
+    setProcessingStatus("Parsing pasted job text...");
     setProcessingStatus("Preparing job record...");
     setProcessingStatus("Checking duplicates...");
-    handleServerResult(await createJobFromLink(inputValue));
+    handleServerResult(await createJobFromText(textValue));
   };
 
   return (
@@ -99,12 +115,37 @@ export function HomeWorkspace({
               This desk separates input, extraction, and saved records. If required fields are missing or the source is restricted, the app stops and asks for review instead of pretending extraction succeeded.
             </p>
             <div className="mt-6">
-              <JobLinkInput
-                disabled={false}
-                onChange={setInputValue}
-                onSubmit={handleProcess}
-                value={inputValue}
-              />
+              <div className="mb-4 flex flex-wrap gap-2">
+                <Button
+                  onClick={() => setInputMode("link")}
+                  tone={inputMode === "link" ? "default" : "ghost"}
+                  type="button"
+                >
+                  Paste link
+                </Button>
+                <Button
+                  onClick={() => setInputMode("text")}
+                  tone={inputMode === "text" ? "default" : "ghost"}
+                  type="button"
+                >
+                  Paste job text
+                </Button>
+              </div>
+              {inputMode === "link" ? (
+                <JobLinkInput
+                  disabled={false}
+                  onChange={setLinkValue}
+                  onSubmit={handleProcess}
+                  value={linkValue}
+                />
+              ) : (
+                <JobTextInput
+                  disabled={false}
+                  onChange={setTextValue}
+                  onSubmit={handleProcess}
+                  value={textValue}
+                />
+              )}
               <ProcessingStatus status={processingStatus} />
             </div>
           </Surface>

@@ -7,6 +7,7 @@ export const requiredJobFields = [
 ] as const;
 
 export type JobField = (typeof requiredJobFields)[number];
+export type InputMode = "link" | "text";
 export type SourceType =
   | "linkedin"
   | "greenhouse"
@@ -44,6 +45,7 @@ export interface ValidationIssue {
 
 export interface ExtractionResult {
   normalizedUrl: string;
+  inputMode: InputMode;
   sourceType: SourceType;
   sourceConfidence: SourceConfidence;
   extractionStatus: ExtractionStatus;
@@ -57,6 +59,7 @@ export interface ExtractionResult {
 }
 
 export interface JobDraft {
+  inputMode: InputMode;
   roleTitle: string;
   company: string;
   location: string;

@@ -204,6 +204,7 @@ function deriveFromUrl(normalizedUrl: string): {
 
 function toDraft(result: ExtractionResult): JobDraft {
   return {
+    inputMode: result.inputMode,
     roleTitle: result.fields.roleTitle ?? "",
     company: result.fields.company ?? "",
     location: result.fields.location ?? "",
@@ -224,6 +225,7 @@ export function buildFallbackExtraction(rawUrl: string): ExtractionResult {
   if (!normalized) {
     return {
       normalizedUrl: rawUrl,
+      inputMode: "link",
       sourceType: "unknown",
       sourceConfidence: "unknown",
       extractionStatus: "needs_review",
@@ -248,6 +250,7 @@ export function buildFallbackExtraction(rawUrl: string): ExtractionResult {
 
   const result: ExtractionResult = {
     normalizedUrl: normalized,
+    inputMode: "link",
     sourceType: source.sourceType,
     sourceConfidence: source.sourceConfidence,
     extractionStatus: "needs_review",
@@ -337,8 +340,9 @@ export function mergeDraftField(
 }
 
 export function draftFromExtraction(result: ExtractionResult) {
+  const draft = toDraft(result);
   return {
-    ...toDraft(result),
-    issues: validateJobDraft(toDraft(result))
+    ...draft,
+    issues: validateJobDraft(draft)
   };
 }
