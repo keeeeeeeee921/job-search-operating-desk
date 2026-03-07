@@ -5,9 +5,11 @@ A desktop-first personal job search workspace built for one user.
 This is not a corporate ATS, not a recruiting CRM, and not a static mockup.  
 It is a real, interactive web app for capturing job records, keeping an Active-only working pool, archiving rejected roles separately, and handling the repetitive parts of job searching with a calmer, more truthful workflow.
 
-## Live Demo
+## Demo
 
-[job-search-operating-desk.vercel.app](https://job-search-operating-desk.vercel.app)
+The actively used deployment is private to avoid exposing live personal job-search data.
+
+If needed, a separate public-safe demo instance can be created later.
 
 ## What It Does
 
