@@ -1,5 +1,5 @@
 import type { DailyGoalsState, JobRecord } from "@/lib/types";
-import { getDateKey } from "@/lib/utils";
+import { getEasternDateKey } from "@/lib/utils";
 
 const now = new Date("2026-03-06T18:00:00.000Z");
 
@@ -130,9 +130,9 @@ export const seedRejectedJobs: JobRecord[] = [
 ];
 
 export const seedDailyGoals: DailyGoalsState = {
-  dateKey: getDateKey(now),
+  dateKey: getEasternDateKey(now),
   goals: {
-    apply: { label: "Apply", count: 2, target: 4 },
+    apply: { label: "Apply", count: 0, target: 50 },
     connect: { label: "Connect", count: 1, target: 3 },
     follow: { label: "Follow", count: 0, target: 2 }
   }

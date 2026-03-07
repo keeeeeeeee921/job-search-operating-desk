@@ -25,7 +25,7 @@ import type {
   JobPool,
   JobRecord
 } from "@/lib/types";
-import { getDateKey } from "@/lib/utils";
+import { getEasternDateKey } from "@/lib/utils";
 
 let initialized = false;
 
@@ -43,7 +43,7 @@ function shouldExplicitlySeedPostgres() {
 
 function goalSeedForToday() {
   return {
-    dateKey: getDateKey(),
+    dateKey: getEasternDateKey(),
     applyCount: 0,
     applyTarget: seedDailyGoals.goals.apply.target,
     connectCount: 0,
@@ -209,6 +209,32 @@ export async function insertJob(record: JobRecord) {
     ...record,
     timestamp: new Date(record.timestamp)
   });
+
+  if (record.pool === "active") {
+    const current = await getDailyGoalsState();
+    await getDb()
+      .insert(dailyGoalsTable)
+      .values({
+        dateKey: current.dateKey,
+        applyCount: current.goals.apply.count + 1,
+        applyTarget: current.goals.apply.target,
+        connectCount: current.goals.connect.count,
+        connectTarget: current.goals.connect.target,
+        followCount: current.goals.follow.count,
+        followTarget: current.goals.follow.target
+      })
+      .onConflictDoUpdate({
+        target: dailyGoalsTable.dateKey,
+        set: {
+          applyCount: current.goals.apply.count + 1,
+          applyTarget: current.goals.apply.target,
+          connectCount: current.goals.connect.count,
+          connectTarget: current.goals.connect.target,
+          followCount: current.goals.follow.count,
+          followTarget: current.goals.follow.target
+        }
+      });
+  }
 }
 
 export async function updateComments(id: string, comments: string) {
@@ -240,7 +266,7 @@ export async function getDailyGoalsState() {
     return getLocalDailyGoalsState();
   }
 
-  const today = getDateKey();
+  const today = getEasternDateKey();
   const existing = (
     await getDb()
       .select()

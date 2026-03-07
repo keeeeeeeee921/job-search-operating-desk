@@ -10,7 +10,7 @@ import {
   updateDailyGoalState
 } from "@/lib/db/repository";
 import type { JobRecord } from "@/lib/types";
-import { getDateKey } from "@/lib/utils";
+import { getEasternDateKey } from "@/lib/utils";
 
 const postgresEnabled = Boolean(process.env.DATABASE_URL);
 const smokeId = "postgres-smoke-job";
@@ -27,7 +27,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
 
   it("covers create, comments, archive, and daily goals on real Postgres", async () => {
     const db = getDb();
-    const today = getDateKey();
+    const today = getEasternDateKey();
     const initialGoalsRow = (
       await db.select().from(dailyGoalsTable).where(eq(dailyGoalsTable.dateKey, today)).limit(1)
     )[0];
@@ -47,6 +47,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
       extractionStatus: "confirmed"
     };
 
+    const initialGoals = await getDailyGoalsState();
     await insertJob(record);
     await updateComments(smokeId, "Smoke comment");
     await archiveJobRecord(smokeId);
@@ -58,7 +59,6 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
     expect(archived.comments).toBe("Smoke comment");
     expect(archived.pool).toBe("rejected");
 
-    const initialGoals = await getDailyGoalsState();
     await updateDailyGoalState({
       goal: "apply",
       kind: "increment"
@@ -70,7 +70,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
     });
 
     const updatedGoals = await getDailyGoalsState();
-    expect(updatedGoals.goals.apply.count).toBe(initialGoals.goals.apply.count + 1);
+    expect(updatedGoals.goals.apply.count).toBe(initialGoals.goals.apply.count + 2);
     expect(updatedGoals.goals.follow.target).toBe(5);
 
     await getDb().delete(jobsTable).where(eq(jobsTable.id, smokeId));

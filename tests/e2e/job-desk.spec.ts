@@ -2,12 +2,14 @@ import { expect, test } from "@playwright/test";
 
 test("saves a fully extracted job into Active", async ({ page, baseURL }) => {
   await page.goto("/");
+  await expect(page.getByText("0 / 50").first()).toBeVisible();
   await page.getByPlaceholder("Paste a job link and press Enter").fill(
     `${baseURL}/mock-jobs/aurora-data-analyst`
   );
   await page.keyboard.press("Enter");
 
   await expect(page.getByText("Added to Active").first()).toBeVisible();
+  await expect(page.getByText("1 / 50").first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Data Analyst" }).first()).toBeVisible();
   await page.goto("/active");
   await expect(page.getByText("Aurora Labs")).toBeVisible();

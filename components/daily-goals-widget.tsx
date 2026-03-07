@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Plus } from "lucide-react";
 import { updateDailyGoal } from "@/app/actions";
@@ -18,6 +18,11 @@ export function DailyGoalsWidget({
 }) {
   const [dailyGoals, setDailyGoals] = useState(initialGoals);
   const [targetDrafts, setTargetDrafts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setDailyGoals(initialGoals);
+    setTargetDrafts({});
+  }, [initialGoals]);
 
   return (
     <Surface className="overflow-hidden border-white/60 bg-white/70 p-5">

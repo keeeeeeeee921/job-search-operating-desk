@@ -7,7 +7,7 @@ import type {
   JobPool,
   JobRecord
 } from "@/lib/types";
-import { getDateKey } from "@/lib/utils";
+import { getEasternDateKey } from "@/lib/utils";
 
 type DailyGoalsRow = {
   dateKey: string;
@@ -52,7 +52,7 @@ function goalsFromRow(row: DailyGoalsRow): DailyGoalsState {
 
 function goalSeedForToday(): DailyGoalsRow {
   return {
-    dateKey: getDateKey(),
+    dateKey: getEasternDateKey(),
     applyCount: 0,
     applyTarget: seedDailyGoals.goals.apply.target,
     connectCount: 0,
@@ -142,7 +142,7 @@ export async function seedLocalStoreIfNeeded() {
     }
 
     store.jobs = [...seedActiveJobs, ...seedRejectedJobs];
-    if (!store.dailyGoals.some((row) => row.dateKey === getDateKey())) {
+    if (!store.dailyGoals.some((row) => row.dateKey === getEasternDateKey())) {
       store.dailyGoals.push(goalSeedForToday());
     }
   });
@@ -158,6 +158,18 @@ export async function getLocalJobsByPool(pool: JobPool) {
 export async function insertLocalJob(record: JobRecord) {
   await mutateLocalStore(async (store) => {
     store.jobs.push(record);
+
+    if (record.pool === "active") {
+      const today = getEasternDateKey();
+      const existing = store.dailyGoals.find((row) => row.dateKey === today);
+      if (existing) {
+        existing.applyCount += 1;
+      } else {
+        const seeded = goalSeedForToday();
+        seeded.applyCount = 1;
+        store.dailyGoals.push(seeded);
+      }
+    }
   });
 }
 
@@ -180,7 +192,7 @@ export async function archiveLocalJob(id: string) {
 }
 
 export async function getLocalDailyGoalsState() {
-  const today = getDateKey();
+  const today = getEasternDateKey();
 
   return mutateLocalStore(async (store) => {
     const existing = store.dailyGoals.find((row) => row.dateKey === today);

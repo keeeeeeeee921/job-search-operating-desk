@@ -4,10 +4,12 @@ import {
   getActiveJobById,
   getDailyGoalsState,
   getJobsByPool,
+  insertJob,
   resetDatabaseForTests,
   updateComments,
   updateDailyGoalState
 } from "@/lib/db/repository";
+import type { JobRecord } from "@/lib/types";
 
 delete process.env.DATABASE_URL;
 delete process.env.DATABASE_URL_UNPOOLED;
@@ -57,5 +59,28 @@ describe("repository", () => {
 
     expect(incremented.goals.apply.count).toBe(initial.goals.apply.count + 1);
     expect(targeted.goals.follow.target).toBe(5);
+  });
+
+  it("increments apply automatically when a new Active record is inserted", async () => {
+    const initial = await getDailyGoalsState();
+    const record: JobRecord = {
+      id: "daily-goal-auto-apply",
+      roleTitle: "Auto Apply Analyst",
+      company: "Goal Test Co",
+      location: "Remote",
+      link: "",
+      jobDescription: "Verify apply goals increment when Active records are added.",
+      timestamp: new Date().toISOString(),
+      pool: "active",
+      comments: "",
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "needs_review"
+    };
+
+    await insertJob(record);
+    const next = await getDailyGoalsState();
+
+    expect(next.goals.apply.count).toBe(initial.goals.apply.count + 1);
   });
 });

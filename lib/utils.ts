@@ -21,6 +21,15 @@ export function getDateKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+export function getEasternDateKey(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+
 export function normalizeText(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
