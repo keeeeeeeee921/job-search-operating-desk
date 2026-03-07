@@ -109,20 +109,20 @@ export function HomeWorkspace({
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
               Main Input
             </p>
-            <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-3xl">
-                <h1 className="text-4xl font-semibold tracking-tight text-foreground">
+            <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
+              <div className="max-w-[980px] flex-1">
+                <h1 className="text-4xl font-semibold tracking-tight text-foreground xl:text-[3.35rem] xl:leading-[1.02]">
                   Paste a job link. Keep the working pool honest.
                 </h1>
               </div>
-              <div className="flex justify-center lg:justify-end">
+              <div className="flex justify-center lg:shrink-0 lg:justify-start">
                 <Image
                   alt="A bear sitting in an office chair surrounded by paper stacks."
-                  className="h-auto w-28 shrink-0 object-contain sm:w-32 lg:w-36"
-                  height={160}
+                  className="h-auto w-20 object-contain sm:w-24 lg:w-28"
+                  height={128}
                   src="/pool-honest-bear.gif"
                   unoptimized
-                  width={160}
+                  width={128}
                 />
               </div>
             </div>

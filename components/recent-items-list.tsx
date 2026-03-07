@@ -7,13 +7,13 @@ export function RecentItemsList({ records }: { records: JobRecord[] }) {
     <Surface className="p-6">
       <div className="mb-4">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          Recent Items
+          Active Pool
         </p>
         <h2 className="mt-2 text-2xl font-semibold text-foreground">
-          Newly saved Active records
+          Current working set
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Structured rows only. No feed cards, no decorative badges, and no invented job facts.
+          Recent Active records, kept clean, quiet, and easy to scan.
         </p>
       </div>
       <JobRecordTable
