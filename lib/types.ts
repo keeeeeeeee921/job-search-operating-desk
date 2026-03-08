@@ -32,6 +32,7 @@ export interface JobRecord {
   timestamp: string;
   pool: JobPool;
   comments: string;
+  applyCountedDateKey: string | null;
   sourceType: SourceType;
   sourceConfidence: SourceConfidence;
   extractionStatus: ExtractionStatus;

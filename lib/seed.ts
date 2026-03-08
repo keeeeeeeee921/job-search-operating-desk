@@ -63,6 +63,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 5),
       pool: "active",
       comments: "Applied. Waiting for recruiter response.",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -78,6 +79,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 12),
       pool: "active",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -93,6 +95,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 26),
       pool: "active",
       comments: "OA expected next week.",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "confirmed"
@@ -108,6 +111,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 40),
       pool: "active",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "lever",
       sourceConfidence: "high",
       extractionStatus: "confirmed"
@@ -123,6 +127,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 55),
       pool: "active",
       comments: "First round interview scheduled.",
+      applyCountedDateKey: null,
       sourceType: "greenhouse",
       sourceConfidence: "high",
       extractionStatus: "confirmed"
@@ -140,6 +145,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 72),
       pool: "rejected",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -155,6 +161,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 96),
       pool: "rejected",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -170,6 +177,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 130),
       pool: "rejected",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -210,6 +218,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 3),
       pool: "active",
       comments: "Applied. Waiting on recruiter screen.",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -225,6 +234,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 9),
       pool: "active",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -240,6 +250,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 14),
       pool: "active",
       comments: "Saved from pasted job text to demo the no-link path.",
+      applyCountedDateKey: null,
       sourceType: "linkedin",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -255,6 +266,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 26),
       pool: "active",
       comments: "OA submitted. Waiting for follow-up.",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "confirmed"
@@ -270,6 +282,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 41),
       pool: "active",
       comments: "First-round interview scheduled.",
+      applyCountedDateKey: null,
       sourceType: "greenhouse",
       sourceConfidence: "high",
       extractionStatus: "confirmed"
@@ -287,6 +300,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 58),
       pool: "rejected",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "linkedin",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -302,6 +316,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 72),
       pool: "rejected",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
@@ -317,6 +332,7 @@ const publicDemoSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(demoSeedAnchor, 96),
       pool: "rejected",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"

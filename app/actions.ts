@@ -39,6 +39,7 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
     timestamp: new Date().toISOString(),
     pool: "active",
     comments: "",
+    applyCountedDateKey: null,
     sourceType: draft.sourceType,
     sourceConfidence: draft.sourceConfidence,
     extractionStatus: confirmedOrigins ? "confirmed" : "needs_review"

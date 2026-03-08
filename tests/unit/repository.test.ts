@@ -5,6 +5,7 @@ import {
   getActiveJobById,
   getDailyGoalsState,
   getJobsByPool,
+  insertJobsWithoutGoalEffects,
   insertJob,
   resetCurrentEnvironmentToSeedState,
   resetDatabaseForTests,
@@ -101,6 +102,7 @@ describe("repository", () => {
       timestamp: new Date().toISOString(),
       pool: "active",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "unknown",
       sourceConfidence: "unknown",
       extractionStatus: "needs_review"
@@ -110,6 +112,127 @@ describe("repository", () => {
     const next = await getDailyGoalsState();
 
     expect(next.goals.apply.count).toBe(initial.goals.apply.count + 1);
+  });
+
+  it("rolls back Apply when a same-day auto-counted record is deleted", async () => {
+    const initial = await getDailyGoalsState();
+    const record: JobRecord = {
+      id: "daily-goal-delete-rollback",
+      roleTitle: "Delete Rollback Analyst",
+      company: "Goal Test Co",
+      location: "Remote",
+      link: "",
+      jobDescription: "Verify apply goals decrement when same-day records are deleted.",
+      timestamp: new Date().toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "needs_review"
+    };
+
+    await insertJob(record);
+    await deleteJobRecord(record.id);
+
+    const next = await getDailyGoalsState();
+    expect(next.goals.apply.count).toBe(initial.goals.apply.count);
+  });
+
+  it("rolls back Apply when a same-day auto-counted record is archived", async () => {
+    const initial = await getDailyGoalsState();
+    const record: JobRecord = {
+      id: "daily-goal-archive-rollback",
+      roleTitle: "Archive Rollback Analyst",
+      company: "Goal Test Co",
+      location: "Remote",
+      link: "",
+      jobDescription: "Verify apply goals decrement when same-day records are archived.",
+      timestamp: new Date().toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "needs_review"
+    };
+
+    await insertJob(record);
+    await archiveJobRecord(record.id);
+
+    const next = await getDailyGoalsState();
+    expect(next.goals.apply.count).toBe(initial.goals.apply.count);
+  });
+
+  it("does not roll back Apply for historical imports that never auto-counted", async () => {
+    const initial = await getDailyGoalsState();
+
+    await insertJobsWithoutGoalEffects([
+      {
+        id: "historical-no-rollback",
+        roleTitle: "Historical Analyst",
+        company: "Archive Co",
+        location: "Remote",
+        link: "",
+        jobDescription: "Imported from curated workbook data.",
+        timestamp: "2025-10-01T12:00:00.000Z",
+        pool: "active",
+        comments: "Historical import",
+        applyCountedDateKey: null,
+        sourceType: "unknown",
+        sourceConfidence: "high",
+        extractionStatus: "confirmed"
+      }
+    ]);
+
+    await deleteJobRecord("historical-no-rollback");
+
+    const next = await getDailyGoalsState();
+    expect(next).toEqual(initial);
+  });
+
+  it("preserves daily goals during bulk historical imports", async () => {
+    const initialGoals = await getDailyGoalsState();
+    const beforeCount = (await getJobsByPool("active")).length;
+
+    await insertJobsWithoutGoalEffects([
+      {
+        id: "historical-import-1",
+        roleTitle: "Historical Analyst",
+        company: "Archive Co",
+        location: "Remote",
+        link: "",
+        jobDescription: "Imported from curated workbook data.",
+        timestamp: "2025-10-01T12:00:00.000Z",
+        pool: "active",
+        comments: "Historical import",
+        applyCountedDateKey: null,
+        sourceType: "unknown",
+        sourceConfidence: "high",
+        extractionStatus: "confirmed"
+      },
+      {
+        id: "historical-import-2",
+        roleTitle: "Historical Rejected Analyst",
+        company: "Archive Co",
+        location: "Toronto, ON",
+        link: "",
+        jobDescription: "Imported from curated workbook data.",
+        timestamp: "2025-11-01T12:00:00.000Z",
+        pool: "rejected",
+        comments: "",
+        applyCountedDateKey: null,
+        sourceType: "unknown",
+        sourceConfidence: "high",
+        extractionStatus: "confirmed"
+      }
+    ]);
+
+    const nextGoals = await getDailyGoalsState();
+    const nextCount = (await getJobsByPool("active")).length;
+
+    expect(nextGoals).toEqual(initialGoals);
+    expect(nextCount).toBe(beforeCount + 1);
   });
 
   it("restores the curated demo baseline when demo state is reset", async () => {

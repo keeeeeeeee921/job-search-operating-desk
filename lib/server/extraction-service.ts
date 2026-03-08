@@ -11,11 +11,18 @@ import {
   uniqueValues
 } from "@/lib/utils";
 
+function normalizeWhitespace(input: string) {
+  return input.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function decodeHtmlEntities(input: string) {
+  return normalizeWhitespace(load(`<body>${input}</body>`).text());
+}
+
 function stripHtml(input: string) {
-  return input
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeWhitespace(
+    load(`<body>${decodeHtmlEntities(input)}</body>`).text()
+  );
 }
 
 function pickField(
@@ -44,6 +51,142 @@ function cleanTitle(value: string) {
   );
 }
 
+function isUsefulTitleCandidate(value: string) {
+  if (!value || value.length > 120) {
+    return false;
+  }
+
+  return !/^(join the team\.?|job\.?|careers?\.?|open roles?\.?)$/i.test(value);
+}
+
+function cleanCompany(value: string) {
+  return normalizeWhitespace(
+    value
+      .replace(/\|\s*careers?.*$/i, "")
+      .replace(/\s{2,}/g, " ")
+  );
+}
+
+function cleanLocation(value: string) {
+  return normalizeWhitespace(
+    value
+      .replace(/^location\s*:?\s*/i, "")
+      .replace(/\s*\|\s*.*$/, "")
+      .replace(/\s*›\s*/g, " ")
+  );
+}
+
+function isUsefulCompanyCandidate(value: string) {
+  return Boolean(value) && value.length <= 80;
+}
+
+function isUsefulLocationCandidate(value: string) {
+  if (!value || value.length > 100) {
+    return false;
+  }
+
+  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence)/i.test(
+    value
+  );
+}
+
+function isUsefulDescriptionCandidate(value: string) {
+  if (!value || value.length < 40) {
+    return false;
+  }
+
+  return !/(city state|jobid|descriptionteaser|save job|apply now|recently viewed jobs|profile recommendations|search-results|jobcart)/i.test(
+    value
+  );
+}
+
+function parseLocationFromJobLocation(
+  jobLocation:
+    | { address?: Record<string, string> }
+    | Array<{ address?: Record<string, string> }>
+    | undefined
+) {
+  const locations = Array.isArray(jobLocation)
+    ? jobLocation
+    : jobLocation
+      ? [jobLocation]
+      : [];
+
+  return locations.flatMap((entry) => {
+    const address = entry.address;
+    if (!address) {
+      return [];
+    }
+
+    const parts = [
+      address.addressLocality,
+      address.addressRegion,
+      address.addressCountry
+    ].filter(Boolean);
+
+    return parts.length ? [parts.join(", ")] : [];
+  });
+}
+
+function extractCompanyFromDescriptions(values: string[]) {
+  const candidates: string[] = [];
+
+  for (const value of values) {
+    const matchWith = value.match(/job with\s+(.+?)\s+in\s+/i);
+    if (matchWith?.[1]) {
+      candidates.push(matchWith[1]);
+    }
+
+    const matchSeeking = value.match(/^(.+?)\s+is seeking\b/i);
+    if (matchSeeking?.[1]) {
+      candidates.push(matchSeeking[1]);
+    }
+  }
+
+  return candidates;
+}
+
+function extractLabeledValues(
+  $: ReturnType<typeof load>,
+  label: string
+) {
+  const matcher = new RegExp(`^${label}\\s*:?\\s*`, "i");
+
+  return uniqueValues(
+    $("p, li, div, span")
+      .map((_, element) => {
+        const text = normalizeWhitespace($(element).text());
+        if (!matcher.test(text)) {
+          return "";
+        }
+
+        return text.replace(matcher, "").trim();
+      })
+      .get()
+  );
+}
+
+function extractStructuredDescriptionCandidates($: ReturnType<typeof load>) {
+  const selectors = [
+    '[itemprop="description"]',
+    '[data-job-description]',
+    '[data-automation-id="jobDescriptionText"]',
+    "article",
+    "main",
+    ".content-intro",
+    '[class*="job-description"]',
+    '[class*="jobDescription"]',
+  ];
+
+  return uniqueValues(
+    selectors.flatMap((selector) =>
+      $(selector)
+        .map((_, element) => stripHtml($(element).html() ?? $(element).text()))
+        .get()
+    )
+  );
+}
+
 function collectJsonLdCandidates($: ReturnType<typeof load>) {
   const roleTitle: string[] = [];
   const company: string[] = [];
@@ -64,69 +207,61 @@ function collectJsonLdCandidates($: ReturnType<typeof load>) {
 
       const org = item.hiringOrganization as { name?: string } | undefined;
       if (typeof org?.name === "string") {
-        company.push(org.name);
+        company.push(cleanCompany(org.name));
       }
 
       if (typeof item.description === "string") {
         jobDescription.push(stripHtml(item.description));
       }
 
-      const jobLocation = item.jobLocation as
-        | { address?: Record<string, string> }
-        | Array<{ address?: Record<string, string> }>
-        | undefined;
-      const locations = Array.isArray(jobLocation)
-        ? jobLocation
-        : jobLocation
-          ? [jobLocation]
-          : [];
-
-      locations.forEach((entry) => {
-        const address = entry.address;
-        if (!address) {
-          return;
-        }
-        const parts = [
-          address.addressLocality,
-          address.addressRegion,
-          address.addressCountry
-        ].filter(Boolean);
-        if (parts.length) {
-          location.push(parts.join(", "));
-        }
-      });
+      location.push(...parseLocationFromJobLocation(item.jobLocation as never));
     });
   });
 
   return { roleTitle, company, location, jobDescription };
 }
 
-function extractCandidates(html: string, normalizedUrl: string) {
+export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
   const $ = load(html);
   const parsedUrl = new URL(normalizedUrl);
   const jsonLd = collectJsonLdCandidates($);
+  const metaDescriptions = uniqueValues([
+    $('meta[name="description"]').attr("content") ?? "",
+    $('meta[property="og:description"]').attr("content") ?? ""
+  ]).map((value) => normalizeWhitespace(value));
   const titleCandidates = uniqueValues([
     ...jsonLd.roleTitle,
+    $("h1").first().text(),
+    $("h2").first().text(),
     $('meta[property="og:title"]').attr("content") ?? "",
     $("title").text()
-  ]);
+  ])
+    .map((value) => cleanTitle(value))
+    .filter(isUsefulTitleCandidate);
   const companyCandidates = uniqueValues([
     ...jsonLd.company,
+    ...extractCompanyFromDescriptions(metaDescriptions),
+    $('meta[property="og:site_name"]').attr("content") ?? "",
     $('meta[name="author"]').attr("content") ?? "",
     hostToCompany(parsedUrl.hostname)
-  ]);
+  ])
+    .map((value) => cleanCompany(value))
+    .filter(isUsefulCompanyCandidate);
   const locationCandidates = uniqueValues([
     ...jsonLd.location,
+    ...extractLabeledValues($, "location"),
     $('[data-qa="job-location"]').text(),
     $('[class*="location"]').first().text()
-  ]);
+  ])
+    .map((value) => cleanLocation(value))
+    .filter(isUsefulLocationCandidate);
   const descriptionCandidates = uniqueValues([
     ...jsonLd.jobDescription,
-    $('meta[name="description"]').attr("content") ?? "",
-    $('meta[property="og:description"]').attr("content") ?? "",
-    $("article").text(),
-    $("main").text()
-  ]).map((value) => stripHtml(value));
+    ...extractStructuredDescriptionCandidates($),
+    ...metaDescriptions
+  ])
+    .map((value) => stripHtml(value))
+    .filter(isUsefulDescriptionCandidate);
 
   const result: ExtractionResult = {
     normalizedUrl,
@@ -136,18 +271,13 @@ function extractCandidates(html: string, normalizedUrl: string) {
     extractionStatus: "needs_review",
     supported: true,
     fields: {
-      roleTitle: pickField(
-        { roleTitle: titleCandidates.map((value) => cleanTitle(value)) },
-        "roleTitle"
-      ),
+      roleTitle: pickField({ roleTitle: titleCandidates }, "roleTitle"),
       company: pickField({ company: companyCandidates }, "company"),
       location: pickField({ location: locationCandidates }, "location"),
       link: normalizedUrl,
       jobDescription: pickField(
         {
           jobDescription: descriptionCandidates
-            .map((value) => value.slice(0, 320))
-            .filter((value) => value.length > 20)
         },
         "jobDescription"
       )
@@ -160,7 +290,7 @@ function extractCandidates(html: string, normalizedUrl: string) {
       jobDescription: descriptionCandidates.length ? "confirmed" : "missing"
     },
     candidateValues: {
-      roleTitle: uniqueValues(titleCandidates.map((value) => cleanTitle(value))),
+      roleTitle: titleCandidates,
       company: companyCandidates,
       location: locationCandidates,
       jobDescription: uniqueValues(descriptionCandidates).slice(0, 3)
@@ -273,7 +403,7 @@ export async function extractJobOnServer(rawUrl: string) {
     }
 
     const html = await response.text();
-    return extractCandidates(html, normalizedUrl);
+    return extractCandidatesFromHtml(html, normalizedUrl);
   } catch {
     return buildFallbackExtraction(normalizedUrl);
   }

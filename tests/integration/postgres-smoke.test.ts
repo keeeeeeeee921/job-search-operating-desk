@@ -42,6 +42,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
       timestamp: new Date().toISOString(),
       pool: "active",
       comments: "",
+      applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "high",
       extractionStatus: "confirmed"
@@ -70,7 +71,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
     });
 
     const updatedGoals = await getDailyGoalsState();
-    expect(updatedGoals.goals.apply.count).toBe(initialGoals.goals.apply.count + 2);
+    expect(updatedGoals.goals.apply.count).toBe(initialGoals.goals.apply.count + 1);
     expect(updatedGoals.goals.follow.target).toBe(5);
 
     await getDb().delete(jobsTable).where(eq(jobsTable.id, smokeId));

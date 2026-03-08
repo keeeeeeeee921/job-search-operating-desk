@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "apply_counted_date_key" varchar(32);

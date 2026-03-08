@@ -349,10 +349,14 @@ function extractCompanyName(lines: string[], roleTitle: string) {
     }
 
     const next = topLines[index + 1] ?? "";
+    const previous = topLines[index - 1] ?? "";
     if (
       next === roleTitle ||
       looksLikeRoleTitle(next) ||
-      /(minutes ago|hours ago|days ago|clicked apply|applicants)/i.test(next)
+      /(minutes ago|hours ago|days ago|clicked apply|applicants)/i.test(next) ||
+      /^location:?$/i.test(next) ||
+      previous === roleTitle ||
+      looksLikeRoleTitle(previous)
     ) {
       return line;
     }

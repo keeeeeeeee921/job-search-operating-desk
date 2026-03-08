@@ -64,6 +64,41 @@ function goalSeedForToday(): DailyGoalsRow {
   };
 }
 
+function withAutoApplyMarker(record: JobRecord) {
+  if (record.pool !== "active") {
+    return {
+      ...record,
+      applyCountedDateKey: record.applyCountedDateKey ?? null
+    };
+  }
+
+  return {
+    ...record,
+    applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
+  };
+}
+
+function shouldReverseTodayApply(record: Pick<JobRecord, "pool" | "applyCountedDateKey">) {
+  return (
+    record.pool === "active" &&
+    record.applyCountedDateKey === getEasternDateKey()
+  );
+}
+
+function adjustApplyCountForToday(store: LocalStore, delta: number) {
+  const today = getEasternDateKey();
+  const existing = store.dailyGoals.find((row) => row.dateKey === today);
+
+  if (existing) {
+    existing.applyCount = Math.max(0, existing.applyCount + delta);
+    return;
+  }
+
+  const seeded = goalSeedForToday();
+  seeded.applyCount = Math.max(0, seeded.applyCount + delta);
+  store.dailyGoals.push(seeded);
+}
+
 function shouldSeedLocalStore() {
   return (
     isPublicDemo() ||
@@ -117,7 +152,12 @@ async function readLocalStore(): Promise<LocalStore> {
 
   return {
     version: 1,
-    jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
+    jobs: Array.isArray(parsed.jobs)
+      ? parsed.jobs.map((job) => ({
+          ...job,
+          applyCountedDateKey: job.applyCountedDateKey ?? null
+        }))
+      : [],
     dailyGoals: Array.isArray(parsed.dailyGoals) ? parsed.dailyGoals : []
   };
 }
@@ -183,19 +223,27 @@ export async function getLocalJobsByPool(pool: JobPool) {
 
 export async function insertLocalJob(record: JobRecord) {
   await mutateLocalStore(async (store) => {
-    store.jobs.push(record);
+    const nextRecord = withAutoApplyMarker(record);
+    store.jobs.push(nextRecord);
 
-    if (record.pool === "active") {
-      const today = getEasternDateKey();
-      const existing = store.dailyGoals.find((row) => row.dateKey === today);
-      if (existing) {
-        existing.applyCount += 1;
-      } else {
-        const seeded = goalSeedForToday();
-        seeded.applyCount = 1;
-        store.dailyGoals.push(seeded);
-      }
+    if (nextRecord.pool === "active" && nextRecord.applyCountedDateKey) {
+      adjustApplyCountForToday(store, 1);
     }
+  });
+}
+
+export async function insertLocalJobsWithoutGoalEffects(records: JobRecord[]) {
+  if (records.length === 0) {
+    return;
+  }
+
+  await mutateLocalStore(async (store) => {
+    store.jobs.push(
+      ...records.map((record) => ({
+        ...record,
+        applyCountedDateKey: record.applyCountedDateKey ?? null
+      }))
+    );
   });
 }
 
@@ -212,6 +260,9 @@ export async function archiveLocalJob(id: string) {
   await mutateLocalStore(async (store) => {
     const target = store.jobs.find((job) => job.id === id);
     if (target) {
+      if (shouldReverseTodayApply(target)) {
+        adjustApplyCountForToday(store, -1);
+      }
       target.pool = "rejected";
     }
   });
@@ -219,7 +270,24 @@ export async function archiveLocalJob(id: string) {
 
 export async function deleteLocalJob(id: string) {
   await mutateLocalStore(async (store) => {
+    const target = store.jobs.find((job) => job.id === id);
+    if (target && shouldReverseTodayApply(target)) {
+      adjustApplyCountForToday(store, -1);
+    }
     store.jobs = store.jobs.filter((job) => job.id !== id);
+  });
+}
+
+export async function updateLocalJobRecord(record: JobRecord) {
+  await mutateLocalStore(async (store) => {
+    store.jobs = store.jobs.map((job) =>
+      job.id === record.id
+        ? {
+            ...record,
+            applyCountedDateKey: record.applyCountedDateKey ?? null
+          }
+        : job
+    );
   });
 }
 

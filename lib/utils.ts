@@ -76,6 +76,10 @@ export function normalizeUrl(rawUrl: string) {
       return parsed.toString();
     }
 
+    if (hostname.includes("lifeattiktok.com")) {
+      parsed.searchParams.delete("token");
+    }
+
     const trackedKeys = Array.from(parsed.searchParams.keys()).filter(
       (key) =>
         key.startsWith("utm_") ||
@@ -99,6 +103,10 @@ export function normalizeUrl(rawUrl: string) {
 }
 
 export function hostToCompany(hostname: string) {
+  if (hostname.toLowerCase().includes("lifeattiktok.com")) {
+    return "TikTok";
+  }
+
   const parts = hostname.split(".").filter(Boolean);
   const base = parts.length > 2 ? parts[parts.length - 2] : parts[0] ?? "";
   return capitalizeWords(base.replace(/[-_]/g, " "));

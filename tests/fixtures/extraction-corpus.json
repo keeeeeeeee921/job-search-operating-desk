@@ -1,0 +1,353 @@
+[
+  {
+    "id": "tesla-us",
+    "label": "Tesla careers",
+    "sourceFamily": "tesla",
+    "sheetName": "进行中",
+    "input": "Service Data Analyst\nTesla · HAYWARD, California\nAbout the job\nService Data Analyst Job Category Engineering & Information Technology Location HAYWARD, California Req. ID 250337 Job Type Full-time 50% Resume Match 3 of 6 keywords Simplify Simplify V1 V2 What to Expect Are you an engineer who thrives at the intersection of technology and business—a true techno-commercial enthusiast? Our team is seeking an individual with a strong computer science foundation to bridge the gap betw",
+    "expected": {
+      "roleTitle": "Service Data Analyst",
+      "company": "Tesla",
+      "location": "HAYWARD, California",
+      "jobDescriptionExcerpt": "Service Data Analyst Job Category Engineering & Information Technology Location HAYWARD, Califor"
+    }
+  },
+  {
+    "id": "tiktok-us",
+    "label": "TikTok careers",
+    "sourceFamily": "tiktok",
+    "sheetName": "进行中",
+    "input": "Req ID: SAMPLE-2\nData Analyst Graduate (TikTok Shop Governance & Experience) - 2026 Start (BS/MS)\nCompany: Tiktok\nLocation:\nSeattle\nDescription\nData Analyst Graduate (TikTok Shop Governance & Experience) - 2026 Start (BS/MS) Location: Seattle Employment Type: Regular Job Code: A115887 Apply to this job Share this listing: Responsibilities We are looking for talented individuals to join our team in 2026. As a graduate, you will get opportunities to pursue bold ideas, tackle complex challenges, and unlock limitless growth. Launch your career where inspiration",
+    "expected": {
+      "roleTitle": "Data Analyst Graduate (TikTok Shop Governance & Experience) - 2026 Start (BS/MS)",
+      "company": "Tiktok",
+      "location": "Seattle",
+      "jobDescriptionExcerpt": "Data Analyst Graduate (TikTok Shop Governance & Experience) - 2026 Start (BS/MS) Location: Seatt"
+    }
+  },
+  {
+    "id": "stripe-us",
+    "label": "Stripe listing (US)",
+    "sourceFamily": "stripe",
+    "sheetName": "进行中",
+    "input": "Stripe\nFinance & Strategy Analyst Rotational Program\nLocation:\nSan Francisco, CA\nAbout the job\nAbout the job Please note: application window closes on January 26, 2026. About Stripe Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world’s largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of",
+    "expected": {
+      "roleTitle": "Finance & Strategy Analyst Rotational Program",
+      "company": "Stripe",
+      "location": "San Francisco, CA",
+      "jobDescriptionExcerpt": "About the job Please note: application window closes on January 26, 2026. About Stripe Stripe is"
+    }
+  },
+  {
+    "id": "stripe-ca",
+    "label": "Stripe listing (Canada)",
+    "sourceFamily": "stripe",
+    "sheetName": "已结束-加拿大",
+    "input": "Data Analyst\nStripe\nLocation:\nCanada\nPreferred Qualifications\nSQL\nCommunication\nAbout the job\nData Analyst About Stripe Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world’s largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity",
+    "expected": {
+      "roleTitle": "Data Analyst",
+      "company": "Stripe",
+      "location": "Canada",
+      "jobDescriptionExcerpt": "Data Analyst About Stripe Stripe is a financial infrastructure platform for businesses. Millions"
+    }
+  },
+  {
+    "id": "rippling-us",
+    "label": "Rippling ATS (US)",
+    "sourceFamily": "rippling",
+    "sheetName": "进行中",
+    "input": "Data Analyst\nRippling · San Francisco, CA\nAbout the job\nAbout Rippling Rippling gives businesses one place to run HR, IT, and Finance. It brings together all of the workforce systems that are normally scattered across a company, like payroll, expenses, benefits, and computers. For the first time ever, you can manage and automate every part of the employee lifecycle in a single system. Take onboarding, for example. With Rippling, you can hire a new employee anywhere in the",
+    "expected": {
+      "roleTitle": "Data Analyst",
+      "company": "Rippling",
+      "location": "San Francisco, CA",
+      "jobDescriptionExcerpt": "About Rippling Rippling gives businesses one place to run HR, IT, and Finance. It brings togethe"
+    }
+  },
+  {
+    "id": "rippling-ca",
+    "label": "Rippling ATS (Canada)",
+    "sourceFamily": "rippling",
+    "sheetName": "已结束-加拿大",
+    "input": "Req ID: SAMPLE-6\nProduct Analyst\nCompany: Neo Financial\nLocation:\nCalgary, AB\nDescription\nAbout the job Join us to build a more rewarding financial future for all Canadians At Neo, we’re on a mission to build a more rewarding financial future for all Canadians. Life at a rapidly expanding tech startup isn’t for everyone. It’s complex, fast-paced, high-pressure, but also incredibly fulfilling. Since its founding in 2019, Neo has gained incredible traction and is one of the fastest-growing fintech companies",
+    "expected": {
+      "roleTitle": "Product Analyst",
+      "company": "Neo Financial",
+      "location": "Calgary, AB",
+      "jobDescriptionExcerpt": "About the job Join us to build a more rewarding financial future for all Canadians At Neo, we’re"
+    }
+  },
+  {
+    "id": "greenhouse-us",
+    "label": "Greenhouse board (US)",
+    "sourceFamily": "greenhouse",
+    "sheetName": "进行中",
+    "input": "Sony Music Entertainment\nAssociate Director, RCA Analytics\nLocation:\nLos Angeles, California Seattle, Washington San Francisco, California Palo Alto, California New York, New York Bellevue, Washington\nAbout the job\nAbout Sony Music Entertainment At Sony Music Entertainment, we fuel the creative journey. We’ve played a pioneering role in music history, from the first-ever music label to the invention of the flat disc record. We’ve nurtured some of music’s most iconic artists and produced some of the most influential recordings of all time. Today, we work in more than 70 countries, supporting a diverse roster of international sup",
+    "expected": {
+      "roleTitle": "Associate Director, RCA Analytics",
+      "company": "Sony Music Entertainment",
+      "location": "Los Angeles, California Seattle, Washington San Francisco, California Palo Alto, California New York, New York Bellevue, Washington",
+      "jobDescriptionExcerpt": "About Sony Music Entertainment At Sony Music Entertainment, we fuel the creative journey. We’ve"
+    }
+  },
+  {
+    "id": "greenhouse-ca",
+    "label": "Greenhouse board (Canada)",
+    "sourceFamily": "greenhouse",
+    "sheetName": "已结束-加拿大",
+    "input": "Data Analyst\nZynga\nLocation:\nToronto, ON\nPreferred Qualifications\nSQL\nCommunication\nAbout the job\nData Analyst Austin, TX; Toronto, Canada Level Up Your Career with Zynga! At Zynga, we bring people together through the power of play. As a global leader in interactive entertainment and a proud label of Take-Two Interactive, our games have been downloaded over 6 billion times—connecting players in 175+ countries through fun, strategy, and a little friendly competition. From thrilling casino spins to epic strategy b",
+    "expected": {
+      "roleTitle": "Data Analyst",
+      "company": "Zynga",
+      "location": "Toronto, ON",
+      "jobDescriptionExcerpt": "Data Analyst Austin, TX; Toronto, Canada Level Up Your Career with Zynga! At Zynga, we bring peo"
+    }
+  },
+  {
+    "id": "lever-us",
+    "label": "Lever board",
+    "sourceFamily": "lever",
+    "sheetName": "进行中",
+    "input": "Business Analyst- Financial Strategy\nVida Health · United States\nAbout the job\nAbout the job About Us At Vida, we help people get better- and we're helping the healthcare system get better, too. Vida is a virtual, personalized obesity care provider that uses evidence-based treatment to help patients manage obesity and related conditions like diabetes, high blood pressure, anxiety and depression. Vida's team of Obesity Medicine-Certified Physicians, Registered Dietitians, Expert Coaches and Lice",
+    "expected": {
+      "roleTitle": "Business Analyst- Financial Strategy",
+      "company": "Vida Health",
+      "location": "United States",
+      "jobDescriptionExcerpt": "About the job About Us At Vida, we help people get better- and we're helping the healthcare syst"
+    }
+  },
+  {
+    "id": "workday-us",
+    "label": "Workday listing (US)",
+    "sourceFamily": "careers.davita.com",
+    "sheetName": "进行中",
+    "input": "Req ID: SAMPLE-10\nAnalyst, Data Management (ROPS)\nCompany: DaVita\nLocation:\n601 Hawaii St, El Segundo, California, 90245-4814, United States of America\nDescription\nPosting Date 09/16/2025 601 Hawaii St, El Segundo, California, 90245-4814, United States of America This position is responsible for the implementation of new or updating of existing data systems, databases, data models and/or data visualization tools in order to create easily accessible, accurate and secure data that can be utilized for one or more of the business teams within Revenue Operations. In order to achieve",
+    "expected": {
+      "roleTitle": "Analyst, Data Management (ROPS)",
+      "company": "DaVita",
+      "location": "601 Hawaii St, El Segundo, California, 90245-4814, United States of America",
+      "jobDescriptionExcerpt": "Posting Date 09/16/2025 601 Hawaii St, El Segundo, California, 90245-4814, United States of Amer"
+    }
+  },
+  {
+    "id": "workday-ca",
+    "label": "Workday listing (Canada)",
+    "sourceFamily": "workday",
+    "sheetName": "进行中-加拿大",
+    "input": "President's Choice Financial\nData Analyst, Payment Decision Support\nLocation:\nlocations 500 Lake Shore Blvd W, Toronto, ON\nAbout the job\nReferred applicants should not apply directly to this role. All referred applicants must first be submitted through Workday by a current Loblaw Colleague. Location: 500 Lake Shore Boulevard West, Toronto, Ontario, M5V 2V9 When you hire great people, great things can happen. PC Financial offers unprecedented value to Canadians through payment products. We're a different kind of bank with a different type of team—we’re",
+    "expected": {
+      "roleTitle": "Data Analyst, Payment Decision Support",
+      "company": "President's Choice Financial",
+      "location": "locations 500 Lake Shore Blvd W, Toronto, ON",
+      "jobDescriptionExcerpt": "Referred applicants should not apply directly to this role. All referred applicants must first b"
+    }
+  },
+  {
+    "id": "oracle-us",
+    "label": "Oracle Cloud listing (US)",
+    "sourceFamily": "oracle",
+    "sheetName": "进行中",
+    "input": "Trading, Data Analyst I\nFanatics\nLocation:\nDenver, CO, US\nPreferred Qualifications\nSQL\nCommunication\nAbout the job\nJob Description Overview As a Data Analyst I within Fanatics Betting & Gaming, you will work alongside traders, product managers, and data professionals to deliver data-driven insights that optimise our pricing or identify opportunities for trading This entry-level role is ideal for someone with strong analytical foundations and a desire to grow within a fast-paced, data-rich environment. You’ll help build reports an",
+    "expected": {
+      "roleTitle": "Trading, Data Analyst I",
+      "company": "Fanatics",
+      "location": "Denver, CO, US",
+      "jobDescriptionExcerpt": "Job Description Overview As a Data Analyst I within Fanatics Betting & Gaming, you will work alo"
+    }
+  },
+  {
+    "id": "oracle-ca",
+    "label": "Oracle Cloud listing (Canada)",
+    "sourceFamily": "oracle",
+    "sheetName": "已结束-加拿大",
+    "input": "Performance Data Analyst (12 Month Contract)\nMetrolinx · Greater Toronto Area, Canada\nAbout the job\nAbout the job Job Description Metrolinx is connecting communities across the Greater Golden Horseshoe. Metrolinx operates GO Transit and UP Express, as well as the PRESTO fare payment system. We are also building new and improved rapid transit, including GO Expansion, Light Rail Transit routes, and major expansions to Toronto’s subway system, to get people where they need to go, better, faster and easier. Metrolinx i",
+    "expected": {
+      "roleTitle": "Performance Data Analyst (12 Month Contract)",
+      "company": "Metrolinx",
+      "location": "Greater Toronto Area, Canada",
+      "jobDescriptionExcerpt": "About the job Job Description Metrolinx is connecting communities across the Greater Golden Hors"
+    }
+  },
+  {
+    "id": "ashby-us",
+    "label": "Ashby listing",
+    "sourceFamily": "ashby",
+    "sheetName": "进行中",
+    "input": "Req ID: SAMPLE-14\nCustomer Data Scientist\nCompany: Statsig\nLocation:\nBellevue, WA\nDescription\nWho we are About Statsig Statsig is on a mission to fundamentally change how software is built, tested, and shipped. Thousands of companies use Statsig to deploy features safely, run experiments that drive understanding of their customers and business, and analyze user trends to inform their next investment areas. This isn't just about building a better A/B testing tool; this is about catalyzing positive change in ho",
+    "expected": {
+      "roleTitle": "Customer Data Scientist",
+      "company": "Statsig",
+      "location": "Bellevue, WA",
+      "jobDescriptionExcerpt": "Who we are About Statsig Statsig is on a mission to fundamentally change how software is built,"
+    }
+  },
+  {
+    "id": "linkedin-us",
+    "label": "LinkedIn listing",
+    "sourceFamily": "linkedin",
+    "sheetName": "进行中",
+    "input": "Bank of China USA\nInternal Audit Department Data Analytics Audit Intern\nLocation:\nNew York, NY\nAbout the job\nAbout the job Established in 1912, Bank of China is one of the largest banks in the world, with over $3 trillion in assets and a footprint that spans more than 60 countries and regions. Our long-term outlook, institutional weight and global breadth provide our clients with a stable and reliable financial partner, whether in Corporate or Personal Banking or our Trade Services, Commodities, Financial Institutions and G",
+    "expected": {
+      "roleTitle": "Internal Audit Department Data Analytics Audit Intern",
+      "company": "Bank of China USA",
+      "location": "New York, NY",
+      "jobDescriptionExcerpt": "About the job Established in 1912, Bank of China is one of the largest banks in the world, with"
+    }
+  },
+  {
+    "id": "smartrecruiters-us",
+    "label": "SmartRecruiters listing",
+    "sourceFamily": "smartrecruiters",
+    "sheetName": "进行中",
+    "input": "Sr. Analyst, Advanced Content Analytics, Sports, Decision Sciences, NBCUniversal Media Group\nNBCUniversal\nLocation:\nNew York, NY\nPreferred Qualifications\nSQL\nCommunication\nAbout the job\nAbout the job Company Description NBCUniversal is one of the world's leading media and entertainment companies. We create world-class content, which we distribute across our portfolio of film, television, and streaming, and bring to life through our theme parks and consumer experiences. We own and operate leading entertainment and news brands, including NBC, NBC News, MSNBC, CNBC, NBC Sports, Telemundo, NBC Local Sta",
+    "expected": {
+      "roleTitle": "Sr. Analyst, Advanced Content Analytics, Sports, Decision Sciences, NBCUniversal Media Group",
+      "company": "NBCUniversal",
+      "location": "New York, NY",
+      "jobDescriptionExcerpt": "About the job Company Description NBCUniversal is one of the world's leading media and entertain"
+    }
+  },
+  {
+    "id": "avature-us",
+    "label": "Avature listing",
+    "sourceFamily": "avature",
+    "sheetName": "进行中",
+    "input": "Workflow Analyst\nGeorgia-Pacific LLC · Atlanta, GA\nAbout the job\nAbout the job Your Job We are seeking a highly skilled Workflow Analyst to join our IT infrastructure team. The successful candidate will analyze data, identify improvement opportunities, and drive operational excellence. This role involves collaborating with cross-functional teams to optimize processes and enhance service delivery. What You Will Do Analyze complex data sets to identify trends, patterns, and opportun",
+    "expected": {
+      "roleTitle": "Workflow Analyst",
+      "company": "Georgia-Pacific LLC",
+      "location": "Atlanta, GA",
+      "jobDescriptionExcerpt": "About the job Your Job We are seeking a highly skilled Workflow Analyst to join our IT infrastru"
+    }
+  },
+  {
+    "id": "dayforce-us",
+    "label": "Dayforce listing",
+    "sourceFamily": "dayforce",
+    "sheetName": "进行中",
+    "input": "Req ID: SAMPLE-18\nProduction Planning Data Analyst\nCompany: Oil-Dri Corporation of America\nLocation:\nOchlocknee, GA\nDescription\nAbout the job Oil-Dri Corporation of America is a leading manufacturer and supplier of specialty sorbent products for consumer and business-to-business markets that has been voted as a Top 100 workplaces in the Chicago Tribune. Oil-Dri’s products are sold in the pet care, animal health, fluids purification, agricultural, sports field, industrial and automotive markets. Oil-Dri controls millions of tons of specialty m",
+    "expected": {
+      "roleTitle": "Production Planning Data Analyst",
+      "company": "Oil-Dri Corporation of America",
+      "location": "Ochlocknee, GA",
+      "jobDescriptionExcerpt": "About the job Oil-Dri Corporation of America is a leading manufacturer and supplier of specialty"
+    }
+  },
+  {
+    "id": "adp-us",
+    "label": "ADP listing",
+    "sourceFamily": "adp",
+    "sheetName": "进行中",
+    "input": "PNY Technologies\nSupply Chain Business Analyst\nLocation:\nParsippany, NJ\nAbout the job\nAbout the job Main Function The Supply Chain Business Analyst plays a key role in analyzing, improving, and optimizing the supply chain operations and processes of the organization. This position is responsible for gathering and interpreting data, identifying trends, creating reports, and working cross-functionally to support strategic initiatives for the Planning Team. Qualifications Bachelor's degree in Supply Chai",
+    "expected": {
+      "roleTitle": "Supply Chain Business Analyst",
+      "company": "PNY Technologies",
+      "location": "Parsippany, NJ",
+      "jobDescriptionExcerpt": "About the job Main Function The Supply Chain Business Analyst plays a key role in analyzing, imp"
+    }
+  },
+  {
+    "id": "bamboohr-us",
+    "label": "BambooHR listing",
+    "sourceFamily": "bamboohr",
+    "sheetName": "进行中",
+    "input": "Bilingual Business Intelligence & Digital Solutions Analyst\nHisense USA\nLocation:\nSuwanee, GA\nPreferred Qualifications\nSQL\nCommunication\nAbout the job\nAbout the job Overview: We are looking for a bilingual (English & Mandarin) Business Intelligence & Digital Solutions Analyst to drive data-centric decision-making across the organization. This role will lead the development and maintenance of BI solutions, explore and implement localized AI tools to enhance operations, and provide reliable SAP and EDI support. The ideal candidate is both analytical and innovative, w",
+    "expected": {
+      "roleTitle": "Bilingual Business Intelligence & Digital Solutions Analyst",
+      "company": "Hisense USA",
+      "location": "Suwanee, GA",
+      "jobDescriptionExcerpt": "About the job Overview: We are looking for a bilingual (English & Mandarin) Business Intelligenc"
+    }
+  },
+  {
+    "id": "careerpuck-ca",
+    "label": "Careerpuck listing",
+    "sourceFamily": "careerpuck",
+    "sheetName": "进行中-加拿大",
+    "input": "Data Scientist, Decisions LUS\nLyft · Toronto, Canada\nAbout the job\nData Scientist, Lyft Urban Solutions At Lyft, our purpose is to serve and connect. We aim to achieve this by cultivating a work environment where all team members belong and have the opportunity to thrive. The Lyft Urban Solution team is developing the future of micromobility and is looking for a Data Scientist to inform and drive decision-making that charts the way. From New York’s Citi Bike to San Francisco’s Bay W",
+    "expected": {
+      "roleTitle": "Data Scientist, Decisions LUS",
+      "company": "Lyft",
+      "location": "Toronto, Canada",
+      "jobDescriptionExcerpt": "Data Scientist, Lyft Urban Solutions At Lyft, our purpose is to serve and connect. We aim to ach"
+    }
+  },
+  {
+    "id": "mastercard-ca",
+    "label": "Canada corporate careers",
+    "sourceFamily": "careers.mastercard.com",
+    "sheetName": "已结束-加拿大",
+    "input": "Req ID: SAMPLE-22\nSenior Analyst, Sales-1\nCompany: Mastercard\nLocation:\nToronto, ON\nDescription\nOur Purpose Mastercard powers economies and empowers people in 200+ countries and territories worldwide. Together with our customers, we’re helping build a sustainable economy where everyone can prosper. We support a wide range of digital payments choices, making transactions secure, simple, smart and accessible. Our technology and innovation, partnerships and networks combine to deliver a unique set of products and",
+    "expected": {
+      "roleTitle": "Senior Analyst, Sales-1",
+      "company": "Mastercard",
+      "location": "Toronto, ON",
+      "jobDescriptionExcerpt": "Our Purpose Mastercard powers economies and empowers people in 200+ countries and territories wo"
+    }
+  },
+  {
+    "id": "canadalife-ca",
+    "label": "Canada Life listing",
+    "sourceFamily": "jobs.canadalife.com",
+    "sheetName": "进行中-加拿大",
+    "input": "Canada Life\nBusiness Intelligence Specialist\nLocation:\nLondon, ON\nAbout the job\nPermanent Full Time - We are looking for a Business Intelligence Specialist to join our Sponsor Services - Strategic Enablement team, supporting a wide range of functions including Client services, New Group Implementation, GRS New Business and Business Operations (policy services, billing and payment administration, and enrolment services). This role is critical in transforming data into actionable insights that dri",
+    "expected": {
+      "roleTitle": "Business Intelligence Specialist",
+      "company": "Canada Life",
+      "location": "London, ON",
+      "jobDescriptionExcerpt": "Permanent Full Time - We are looking for a Business Intelligence Specialist to join our Sponsor"
+    }
+  },
+  {
+    "id": "capitalone-ca",
+    "label": "Capital One Canada listing",
+    "sourceFamily": "capitalonecareers.ca",
+    "sheetName": "进行中-加拿大",
+    "input": "Senior Associate, Data Analyst\nCapital One\nLocation:\nToronto, Canada\nPreferred Qualifications\nSQL\nCommunication\nAbout the job\nOverview 161 Bay Street (93021), Canada, Toronto,Toronto, Ontario, Senior Associate, Data Analyst Our Capital One DA Team. Data is at the center of everything we do. It started in 1988, when we launched as a startup with the goal of using data to deliver personalized credit card products. Fast-forward a few years — we’re a Fortune 200 company and a leader in the world of data-driven decision-making. As a Data Analyst",
+    "expected": {
+      "roleTitle": "Senior Associate, Data Analyst",
+      "company": "Capital One",
+      "location": "Toronto, Canada",
+      "jobDescriptionExcerpt": "Overview 161 Bay Street (93021), Canada, Toronto,Toronto, Ontario, Senior Associate, Data Analys"
+    }
+  },
+  {
+    "id": "citi-ca",
+    "label": "Citi Canada listing",
+    "sourceFamily": "jobs.citi.com",
+    "sheetName": "进行中-加拿大",
+    "input": "Business Analytics Int Analyst\nCiti · Mississauga, ON\nAbout the job\nAbout the job The Business Analytics Int Analyst is a developing professional role. Deals with most problems independently and has some latitude to solve complex problems. Integrates in-depth specialty area knowledge with a solid understanding of industry standards and practices. Good understanding of how the team and area integrate with others in accomplishing the objectives of the sub function/ job family. Applies",
+    "expected": {
+      "roleTitle": "Business Analytics Int Analyst",
+      "company": "Citi",
+      "location": "Mississauga, ON",
+      "jobDescriptionExcerpt": "About the job The Business Analytics Int Analyst is a developing professional role. Deals with m"
+    }
+  },
+  {
+    "id": "no-link-us",
+    "label": "No-link pasted text (US)",
+    "sourceFamily": "pasted-text",
+    "sheetName": "进行中",
+    "input": "Req ID: SAMPLE-26\nSupply Chain Planning Analyst\nCompany: Careismatic Brands\nLocation:\nLos Angeles, CA\nDescription\nAbout the job Supply Chain Planning Analyst Sherman Oaks, CA Careismatic Brands outfits our community of care through our portfolio of market-leading brands that meet the diverse needs of healthcare professionals worldwide. We are one piece of a larger community of those who are and are cared for. Whether it’s medical professionals or the patients they serve, we are inspired by those who wear our uniforms every day.",
+    "expected": {
+      "roleTitle": "Supply Chain Planning Analyst",
+      "company": "Careismatic Brands",
+      "location": "Los Angeles, CA",
+      "jobDescriptionExcerpt": "About the job Supply Chain Planning Analyst Sherman Oaks, CA Careismatic Brands outfits our comm"
+    }
+  },
+  {
+    "id": "no-link-ca",
+    "label": "No-link pasted text (Canada)",
+    "sourceFamily": "pasted-text",
+    "sheetName": "已结束-加拿大",
+    "input": "Samsara\nData Analyst - Remote Candada\nLocation:\nToronto, ON\nAbout the job\nAbout the job Who We Are Samsara (NYSE: IOT) is the pioneer of the Connected Operations™ Cloud, which is a platform that enables organizations that depend on physical operations to harness Internet of Things (IoT) data to develop actionable insights and improve their operations. At Samsara, we are helping improve the safety, efficiency and sustainability of the physical operations that power our global economy. Repre",
+    "expected": {
+      "roleTitle": "Data Analyst - Remote Candada",
+      "company": "Samsara",
+      "location": "Toronto, ON",
+      "jobDescriptionExcerpt": "About the job Who We Are Samsara (NYSE: IOT) is the pioneer of the Connected Operations™ Cloud,"
+    }
+  }
+]

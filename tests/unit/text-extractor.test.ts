@@ -113,4 +113,18 @@ Remote: USA
     expect(result.fields.company).toBe("Emma of Torre.ai");
     expect(result.issues.some((issue) => issue.field === "company")).toBe(false);
   });
+
+  it("captures a standalone company line placed between role and location blocks", () => {
+    const result = extractJobFromText(`
+Entry-Level Implementation Analyst | Fintech | Remote US
+Emma of Torre.ai
+Location:
+United States (Remote)
+About the job
+You'll drive financial automation and digital transformation for global clients.
+    `);
+
+    expect(result.fields.company).toBe("Emma of Torre.ai");
+    expect(result.fields.location).toBe("United States (Remote)");
+  });
 });
