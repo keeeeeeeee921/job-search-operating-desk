@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/demo/reset",
-      "schedule": "5 * * * *"
+      "schedule": "5 7 * * *"
     }
   ]
 }

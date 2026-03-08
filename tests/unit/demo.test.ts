@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { isPublicDemo, shouldRunDemoResetNow } from "@/lib/demo";
+import { getDemoBannerMessage, isPublicDemo } from "@/lib/demo";
 
 const originalPublicDemo = process.env.JOB_DESK_PUBLIC_DEMO;
 
@@ -21,8 +21,7 @@ describe("demo helpers", () => {
     expect(isPublicDemo()).toBe(false);
   });
 
-  it("runs the reset only during the 3 AM Eastern hour", () => {
-    expect(shouldRunDemoResetNow(new Date("2026-03-07T08:15:00.000Z"))).toBe(true);
-    expect(shouldRunDemoResetNow(new Date("2026-03-07T07:15:00.000Z"))).toBe(false);
+  it("uses daily-reset copy for the public demo banner", () => {
+    expect(getDemoBannerMessage()).toContain("resets daily");
   });
 });

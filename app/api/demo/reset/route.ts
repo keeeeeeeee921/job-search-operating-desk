@@ -1,9 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  isPublicDemo,
-  shouldRunDemoResetNow
-} from "@/lib/demo";
+import { isPublicDemo } from "@/lib/demo";
 import { resetCurrentEnvironmentToSeedState } from "@/lib/db/repository";
 
 const revalidatedPaths = ["/", "/active", "/rejected", "/search", "/update-by-email"];
@@ -26,10 +23,6 @@ export async function GET(request: NextRequest) {
 
   if (!isAuthorized(request)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!shouldRunDemoResetNow()) {
-    return NextResponse.json({ ok: true, skipped: "outside-reset-window" });
   }
 
   await resetCurrentEnvironmentToSeedState();

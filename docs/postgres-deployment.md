@@ -42,9 +42,9 @@ Demo behavior:
 - uses a separate curated demo seed dataset
 - shows a public demo banner in the app shell
 - stays fully interactive
-- resets all demo jobs and daily goals every day at `3:00 AM America/New_York`
+- resets all demo jobs and daily goals once per day
 
-The repo already includes a cron-backed route at `/api/demo/reset`. `vercel.json` triggers it hourly, and the route only performs the reset during the `3 AM` Eastern hour.
+On Vercel Hobby, `vercel.json` runs the demo reset once per day at `07:05 UTC`. That keeps the public demo refreshed daily while accepting a seasonal one-hour drift relative to Eastern Time.
 
 ## Preview Deployments
 
