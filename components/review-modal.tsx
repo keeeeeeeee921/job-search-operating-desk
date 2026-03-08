@@ -18,6 +18,12 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const chipCandidateFields = new Set<JobField>([
+  "roleTitle",
+  "company",
+  "location"
+]);
+
 function issueForField(issues: ValidationIssue[], field: JobField) {
   return issues.filter((issue) => issue.field === field);
 }
@@ -69,7 +75,11 @@ export function ReviewModal({
             {requiredJobFields.map((field) => {
               const issues = issueForField(localDraft.issues, field);
               const value = localDraft[field];
-              const candidates = localDraft.candidateValues[field] ?? [];
+              const candidates = Array.from(
+                new Set((localDraft.candidateValues[field] ?? []).filter(Boolean))
+              );
+              const shouldShowCandidates =
+                chipCandidateFields.has(field) && candidates.length >= 2;
               const FieldComponent = field === "jobDescription" ? Textarea : Input;
 
               return (
@@ -107,7 +117,7 @@ export function ReviewModal({
                       {localDraft.fieldOrigins[field] ?? "missing"}
                     </p>
                   </div>
-                  {candidates.length > 0 ? (
+                  {shouldShowCandidates ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {candidates.map((candidate) => (
                         <button

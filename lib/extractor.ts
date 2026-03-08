@@ -318,11 +318,6 @@ export function mergeDraftField(
   field: JobField,
   value: string
 ): JobDraft {
-  const nextCandidateValues = {
-    ...draft.candidateValues,
-    [field]: uniqueValues([...(draft.candidateValues[field] ?? []), value])
-  };
-
   const nextDraft: JobDraft = {
     ...draft,
     [field]: value,
@@ -330,7 +325,9 @@ export function mergeDraftField(
       ...draft.fieldOrigins,
       [field]: value ? "manual" : "missing"
     },
-    candidateValues: nextCandidateValues
+    candidateValues: {
+      ...draft.candidateValues
+    }
   };
 
   return {
