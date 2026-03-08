@@ -28,6 +28,7 @@ export const jobsTable = pgTable("jobs", {
 export const dailyGoalsTable = pgTable("daily_goals", {
   dateKey: varchar("date_key", { length: 32 }).primaryKey(),
   applyCount: integer("apply_count").notNull(),
+  applyAdjustment: integer("apply_adjustment").notNull(),
   applyTarget: integer("apply_target").notNull(),
   connectCount: integer("connect_count").notNull(),
   connectTarget: integer("connect_target").notNull(),

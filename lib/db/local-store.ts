@@ -13,6 +13,7 @@ import { getEasternDateKey } from "@/lib/utils";
 type DailyGoalsRow = {
   dateKey: string;
   applyCount: number;
+  applyAdjustment: number;
   applyTarget: number;
   connectCount: number;
   connectTarget: number;
@@ -28,13 +29,23 @@ type LocalStore = {
 
 let localWriteQueue = Promise.resolve();
 
-function goalsFromRow(row: DailyGoalsRow): DailyGoalsState {
+function computeDisplayedApplyCount(autoCount: number, applyAdjustment: number) {
+  return Math.max(0, autoCount + applyAdjustment);
+}
+
+function countAutoAppliedActiveRecordsForDate(store: LocalStore, dateKey: string) {
+  return store.jobs.filter(
+    (job) => job.pool === "active" && job.applyCountedDateKey === dateKey
+  ).length;
+}
+
+function goalsFromRow(row: DailyGoalsRow, autoApplyCount: number): DailyGoalsState {
   return {
     dateKey: row.dateKey,
     goals: {
       apply: {
         label: "Apply",
-        count: row.applyCount,
+        count: computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment),
         target: row.applyTarget
       },
       connect: {
@@ -56,6 +67,7 @@ function goalSeedForToday(): DailyGoalsRow {
   return {
     dateKey: getEasternDateKey(),
     applyCount: seedState.dailyGoals.goals.apply.count,
+    applyAdjustment: seedState.dailyGoals.goals.apply.count,
     applyTarget: seedState.dailyGoals.goals.apply.target,
     connectCount: seedState.dailyGoals.goals.connect.count,
     connectTarget: seedState.dailyGoals.goals.connect.target,
@@ -76,27 +88,6 @@ function withAutoApplyMarker(record: JobRecord) {
     ...record,
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
-}
-
-function shouldReverseTodayApply(record: Pick<JobRecord, "pool" | "applyCountedDateKey">) {
-  return (
-    record.pool === "active" &&
-    record.applyCountedDateKey === getEasternDateKey()
-  );
-}
-
-function adjustApplyCountForToday(store: LocalStore, delta: number) {
-  const today = getEasternDateKey();
-  const existing = store.dailyGoals.find((row) => row.dateKey === today);
-
-  if (existing) {
-    existing.applyCount = Math.max(0, existing.applyCount + delta);
-    return;
-  }
-
-  const seeded = goalSeedForToday();
-  seeded.applyCount = Math.max(0, seeded.applyCount + delta);
-  store.dailyGoals.push(seeded);
 }
 
 function shouldSeedLocalStore() {
@@ -158,7 +149,17 @@ async function readLocalStore(): Promise<LocalStore> {
           applyCountedDateKey: job.applyCountedDateKey ?? null
         }))
       : [],
-    dailyGoals: Array.isArray(parsed.dailyGoals) ? parsed.dailyGoals : []
+    dailyGoals: Array.isArray(parsed.dailyGoals)
+      ? parsed.dailyGoals.map((row) => ({
+          ...row,
+          applyAdjustment:
+            typeof row.applyAdjustment === "number"
+              ? row.applyAdjustment
+              : typeof row.applyCount === "number"
+                ? row.applyCount
+                : 0
+        }))
+      : []
   };
 }
 
@@ -204,6 +205,7 @@ export async function resetLocalStoreToSeedState() {
       {
         dateKey: seedState.dailyGoals.dateKey,
         applyCount: seedState.dailyGoals.goals.apply.count,
+        applyAdjustment: seedState.dailyGoals.goals.apply.count,
         applyTarget: seedState.dailyGoals.goals.apply.target,
         connectCount: seedState.dailyGoals.goals.connect.count,
         connectTarget: seedState.dailyGoals.goals.connect.target,
@@ -225,10 +227,6 @@ export async function insertLocalJob(record: JobRecord) {
   await mutateLocalStore(async (store) => {
     const nextRecord = withAutoApplyMarker(record);
     store.jobs.push(nextRecord);
-
-    if (nextRecord.pool === "active" && nextRecord.applyCountedDateKey) {
-      adjustApplyCountForToday(store, 1);
-    }
   });
 }
 
@@ -260,9 +258,6 @@ export async function archiveLocalJob(id: string) {
   await mutateLocalStore(async (store) => {
     const target = store.jobs.find((job) => job.id === id);
     if (target) {
-      if (shouldReverseTodayApply(target)) {
-        adjustApplyCountForToday(store, -1);
-      }
       target.pool = "rejected";
     }
   });
@@ -270,10 +265,6 @@ export async function archiveLocalJob(id: string) {
 
 export async function deleteLocalJob(id: string) {
   await mutateLocalStore(async (store) => {
-    const target = store.jobs.find((job) => job.id === id);
-    if (target && shouldReverseTodayApply(target)) {
-      adjustApplyCountForToday(store, -1);
-    }
     store.jobs = store.jobs.filter((job) => job.id !== id);
   });
 }
@@ -297,12 +288,12 @@ export async function getLocalDailyGoalsState() {
   return mutateLocalStore(async (store) => {
     const existing = store.dailyGoals.find((row) => row.dateKey === today);
     if (existing) {
-      return goalsFromRow(existing);
+      return goalsFromRow(existing, countAutoAppliedActiveRecordsForDate(store, today));
     }
 
     const seeded = goalSeedForToday();
     store.dailyGoals.push(seeded);
-    return goalsFromRow(seeded);
+    return goalsFromRow(seeded, countAutoAppliedActiveRecordsForDate(store, today));
   });
 }
 
@@ -311,35 +302,38 @@ export async function updateLocalDailyGoalState(input: {
   kind: "increment" | "target";
   value?: number;
 }) {
-  const current = await getLocalDailyGoalsState();
-  const next = structuredClone(current);
+  const today = getEasternDateKey();
 
-  if (input.kind === "increment") {
-    next.goals[input.goal].count += 1;
-  } else if (typeof input.value === "number" && input.value > 0) {
-    next.goals[input.goal].target = input.value;
-  }
-
-  await mutateLocalStore(async (store) => {
-    const existing = store.dailyGoals.find((row) => row.dateKey === next.dateKey);
-    const row: DailyGoalsRow = {
-      dateKey: next.dateKey,
-      applyCount: next.goals.apply.count,
-      applyTarget: next.goals.apply.target,
-      connectCount: next.goals.connect.count,
-      connectTarget: next.goals.connect.target,
-      followCount: next.goals.follow.count,
-      followTarget: next.goals.follow.target
-    };
-
-    if (existing) {
-      Object.assign(existing, row);
-    } else {
+  return mutateLocalStore(async (store) => {
+    let row = store.dailyGoals.find((entry) => entry.dateKey === today);
+    if (!row) {
+      row = goalSeedForToday();
       store.dailyGoals.push(row);
     }
-  });
 
-  return next;
+    const autoApplyCount = countAutoAppliedActiveRecordsForDate(store, today);
+
+    if (input.kind === "increment") {
+      if (input.goal === "apply") {
+        row.applyAdjustment += 1;
+      } else if (input.goal === "connect") {
+        row.connectCount += 1;
+      } else {
+        row.followCount += 1;
+      }
+    } else if (typeof input.value === "number" && input.value > 0) {
+      if (input.goal === "apply") {
+        row.applyTarget = input.value;
+      } else if (input.goal === "connect") {
+        row.connectTarget = input.value;
+      } else {
+        row.followTarget = input.value;
+      }
+    }
+
+    row.applyCount = computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment);
+    return goalsFromRow(row, autoApplyCount);
+  });
 }
 
 export async function resetLocalStoreForTests() {

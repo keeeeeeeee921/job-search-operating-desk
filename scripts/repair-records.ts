@@ -7,6 +7,75 @@ import type { JobRecord } from "../lib/types";
 
 type ScriptMode = "dry-run" | "apply";
 
+function normalizeWhitespace(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function looksLikeInternalCompanyValue(value: string) {
+  return (
+    /^\d+\s+/.test(value.trim()) ||
+    /\b(MSO LLC|LLC|L\.L\.C\.|Holdings?|Corporation|Incorporated)\b/i.test(value)
+  );
+}
+
+function looksLikeInternalLocationValue(value: string) {
+  return /^(treehouse|headquarters|hq|support center)(,\s*(united states|canada|united states of america))?$/i.test(
+    value.trim()
+  );
+}
+
+function looksGenericRoleTitle(value: string) {
+  return /^(career opportunities|careers?|jobs?|join the team)$/i.test(
+    value.trim()
+  );
+}
+
+function looksSuspiciousCompanyValue(value: string) {
+  const normalized = normalizeWhitespace(value);
+
+  return (
+    !normalized ||
+    looksLikeInternalCompanyValue(normalized) ||
+    /about the role|join the team|career opportunities|jobs\s*[>›]?/i.test(
+      normalized
+    ) ||
+    /^(icims|greenhouse|lever|workday|ashby|smartrecruiters)$/i.test(
+      normalized
+    )
+  );
+}
+
+function shouldKeepExistingCompany(current: string, next: string) {
+  if (looksSuspiciousCompanyValue(next)) {
+    return true;
+  }
+
+  return !/\s/.test(next.trim()) && /\s/.test(current.trim());
+}
+
+function looksSuspiciousLocationValue(value: string) {
+  const normalized = normalizeWhitespace(value);
+
+  return (
+    !normalized ||
+    looksLikeInternalLocationValue(normalized) ||
+    /(join the team|jobs\s*[>›]|req id|position type|about the role|career opportunities)/i.test(
+      normalized
+    )
+  );
+}
+
+function looksSuspiciousDescriptionValue(value: string) {
+  const normalized = normalizeWhitespace(value);
+
+  return (
+    normalized.length < 120 ||
+    /&lt;|&gt;|&#\d+;|&#x[a-f0-9]+;|phapp|descriptionteaser|save job|apply now|career opportunities|jobs\s*[>›]/i.test(
+      normalized
+    )
+  );
+}
+
 function loadEnvFile(filePath: string) {
   if (!existsSync(filePath)) {
     return;
@@ -73,25 +142,53 @@ function isMarch8Candidate(record: JobRecord, dateKey: string) {
       record.jobDescription
     );
   const badLocation =
+    looksLikeInternalLocationValue(record.location) ||
     record.location.length > 100 ||
     /(join the team|jobs\s*[>›]|req id|position type|who are we hiring|madison square garden entertainment corp|analyst business intelligence)/i.test(
       record.location
     );
   const badCompany =
+    looksLikeInternalCompanyValue(record.company) ||
     record.company.length > 80 ||
     /lifeattiktok|msgentertainment|cincinnatichildrens/i.test(record.company);
+  const weakDescription =
+    record.jobDescription.length < 500 ||
+    /&lt;|&gt;|&#\d+;|&#x[a-f0-9]+;|phapp|descriptionteaser|join the team|jobs\s*[>›]/i.test(
+      record.jobDescription
+    );
 
-  return badDescription || badLocation || badCompany;
+  return badDescription || badLocation || badCompany || weakDescription;
 }
 
 function buildPatchedRecord(record: JobRecord, extraction: Awaited<ReturnType<typeof extractJobOnServer>>) {
+  const nextRoleTitle =
+    extraction.fields.roleTitle?.trim() &&
+    !looksGenericRoleTitle(extraction.fields.roleTitle.trim())
+      ? extraction.fields.roleTitle.trim()
+      : record.roleTitle;
+  const nextCompany =
+    extraction.fields.company?.trim() &&
+    !shouldKeepExistingCompany(record.company, extraction.fields.company.trim())
+      ? extraction.fields.company.trim()
+      : record.company;
+  const nextLocation =
+    extraction.fields.location?.trim() &&
+    !looksSuspiciousLocationValue(extraction.fields.location.trim())
+      ? extraction.fields.location.trim()
+      : record.location;
+  const nextDescription =
+    extraction.fields.jobDescription?.trim() &&
+    !looksSuspiciousDescriptionValue(extraction.fields.jobDescription.trim())
+      ? extraction.fields.jobDescription.trim()
+      : record.jobDescription;
+
   return {
     ...record,
-    roleTitle: extraction.fields.roleTitle?.trim() || record.roleTitle,
-    company: extraction.fields.company?.trim() || record.company,
-    location: extraction.fields.location?.trim() || record.location,
+    roleTitle: nextRoleTitle,
+    company: nextCompany,
+    location: nextLocation,
     link: extraction.fields.link?.trim() || record.link,
-    jobDescription: extraction.fields.jobDescription?.trim() || record.jobDescription,
+    jobDescription: nextDescription,
     sourceType: extraction.sourceType,
     sourceConfidence: extraction.sourceConfidence,
     extractionStatus: extraction.extractionStatus

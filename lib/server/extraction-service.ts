@@ -15,6 +15,14 @@ function normalizeWhitespace(input: string) {
   return input.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function normalizeCountryName(value: string) {
+  return normalizeWhitespace(
+    value
+      .replace(/\bUnited States of America\b/gi, "United States")
+      .replace(/\bUSA\b/gi, "United States")
+  );
+}
+
 function decodeHtmlEntities(input: string) {
   return normalizeWhitespace(load(`<body>${input}</body>`).text());
 }
@@ -61,27 +69,53 @@ function isUsefulTitleCandidate(value: string) {
 
 function cleanCompany(value: string) {
   return normalizeWhitespace(
-    value
+    normalizeCountryName(
+      value
+        .replace(/[®™]/g, "")
+        .replace(/^\d+\s+/, "")
+        .replace(/\bMSO LLC\b/gi, "")
+        .replace(/\bLLC\b$/gi, "")
+        .replace(/\bL\.L\.C\.\b$/gi, "")
+        .replace(/\s{2,}/g, " ")
+    )
       .replace(/\|\s*careers?.*$/i, "")
       .replace(/\s{2,}/g, " ")
   );
 }
 
 function cleanLocation(value: string) {
-  return normalizeWhitespace(
+  return normalizeCountryName(
     value
       .replace(/^location\s*:?\s*/i, "")
       .replace(/\s*\|\s*.*$/, "")
       .replace(/\s*›\s*/g, " ")
+      .replace(/\s*\(united states of america\)$/i, " (United States)")
+  );
+}
+
+function looksLikeInternalCompanyCandidate(value: string) {
+  return (
+    /^\d+\s+/.test(value) ||
+    /\b(MSO LLC|LLC|L\.L\.C\.|Holdings?|Corporation|Incorporated)\b/i.test(value)
+  );
+}
+
+function looksLikeInternalLocationCandidate(value: string) {
+  return /^(treehouse|headquarters|hq|support center)(,\s*(united states|canada))?$/i.test(
+    value.trim()
   );
 }
 
 function isUsefulCompanyCandidate(value: string) {
-  return Boolean(value) && value.length <= 80;
+  return Boolean(value) && value.length <= 80 && !/^(job|careers?)$/i.test(value);
 }
 
 function isUsefulLocationCandidate(value: string) {
   if (!value || value.length > 100) {
+    return false;
+  }
+
+  if (looksLikeInternalLocationCandidate(value)) {
     return false;
   }
 
@@ -104,8 +138,22 @@ function parseLocationFromJobLocation(
   jobLocation:
     | { address?: Record<string, string> }
     | Array<{ address?: Record<string, string> }>
-    | undefined
+    | undefined,
+  options?: {
+    applicantLocationRequirements?: string[];
+    jobLocationType?: string;
+  }
 ) {
+  const applicantLocations =
+    options?.applicantLocationRequirements
+      ?.map((value) => normalizeCountryName(value))
+      .filter(Boolean) ?? [];
+  const remote = /telecommute|remote/i.test(options?.jobLocationType ?? "");
+
+  if (remote && applicantLocations.length > 0) {
+    return applicantLocations.map((value) => `${value} (Remote)`);
+  }
+
   const locations = Array.isArray(jobLocation)
     ? jobLocation
     : jobLocation
@@ -122,10 +170,29 @@ function parseLocationFromJobLocation(
       address.addressLocality,
       address.addressRegion,
       address.addressCountry
-    ].filter(Boolean);
+    ]
+      .filter(Boolean)
+      .map((value) => normalizeCountryName(value));
 
     return parts.length ? [parts.join(", ")] : [];
   });
+}
+
+function parseApplicantLocationRequirements(
+  requirements:
+    | { name?: string }
+    | Array<{ name?: string }>
+    | undefined
+) {
+  const entries = Array.isArray(requirements)
+    ? requirements
+    : requirements
+      ? [requirements]
+      : [];
+
+  return entries
+    .map((entry) => normalizeCountryName(entry.name ?? ""))
+    .filter(Boolean);
 }
 
 function extractCompanyFromDescriptions(values: string[]) {
@@ -141,9 +208,39 @@ function extractCompanyFromDescriptions(values: string[]) {
     if (matchSeeking?.[1]) {
       candidates.push(matchSeeking[1]);
     }
+
+    const matchAt = value.match(
+      /\bAt\s+([A-Z][A-Za-z0-9&.'’\-/ ]{2,80}?)(?:[®,]|,|\s+(?:we|you|our)\b)/i
+    );
+    if (matchAt?.[1]) {
+      candidates.push(matchAt[1]);
+    }
+
+    const matchWhy = value.match(
+      /\bWhy\s+([A-Z][A-Za-z0-9&.'’\-/ ]{2,80}?)(?:\?| is\b)/i
+    );
+    if (matchWhy?.[1]) {
+      candidates.push(matchWhy[1]);
+    }
   }
 
   return candidates;
+}
+
+function prioritizeCompanyCandidates(values: string[]) {
+  const deduped = uniqueValues(
+    values
+      .map((value) => cleanCompany(value))
+      .filter(isUsefulCompanyCandidate)
+  );
+  const publicFacing = deduped.filter(
+    (value) => !looksLikeInternalCompanyCandidate(value)
+  );
+  const internalOnly = deduped.filter((value) =>
+    looksLikeInternalCompanyCandidate(value)
+  );
+
+  return publicFacing.length > 0 ? [...publicFacing, ...internalOnly] : deduped;
 }
 
 function extractLabeledValues(
@@ -214,7 +311,14 @@ function collectJsonLdCandidates($: ReturnType<typeof load>) {
         jobDescription.push(stripHtml(item.description));
       }
 
-      location.push(...parseLocationFromJobLocation(item.jobLocation as never));
+      location.push(
+        ...parseLocationFromJobLocation(item.jobLocation as never, {
+          applicantLocationRequirements: parseApplicantLocationRequirements(
+            item.applicantLocationRequirements as never
+          ),
+          jobLocationType: String(item.jobLocationType ?? "")
+        })
+      );
     });
   });
 
@@ -229,6 +333,11 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     $('meta[name="description"]').attr("content") ?? "",
     $('meta[property="og:description"]').attr("content") ?? ""
   ]).map((value) => normalizeWhitespace(value));
+  const structuredDescriptionCandidates = extractStructuredDescriptionCandidates($);
+  const companyDescriptionSeeds = uniqueValues([
+    ...metaDescriptions,
+    ...structuredDescriptionCandidates.slice(0, 2)
+  ]);
   const titleCandidates = uniqueValues([
     ...jsonLd.roleTitle,
     $("h1").first().text(),
@@ -238,15 +347,17 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
   ])
     .map((value) => cleanTitle(value))
     .filter(isUsefulTitleCandidate);
-  const companyCandidates = uniqueValues([
+  const companyCandidates = prioritizeCompanyCandidates([
     ...jsonLd.company,
-    ...extractCompanyFromDescriptions(metaDescriptions),
+    ...extractCompanyFromDescriptions(companyDescriptionSeeds),
     $('meta[property="og:site_name"]').attr("content") ?? "",
     $('meta[name="author"]').attr("content") ?? "",
-    hostToCompany(parsedUrl.hostname)
-  ])
-    .map((value) => cleanCompany(value))
-    .filter(isUsefulCompanyCandidate);
+    ...(
+      parsedUrl.hostname.includes("myworkdayjobs.com")
+        ? []
+        : [hostToCompany(parsedUrl.hostname)]
+    )
+  ]);
   const locationCandidates = uniqueValues([
     ...jsonLd.location,
     ...extractLabeledValues($, "location"),
@@ -257,7 +368,7 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     .filter(isUsefulLocationCandidate);
   const descriptionCandidates = uniqueValues([
     ...jsonLd.jobDescription,
-    ...extractStructuredDescriptionCandidates($),
+    ...structuredDescriptionCandidates,
     ...metaDescriptions
   ])
     .map((value) => stripHtml(value))

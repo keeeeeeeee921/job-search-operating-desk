@@ -17,7 +17,7 @@ describe("server extraction service", () => {
     );
 
     expect(result.fields.company).toBe("Cincinnati Children's");
-    expect(result.fields.location).toBe("Cincinnati, Ohio, United States of America");
+    expect(result.fields.location).toBe("Cincinnati, Ohio, United States");
     expect(result.fields.jobDescription).not.toContain("&lt;");
     expect(result.fields.jobDescription).toContain("JOB RESPONSIBILITIES");
     expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(500);
@@ -44,9 +44,24 @@ describe("server extraction service", () => {
     );
 
     expect(result.fields.company).toBe("Dutch Bros Coffee");
-    expect(result.fields.location).toBe("Tempe, Arizona, United States of America");
+    expect(result.fields.location).toBe("Tempe, Arizona, United States");
     expect(result.fields.jobDescription).not.toContain("&lt;");
     expect(result.fields.jobDescription).toContain("Position Overview:");
     expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(700);
+  });
+
+  it("prefers Workday display values over internal company and location labels", () => {
+    const result = extractCandidatesFromHtml(
+      readFixture("cvs-workday.html"),
+      "https://cvshealth.wd1.myworkdayjobs.com/en-US/CVS_Health_Careers/job/IL--Chicago/Analyst--Development-Program_R0834053?source=Linkedin"
+    );
+
+    expect(result.fields.roleTitle).toBe("Analyst, Development Program");
+    expect(result.fields.company).toBe("Oak Street Health");
+    expect(result.fields.company).not.toContain("LLC");
+    expect(result.fields.location).toBe("United States (Remote)");
+    expect(result.fields.location).not.toContain("Treehouse");
+    expect(result.fields.jobDescription).toContain("Why Oak Street Health?");
+    expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(1500);
   });
 });

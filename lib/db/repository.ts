@@ -1,4 +1,4 @@
-import { count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { isPublicDemo } from "@/lib/demo";
 import {
@@ -47,6 +47,7 @@ function goalSeedForToday() {
   return {
     dateKey: getEasternDateKey(),
     applyCount: seedState.dailyGoals.goals.apply.count,
+    applyAdjustment: seedState.dailyGoals.goals.apply.count,
     applyTarget: seedState.dailyGoals.goals.apply.target,
     connectCount: seedState.dailyGoals.goals.connect.count,
     connectTarget: seedState.dailyGoals.goals.connect.target,
@@ -87,52 +88,63 @@ function withAutoApplyMarker(record: JobRecord) {
   };
 }
 
-function shouldReverseTodayApply(record: Pick<JobRecord, "pool" | "applyCountedDateKey">) {
-  return (
-    record.pool === "active" &&
-    record.applyCountedDateKey === getEasternDateKey()
-  );
+function computeDisplayedApplyCount(autoApplyCount: number, applyAdjustment: number) {
+  return Math.max(0, autoApplyCount + applyAdjustment);
 }
 
-async function persistDailyGoalsState(next: DailyGoalsState) {
+async function countAutoAppliedActiveRecordsForDate(dateKey: string) {
+  const [{ value }] = await getDb()
+    .select({
+      value: count()
+    })
+    .from(jobsTable)
+    .where(
+      and(
+        eq(jobsTable.pool, "active"),
+        eq(jobsTable.applyCountedDateKey, dateKey)
+      )
+    );
+
+  return value;
+}
+
+async function persistDailyGoalsRow(row: typeof dailyGoalsTable.$inferSelect) {
   await getDb()
     .insert(dailyGoalsTable)
     .values({
-      dateKey: next.dateKey,
-      applyCount: next.goals.apply.count,
-      applyTarget: next.goals.apply.target,
-      connectCount: next.goals.connect.count,
-      connectTarget: next.goals.connect.target,
-      followCount: next.goals.follow.count,
-      followTarget: next.goals.follow.target
+      dateKey: row.dateKey,
+      applyCount: row.applyCount,
+      applyAdjustment: row.applyAdjustment,
+      applyTarget: row.applyTarget,
+      connectCount: row.connectCount,
+      connectTarget: row.connectTarget,
+      followCount: row.followCount,
+      followTarget: row.followTarget
     })
     .onConflictDoUpdate({
       target: dailyGoalsTable.dateKey,
       set: {
-        applyCount: next.goals.apply.count,
-        applyTarget: next.goals.apply.target,
-        connectCount: next.goals.connect.count,
-        connectTarget: next.goals.connect.target,
-        followCount: next.goals.follow.count,
-        followTarget: next.goals.follow.target
+        applyCount: row.applyCount,
+        applyAdjustment: row.applyAdjustment,
+        applyTarget: row.applyTarget,
+        connectCount: row.connectCount,
+        connectTarget: row.connectTarget,
+        followCount: row.followCount,
+        followTarget: row.followTarget
       }
     });
 }
 
-async function adjustTodayApplyCount(delta: number) {
-  const current = await getDailyGoalsState();
-  const next = structuredClone(current);
-  next.goals.apply.count = Math.max(0, next.goals.apply.count + delta);
-  await persistDailyGoalsState(next);
-}
-
-function mapGoalsRow(row: typeof dailyGoalsTable.$inferSelect): DailyGoalsState {
+function mapGoalsRow(
+  row: typeof dailyGoalsTable.$inferSelect,
+  autoApplyCount: number
+): DailyGoalsState {
   return {
     dateKey: row.dateKey,
     goals: {
       apply: {
         label: "Apply",
-        count: row.applyCount,
+        count: computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment),
         target: row.applyTarget
       },
       connect: {
@@ -199,6 +211,7 @@ async function seedPostgresIfExplicitlyEnabled() {
   await db.insert(dailyGoalsTable).values({
     dateKey: seedState.dailyGoals.dateKey,
     applyCount: seedState.dailyGoals.goals.apply.count,
+    applyAdjustment: seedState.dailyGoals.goals.apply.count,
     applyTarget: seedState.dailyGoals.goals.apply.target,
     connectCount: seedState.dailyGoals.goals.connect.count,
     connectTarget: seedState.dailyGoals.goals.connect.target,
@@ -278,10 +291,6 @@ export async function insertJob(record: JobRecord) {
     ...nextRecord,
     timestamp: new Date(nextRecord.timestamp)
   });
-
-  if (nextRecord.pool === "active" && nextRecord.applyCountedDateKey) {
-    await adjustTodayApplyCount(1);
-  }
 }
 
 export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
@@ -359,10 +368,6 @@ export async function archiveJobRecord(id: string) {
     return;
   }
 
-  if (shouldReverseTodayApply(mapJobRow(existing))) {
-    await adjustTodayApplyCount(-1);
-  }
-
   await getDb().update(jobsTable).set({ pool: "rejected" }).where(eq(jobsTable.id, id));
 }
 
@@ -382,20 +387,10 @@ export async function deleteJobRecord(id: string) {
     return;
   }
 
-  if (shouldReverseTodayApply(mapJobRow(existing))) {
-    await adjustTodayApplyCount(-1);
-  }
-
   await getDb().delete(jobsTable).where(eq(jobsTable.id, id));
 }
 
-export async function getDailyGoalsState() {
-  await ensureDatabaseReady();
-
-  if (shouldUseLocalFallback()) {
-    return getLocalDailyGoalsState();
-  }
-
+async function getTodayDailyGoalsRow() {
   const today = getEasternDateKey();
   const existing = (
     await getDb()
@@ -406,31 +401,33 @@ export async function getDailyGoalsState() {
   )[0];
 
   if (existing) {
-    return mapGoalsRow(existing);
+    return existing;
   }
 
   const seeded = goalSeedForToday();
   await getDb().insert(dailyGoalsTable).values(seeded).onConflictDoNothing();
-  return {
-    dateKey: seeded.dateKey,
-    goals: {
-      apply: {
-        label: "Apply",
-        count: seeded.applyCount,
-        target: seeded.applyTarget
-      },
-      connect: {
-        label: "Connect",
-        count: seeded.connectCount,
-        target: seeded.connectTarget
-      },
-      follow: {
-        label: "Follow",
-        count: seeded.followCount,
-        target: seeded.followTarget
-      }
-    }
-  };
+
+  return (
+    (
+      await getDb()
+        .select()
+        .from(dailyGoalsTable)
+        .where(eq(dailyGoalsTable.dateKey, today))
+        .limit(1)
+    )[0] ?? seeded
+  );
+}
+
+export async function getDailyGoalsState() {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    return getLocalDailyGoalsState();
+  }
+
+  const row = await getTodayDailyGoalsRow();
+  const autoApplyCount = await countAutoAppliedActiveRecordsForDate(row.dateKey);
+  return mapGoalsRow(row, autoApplyCount);
 }
 
 export async function updateDailyGoalState(input: {
@@ -444,18 +441,31 @@ export async function updateDailyGoalState(input: {
     return updateLocalDailyGoalState(input);
   }
 
-  const current = await getDailyGoalsState();
-  const next = structuredClone(current);
+  const row = await getTodayDailyGoalsRow();
+  const autoApplyCount = await countAutoAppliedActiveRecordsForDate(row.dateKey);
 
   if (input.kind === "increment") {
-    next.goals[input.goal].count += 1;
+    if (input.goal === "apply") {
+      row.applyAdjustment += 1;
+    } else if (input.goal === "connect") {
+      row.connectCount += 1;
+    } else {
+      row.followCount += 1;
+    }
   } else if (typeof input.value === "number" && input.value > 0) {
-    next.goals[input.goal].target = input.value;
+    if (input.goal === "apply") {
+      row.applyTarget = input.value;
+    } else if (input.goal === "connect") {
+      row.connectTarget = input.value;
+    } else {
+      row.followTarget = input.value;
+    }
   }
 
-  await persistDailyGoalsState(next);
+  row.applyCount = computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment);
+  await persistDailyGoalsRow(row);
 
-  return next;
+  return mapGoalsRow(row, autoApplyCount);
 }
 
 export async function matchEmailAgainstActiveRecords(emailText: string) {
@@ -513,6 +523,7 @@ export async function resetCurrentEnvironmentToSeedState() {
   await db.insert(dailyGoalsTable).values({
     dateKey: seedState.dailyGoals.dateKey,
     applyCount: seedState.dailyGoals.goals.apply.count,
+    applyAdjustment: seedState.dailyGoals.goals.apply.count,
     applyTarget: seedState.dailyGoals.goals.apply.target,
     connectCount: seedState.dailyGoals.goals.connect.count,
     connectTarget: seedState.dailyGoals.goals.connect.target,

@@ -81,6 +81,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
         .update(dailyGoalsTable)
         .set({
           applyCount: initialGoalsRow.applyCount,
+          applyAdjustment: initialGoalsRow.applyAdjustment,
           applyTarget: initialGoalsRow.applyTarget,
           connectCount: initialGoalsRow.connectCount,
           connectTarget: initialGoalsRow.connectTarget,
