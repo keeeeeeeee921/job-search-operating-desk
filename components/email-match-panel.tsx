@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import { useJobDeskStore } from "@/lib/store";
-import { demoRejectionEmails } from "@/lib/seed";
+import type { DemoEmailExample } from "@/lib/seed";
 import type { EmailMatch } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 export function EmailMatchPanel({
-  hasActiveJobs
+  hasActiveJobs,
+  examples
 }: {
   hasActiveJobs: boolean;
+  examples: DemoEmailExample[];
 }) {
   const router = useRouter();
   const pushToast = useJobDeskStore((state) => state.pushToast);
@@ -41,7 +43,7 @@ export function EmailMatchPanel({
           value={value}
         />
         <div className="mt-4 flex flex-wrap gap-2">
-          {demoRejectionEmails.map((item) => (
+          {examples.map((item) => (
             <Button
               key={item.id}
               onClick={() => {
@@ -109,13 +111,16 @@ export function EmailMatchPanel({
                 </p>
                 <div className="mt-4 flex justify-end">
                   <Button
-                    onClick={() => {
-                      fetch(`/api/jobs/${match.record.id}/archive`, {
+                    onClick={async () => {
+                      const response = await fetch(`/api/jobs/${match.record.id}/archive`, {
                         method: "POST",
                         keepalive: true
-                      }).catch(() => {
+                      }).catch(() => null);
+
+                      if (!response?.ok) {
                         pushToast("Archive could not be completed", "error");
-                      });
+                        return;
+                      }
 
                       setMatches((current) =>
                         current.filter((item) => item.record.id !== match.record.id)

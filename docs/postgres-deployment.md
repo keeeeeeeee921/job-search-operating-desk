@@ -7,6 +7,8 @@ This app runs against real Postgres when `DATABASE_URL` is present.
 - `DATABASE_URL`: pooled runtime connection string used by the app.
 - `DATABASE_URL_UNPOOLED`: direct connection string used by Drizzle migrations.
 - `JOB_DESK_ENABLE_SEED`: optional explicit seed flag. Leave `false` for production and preview.
+- `JOB_DESK_PUBLIC_DEMO`: set to `true` only for the public demo project.
+- `CRON_SECRET`: optional secret used by the demo reset route and Vercel cron.
 
 ## Local Setup
 
@@ -23,6 +25,26 @@ This app runs against real Postgres when `DATABASE_URL` is present.
 4. Deploy the app to Vercel.
 
 Production does not auto-run migrations during `next build`.
+
+## Public Demo Project
+
+Create the public demo as a second Vercel project pointed at the same repo, but with its own Postgres database.
+
+Required demo env vars:
+
+- `DATABASE_URL`
+- `DATABASE_URL_UNPOOLED`
+- `JOB_DESK_PUBLIC_DEMO=true`
+- `CRON_SECRET=<demo-secret>`
+
+Demo behavior:
+
+- uses a separate curated demo seed dataset
+- shows a public demo banner in the app shell
+- stays fully interactive
+- resets all demo jobs and daily goals every day at `3:00 AM America/New_York`
+
+The repo already includes a cron-backed route at `/api/demo/reset`. `vercel.json` triggers it hourly, and the route only performs the reset during the `3 AM` Eastern hour.
 
 ## Preview Deployments
 

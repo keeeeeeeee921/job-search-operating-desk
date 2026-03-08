@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { seedActiveJobs, seedDailyGoals, seedRejectedJobs } from "@/lib/seed";
+import { isPublicDemo } from "@/lib/demo";
+import { getSeedStateForEnvironment } from "@/lib/seed";
 import type {
   DailyGoalsState,
   GoalKey,
@@ -51,19 +52,24 @@ function goalsFromRow(row: DailyGoalsRow): DailyGoalsState {
 }
 
 function goalSeedForToday(): DailyGoalsRow {
+  const seedState = getSeedStateForEnvironment();
   return {
     dateKey: getEasternDateKey(),
-    applyCount: 0,
-    applyTarget: seedDailyGoals.goals.apply.target,
-    connectCount: 0,
-    connectTarget: seedDailyGoals.goals.connect.target,
-    followCount: 0,
-    followTarget: seedDailyGoals.goals.follow.target
+    applyCount: seedState.dailyGoals.goals.apply.count,
+    applyTarget: seedState.dailyGoals.goals.apply.target,
+    connectCount: seedState.dailyGoals.goals.connect.count,
+    connectTarget: seedState.dailyGoals.goals.connect.target,
+    followCount: seedState.dailyGoals.goals.follow.count,
+    followTarget: seedState.dailyGoals.goals.follow.target
   };
 }
 
 function shouldSeedLocalStore() {
-  return process.env.JOB_DESK_ENABLE_SEED === "true" || process.env.NODE_ENV !== "production";
+  return (
+    isPublicDemo() ||
+    process.env.JOB_DESK_ENABLE_SEED === "true" ||
+    process.env.NODE_ENV !== "production"
+  );
 }
 
 function getLocalDataDir() {
@@ -141,10 +147,30 @@ export async function seedLocalStoreIfNeeded() {
       return;
     }
 
-    store.jobs = [...seedActiveJobs, ...seedRejectedJobs];
+    const seedState = getSeedStateForEnvironment();
+    store.jobs = [...seedState.activeJobs, ...seedState.rejectedJobs];
     if (!store.dailyGoals.some((row) => row.dateKey === getEasternDateKey())) {
       store.dailyGoals.push(goalSeedForToday());
     }
+  });
+}
+
+export async function resetLocalStoreToSeedState() {
+  const seedState = getSeedStateForEnvironment();
+
+  await mutateLocalStore(async (store) => {
+    store.jobs = [...seedState.activeJobs, ...seedState.rejectedJobs];
+    store.dailyGoals = [
+      {
+        dateKey: seedState.dailyGoals.dateKey,
+        applyCount: seedState.dailyGoals.goals.apply.count,
+        applyTarget: seedState.dailyGoals.goals.apply.target,
+        connectCount: seedState.dailyGoals.goals.connect.count,
+        connectTarget: seedState.dailyGoals.goals.connect.target,
+        followCount: seedState.dailyGoals.goals.follow.count,
+        followTarget: seedState.dailyGoals.goals.follow.target
+      }
+    ];
   });
 }
 

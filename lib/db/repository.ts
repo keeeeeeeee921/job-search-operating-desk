@@ -1,5 +1,6 @@
 import { count, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { isPublicDemo } from "@/lib/demo";
 import {
   archiveLocalJob,
   deleteLocalJob,
@@ -8,6 +9,7 @@ import {
   getLocalDailyGoalsState,
   getLocalJobsByPool,
   insertLocalJob,
+  resetLocalStoreToSeedState,
   resetLocalStoreForTests,
   seedLocalStoreIfNeeded,
   updateLocalComments,
@@ -15,11 +17,7 @@ import {
 } from "@/lib/db/local-store";
 import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
 import { findEmailMatches } from "@/lib/emailMatching";
-import {
-  seedActiveJobs,
-  seedDailyGoals,
-  seedRejectedJobs
-} from "@/lib/seed";
+import { getSeedStateForEnvironment } from "@/lib/seed";
 import type {
   DailyGoalsState,
   GoalKey,
@@ -43,14 +41,15 @@ function shouldExplicitlySeedPostgres() {
 }
 
 function goalSeedForToday() {
+  const seedState = getSeedStateForEnvironment();
   return {
     dateKey: getEasternDateKey(),
-    applyCount: 0,
-    applyTarget: seedDailyGoals.goals.apply.target,
-    connectCount: 0,
-    connectTarget: seedDailyGoals.goals.connect.target,
-    followCount: 0,
-    followTarget: seedDailyGoals.goals.follow.target
+    applyCount: seedState.dailyGoals.goals.apply.count,
+    applyTarget: seedState.dailyGoals.goals.apply.target,
+    connectCount: seedState.dailyGoals.goals.connect.count,
+    connectTarget: seedState.dailyGoals.goals.connect.target,
+    followCount: seedState.dailyGoals.goals.follow.count,
+    followTarget: seedState.dailyGoals.goals.follow.target
   };
 }
 
@@ -118,7 +117,7 @@ async function assertPostgresSchemaReady() {
 }
 
 async function seedPostgresIfExplicitlyEnabled() {
-  if (!shouldExplicitlySeedPostgres()) {
+  if (!isPublicDemo() && !shouldExplicitlySeedPostgres()) {
     return;
   }
 
@@ -133,12 +132,23 @@ async function seedPostgresIfExplicitlyEnabled() {
     return;
   }
 
+  const seedState = getSeedStateForEnvironment();
   await db.insert(jobsTable).values(
-    [...seedActiveJobs, ...seedRejectedJobs].map((record) => ({
+    [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
       timestamp: new Date(record.timestamp)
     }))
   );
+
+  await db.insert(dailyGoalsTable).values({
+    dateKey: seedState.dailyGoals.dateKey,
+    applyCount: seedState.dailyGoals.goals.apply.count,
+    applyTarget: seedState.dailyGoals.goals.apply.target,
+    connectCount: seedState.dailyGoals.goals.connect.count,
+    connectTarget: seedState.dailyGoals.goals.connect.target,
+    followCount: seedState.dailyGoals.goals.follow.count,
+    followTarget: seedState.dailyGoals.goals.follow.target
+  });
 }
 
 async function ensurePostgresReady() {
@@ -388,4 +398,39 @@ export async function getAllRecords() {
 
   const rows = await getDb().select().from(jobsTable).orderBy(desc(jobsTable.timestamp));
   return rows.map(mapJobRow);
+}
+
+export async function resetCurrentEnvironmentToSeedState() {
+  initialized = false;
+
+  if (shouldUseLocalFallback()) {
+    await resetLocalStoreToSeedState();
+    initialized = true;
+    return;
+  }
+
+  await ensurePostgresReady();
+  const db = getDb();
+  const seedState = getSeedStateForEnvironment();
+
+  await db.delete(dailyGoalsTable);
+  await db.delete(jobsTable);
+
+  await db.insert(jobsTable).values(
+    [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
+      ...record,
+      timestamp: new Date(record.timestamp)
+    }))
+  );
+  await db.insert(dailyGoalsTable).values({
+    dateKey: seedState.dailyGoals.dateKey,
+    applyCount: seedState.dailyGoals.goals.apply.count,
+    applyTarget: seedState.dailyGoals.goals.apply.target,
+    connectCount: seedState.dailyGoals.goals.connect.count,
+    connectTarget: seedState.dailyGoals.goals.connect.target,
+    followCount: seedState.dailyGoals.goals.follow.count,
+    followTarget: seedState.dailyGoals.goals.follow.target
+  });
+
+  initialized = true;
 }
