@@ -64,4 +64,25 @@ describe("server extraction service", () => {
     expect(result.fields.jobDescription).toContain("Why Oak Street Health?");
     expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(1500);
   });
+
+  it("parses UKG inline job payloads before generic page scraping", () => {
+    const result = extractCandidatesFromHtml(
+      readFixture("inquirer-ukg.html"),
+      "https://inquirer.rec.pro.ukg.net/PHI1500PHILI/JobBoard/7dc63c3a-f663-4d44-893e-7372f75ba534/OpportunityDetail?opportunityId=9fc9f887-78ed-4489-ab40-c0ee6fbc437f&source=LinkedIn"
+    );
+
+    expect(result.fields.roleTitle).toBe("Data Analyst");
+    expect(result.fields.company).toBe("The Philadelphia Inquirer");
+    expect(result.fields.location).toBe("Philadelphia, PA, United States");
+    expect(result.fields.jobDescription).toContain(
+      "The Philadelphia Inquirer is an exciting place to build a career in journalism and analytics."
+    );
+    expect(result.fields.jobDescription).not.toContain("$(function");
+    expect(result.fields.jobDescription).not.toContain(
+      "CandidateOpportunityDetail"
+    );
+    expect(result.fields.jobDescription).not.toContain("ko.applyBindings");
+    expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(1200);
+    expect(result.extractionStatus).toBe("confirmed");
+  });
 });

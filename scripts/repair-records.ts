@@ -4,6 +4,7 @@ import process from "node:process";
 import { getAllRecords, updateJobRecord } from "../lib/db/repository";
 import { extractJobOnServer } from "../lib/server/extraction-service";
 import type { JobRecord } from "../lib/types";
+import { getEasternDateKey } from "../lib/utils";
 
 type ScriptMode = "dry-run" | "apply";
 
@@ -103,7 +104,7 @@ function loadEnvFile(filePath: string) {
 }
 
 function parseArgs(argv: string[]) {
-  let date = "2026-03-08";
+  let date = getEasternDateKey();
   let mode: ScriptMode = "dry-run";
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -128,34 +129,50 @@ function parseArgs(argv: string[]) {
   return { date, mode };
 }
 
-function isMarch8Candidate(record: JobRecord, dateKey: string) {
+function looksLikeBadUkgDescription(value: string) {
+  return /(\$\s*\(\s*function|CandidateOpportunityDetail|ko\.applyBindings|twitter-wjs|new\s+US\.Opportunity)/i.test(
+    value
+  );
+}
+
+function isRepairCandidate(record: JobRecord, dateKey: string) {
   if (!record.link) {
     return false;
   }
 
-  if (!record.timestamp.startsWith(dateKey)) {
+  if (getEasternDateKey(new Date(record.timestamp)) !== dateKey) {
     return false;
   }
+
+  const isUkg = /rec\.pro\.ukg\.net/i.test(record.link);
 
   const badDescription =
     /&lt;|&gt;|&#\d+;|&#x[a-f0-9]+;|phapp|descriptionteaser/i.test(
       record.jobDescription
-    );
+    ) || looksLikeBadUkgDescription(record.jobDescription);
   const badLocation =
     looksLikeInternalLocationValue(record.location) ||
     record.location.length > 100 ||
+    /\b\d{5}(?:-\d{4})?\b/.test(record.location) ||
     /(join the team|jobs\s*[>›]|req id|position type|who are we hiring|madison square garden entertainment corp|analyst business intelligence)/i.test(
       record.location
     );
   const badCompany =
     looksLikeInternalCompanyValue(record.company) ||
     record.company.length > 80 ||
-    /lifeattiktok|msgentertainment|cincinnatichildrens/i.test(record.company);
+    /lifeattiktok|msgentertainment|cincinnatichildrens|^ukg$|^pro$/i.test(
+      record.company
+    );
   const weakDescription =
     record.jobDescription.length < 500 ||
     /&lt;|&gt;|&#\d+;|&#x[a-f0-9]+;|phapp|descriptionteaser|join the team|jobs\s*[>›]/i.test(
       record.jobDescription
     );
+  const badRoleTitle = record.roleTitle.trim() !== record.roleTitle;
+
+  if (isUkg) {
+    return badDescription || badLocation || badCompany || badRoleTitle || weakDescription;
+  }
 
   return badDescription || badLocation || badCompany || weakDescription;
 }
@@ -217,7 +234,7 @@ async function main() {
   loadEnvFile(path.join(process.cwd(), ".env.local"));
   const { date, mode } = parseArgs(process.argv.slice(2));
   const records = await getAllRecords();
-  const candidates = records.filter((record) => isMarch8Candidate(record, date));
+  const candidates = records.filter((record) => isRepairCandidate(record, date));
 
   console.log(
     `Repair ${mode.toUpperCase()} for ${date}: ${candidates.length} candidate records`
