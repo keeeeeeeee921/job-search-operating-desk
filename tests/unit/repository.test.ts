@@ -5,8 +5,10 @@ import {
   getActiveJobById,
   getActiveJobCount,
   getDailyGoalsState,
+  getEmailMatchCandidateRecords,
   getJobsPage,
   getJobsByPool,
+  getPotentialDuplicateCandidates,
   getRecentActiveJobs,
   hasActiveJobs,
   insertJobsWithoutGoalEffects,
@@ -93,6 +95,32 @@ describe("repository", () => {
 
     expect(count).toBe(active.length);
     expect(await hasActiveJobs()).toBe(true);
+  });
+
+  it("prefilters duplicate candidates before full similarity scoring", async () => {
+    const candidates = await getPotentialDuplicateCandidates({
+      company: "TikTok",
+      roleTitle: "Data Analyst",
+      limit: 2,
+      sinceDays: 365
+    });
+
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates.length).toBeLessThanOrEqual(2);
+    expect(candidates.every((record) => record.pool === "active")).toBe(true);
+  });
+
+  it("prefilters email matching candidates from active records only", async () => {
+    const candidates = await getEmailMatchCandidateRecords({
+      emailText:
+        "Thank you for applying to TikTok for the Data Analyst position. We will not move forward.",
+      limit: 5,
+      sinceDays: 365
+    });
+
+    expect(candidates.length).toBeGreaterThan(0);
+    expect(candidates.length).toBeLessThanOrEqual(5);
+    expect(candidates.every((record) => record.pool === "active")).toBe(true);
   });
 
   it("updates comments and archives records", async () => {

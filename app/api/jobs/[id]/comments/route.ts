@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import { updateComments } from "@/lib/db/repository";
+import { revalidateAfterCommentsUpdated } from "@/lib/server/revalidation";
 
 export async function POST(
   request: Request,
@@ -23,10 +23,7 @@ export async function POST(
   }
 
   await updateComments(id, comments);
-  revalidatePath("/");
-  revalidatePath("/active");
-  revalidatePath("/search");
-  revalidatePath(`/active/${id}`);
+  revalidateAfterCommentsUpdated(id);
 
   return NextResponse.json({ ok: true });
 }

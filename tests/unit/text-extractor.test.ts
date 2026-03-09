@@ -127,4 +127,30 @@ You'll drive financial automation and digital transformation for global clients.
     expect(result.fields.company).toBe("Emma of Torre.ai");
     expect(result.fields.location).toBe("United States (Remote)");
   });
+
+  it("extracts location from LinkedIn posting meta lines when Location label is absent", () => {
+    const result = extractJobFromText(`
+Entry-Level Implementation Analyst | Fintech | Remote US
+Emma of Torre.ai
+United States · 16 minutes ago · 5 people clicked apply
+About the job
+You'll drive financial automation and digital transformation for global clients.
+    `);
+
+    expect(result.fields.location).toBe("United States");
+    expect(result.issues.some((issue) => issue.field === "location")).toBe(false);
+  });
+
+  it("extracts city/state location from posting-age lines", () => {
+    const result = extractJobFromText(`
+Junior Data Engineer
+Agility Partners
+Cincinnati, OH · 9 hours ago · Over 100 applicants
+About the job
+Run monthly data product refreshes and support SQL workflows.
+    `);
+
+    expect(result.fields.location).toBe("Cincinnati, OH");
+    expect(result.issues.some((issue) => issue.field === "location")).toBe(false);
+  });
 });

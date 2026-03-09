@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { extractCandidatesFromHtml } from "@/lib/server/extraction-service";
+import {
+  extractCandidatesFromHtml,
+  extractJobOnServer
+} from "@/lib/server/extraction-service";
 
 function readFixture(name: string) {
   return readFileSync(
@@ -84,5 +87,13 @@ describe("server extraction service", () => {
     expect(result.fields.jobDescription).not.toContain("ko.applyBindings");
     expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(1200);
     expect(result.extractionStatus).toBe("confirmed");
+  });
+
+  it("blocks private-network targets with a safe fallback response", async () => {
+    const result = await extractJobOnServer("http://127.0.0.1/internal-job-page");
+
+    expect(result.supported).toBe(false);
+    expect(result.unsupportedReason).toContain("blocked");
+    expect(result.extractionStatus).toBe("needs_review");
   });
 });

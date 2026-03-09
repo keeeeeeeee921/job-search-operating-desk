@@ -1,9 +1,7 @@
-import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { isPublicDemo } from "@/lib/demo";
 import { resetCurrentEnvironmentToSeedState } from "@/lib/db/repository";
-
-const revalidatedPaths = ["/", "/active", "/rejected", "/search", "/update-by-email"];
+import { revalidateAfterDemoReset } from "@/lib/server/revalidation";
 
 function isAuthorized(request: NextRequest) {
   return request.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
@@ -26,10 +24,7 @@ export async function GET(request: NextRequest) {
   }
 
   await resetCurrentEnvironmentToSeedState();
-
-  for (const path of revalidatedPaths) {
-    revalidatePath(path);
-  }
+  revalidateAfterDemoReset();
 
   return NextResponse.json({ ok: true, reset: true });
 }

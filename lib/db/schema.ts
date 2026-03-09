@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   pgTable,
   text,
@@ -6,24 +7,38 @@ import {
   varchar
 } from "drizzle-orm/pg-core";
 
-export const jobsTable = pgTable("jobs", {
-  id: varchar("id", { length: 191 }).primaryKey(),
-  roleTitle: text("role_title").notNull(),
-  company: text("company").notNull(),
-  location: text("location").notNull(),
-  link: text("link").notNull(),
-  jobDescription: text("job_description").notNull(),
-  timestamp: timestamp("timestamp", {
-    withTimezone: true,
-    mode: "date"
-  }).notNull(),
-  pool: varchar("pool", { length: 16 }).notNull(),
-  comments: text("comments").notNull(),
-  applyCountedDateKey: varchar("apply_counted_date_key", { length: 32 }),
-  sourceType: varchar("source_type", { length: 32 }).notNull(),
-  sourceConfidence: varchar("source_confidence", { length: 16 }).notNull(),
-  extractionStatus: varchar("extraction_status", { length: 32 }).notNull()
-});
+export const jobsTable = pgTable(
+  "jobs",
+  {
+    id: varchar("id", { length: 191 }).primaryKey(),
+    roleTitle: text("role_title").notNull(),
+    company: text("company").notNull(),
+    location: text("location").notNull(),
+    link: text("link").notNull(),
+    jobDescription: text("job_description").notNull(),
+    searchText: text("search_text").notNull().default(""),
+    timestamp: timestamp("timestamp", {
+      withTimezone: true,
+      mode: "date"
+    }).notNull(),
+    pool: varchar("pool", { length: 16 }).notNull(),
+    comments: text("comments").notNull(),
+    applyCountedDateKey: varchar("apply_counted_date_key", { length: 32 }),
+    sourceType: varchar("source_type", { length: 32 }).notNull(),
+    sourceConfidence: varchar("source_confidence", { length: 16 }).notNull(),
+    extractionStatus: varchar("extraction_status", { length: 32 }).notNull()
+  },
+  (table) => ({
+    jobsPoolTimestampIdx: index("jobs_pool_timestamp_idx").on(
+      table.pool,
+      table.timestamp
+    ),
+    jobsPoolApplyDateIdx: index("jobs_pool_apply_date_idx").on(
+      table.pool,
+      table.applyCountedDateKey
+    )
+  })
+);
 
 export const dailyGoalsTable = pgTable("daily_goals", {
   dateKey: varchar("date_key", { length: 32 }).primaryKey(),

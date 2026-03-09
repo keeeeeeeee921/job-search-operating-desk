@@ -102,6 +102,67 @@ function normalizeLocationCandidate(value: string): string {
   return cleaned.replace(/, United States$/i, ", US");
 }
 
+function looksLikeLocationShape(value: string) {
+  const normalized = cleanLine(value);
+  if (!normalized || normalized.length > 80) {
+    return false;
+  }
+
+  if (
+    /(promoted by|response insights|clicked apply|applicants|resume match|easy apply|hiring|logo|profile photo)/i.test(
+      normalized
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    /(remote|on-site|hybrid|united states|usa|canada|uk|united kingdom|australia|germany|france|japan|india)/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  if (/^[A-Za-z.'\- ]+,\s*[A-Z]{2}(?:\b|,)/.test(normalized)) {
+    return true;
+  }
+
+  return /^[A-Za-z.'\- ]+,\s*[A-Za-z.'\- ]+$/.test(normalized);
+}
+
+function looksLikePostingMetaSegment(value: string) {
+  return /(minutes? ago|hours? ago|days? ago|weeks? ago|months? ago|reposted|clicked apply|applicants|people clicked apply)/i.test(
+    cleanLine(value)
+  );
+}
+
+function extractLocationFromPostingMetaLine(line: string) {
+  if (!line.includes("·")) {
+    return "";
+  }
+
+  const segments = line.split("·").map((segment) => cleanLine(segment));
+  if (segments.length < 2) {
+    return "";
+  }
+
+  const hasPostingMeta = segments
+    .slice(1)
+    .some((segment) => looksLikePostingMetaSegment(segment));
+
+  if (!hasPostingMeta) {
+    return "";
+  }
+
+  const firstSegment = normalizeLocationCandidate(segments[0] ?? "");
+  if (!looksLikeLocationShape(firstSegment)) {
+    return "";
+  }
+
+  return firstSegment;
+}
+
 function isNoiseLine(line: string) {
   const trimmed = cleanLine(line);
 
@@ -416,7 +477,26 @@ function extractLocationCandidates(lines: string[]) {
   }
 
   const summary = extractSummaryLine(lines);
-  return parseCompanyAndLocationFromSummary(summary).locationCandidates;
+  const summaryCandidates = parseCompanyAndLocationFromSummary(summary).locationCandidates;
+  if (summaryCandidates.length > 0) {
+    return summaryCandidates;
+  }
+
+  const postingMetaCandidates = uniqueValues(
+    lines
+      .map((line) => extractLocationFromPostingMetaLine(line))
+      .filter(Boolean)
+  );
+  if (postingMetaCandidates.length > 0) {
+    return postingMetaCandidates;
+  }
+
+  return uniqueValues(
+    lines
+      .map((line) => normalizeLocationCandidate(line))
+      .filter((candidate) => looksLikeLocationShape(candidate))
+      .slice(0, 2)
+  );
 }
 
 function extractDescription(lines: string[]) {

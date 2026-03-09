@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { isPublicDemo } from "@/lib/demo";
 import {
@@ -25,6 +25,7 @@ import {
 import {
   buildPaginatedJobListResult,
   JOB_DESCRIPTION_PREVIEW_LENGTH,
+  JOB_LIST_PAGE_SIZE,
   normalizePageNumber
 } from "@/lib/job-list";
 import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
@@ -38,7 +39,7 @@ import type {
   JobRecord,
   PaginatedJobListResult
 } from "@/lib/types";
-import { getEasternDateKey, normalizeText } from "@/lib/utils";
+import { getEasternDateKey, normalizeText, tokenize } from "@/lib/utils";
 
 let initialized = false;
 
@@ -84,6 +85,14 @@ function mapJobRow(row: typeof jobsTable.$inferSelect): JobRecord {
     sourceConfidence: row.sourceConfidence as JobRecord["sourceConfidence"],
     extractionStatus: row.extractionStatus as JobRecord["extractionStatus"]
   };
+}
+
+function buildSearchText(input: {
+  company: string;
+  roleTitle: string;
+  location: string;
+}) {
+  return normalizeText(`${input.company} ${input.roleTitle} ${input.location}`);
 }
 
 function withAutoApplyMarker(record: JobRecord) {
@@ -147,7 +156,41 @@ function buildActiveSearchCondition(query: string) {
     return undefined;
   }
 
-  return sql<boolean>`lower(concat_ws(' ', ${jobsTable.company}, ${jobsTable.roleTitle}, ${jobsTable.location})) like ${`%${normalizedQuery}%`}`;
+  const escaped = normalizedQuery.replace(/[\\%_]/g, "\\$&");
+  return sql<boolean>`${jobsTable.searchText} like ${`%${escaped}%`} escape '\\'`;
+}
+
+const tokenStopwords = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "from",
+  "your",
+  "this",
+  "that",
+  "are",
+  "job",
+  "jobs",
+  "role",
+  "position",
+  "team",
+  "remote"
+]);
+
+function buildTokenSearchConditions(tokens: string[]) {
+  return tokens
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !tokenStopwords.has(token))
+    .slice(0, 10)
+    .map((token) => {
+      const escaped = token.replace(/[\\%_]/g, "\\$&");
+      return sql<boolean>`${jobsTable.searchText} like ${`%${escaped}%`} escape '\\'`;
+    });
+}
+
+function getDateThreshold(days: number) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 }
 
 function computeDisplayedApplyCount(autoApplyCount: number, applyAdjustment: number) {
@@ -266,6 +309,7 @@ async function seedPostgresIfExplicitlyEnabled() {
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
+      searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp)
     }))
   );
@@ -372,7 +416,7 @@ export async function getJobsPage(input: {
 }): Promise<PaginatedJobListResult> {
   await ensureDatabaseReady();
 
-  const pageSize = input.pageSize ?? 50;
+  const pageSize = input.pageSize ?? JOB_LIST_PAGE_SIZE;
   const page = normalizePageNumber(input.page);
 
   if (shouldUseLocalFallback()) {
@@ -415,7 +459,7 @@ export async function searchActiveJobsPage(input: {
 }): Promise<PaginatedJobListResult> {
   await ensureDatabaseReady();
 
-  const pageSize = input.pageSize ?? 50;
+  const pageSize = input.pageSize ?? JOB_LIST_PAGE_SIZE;
   const page = normalizePageNumber(input.page);
   const searchCondition = buildActiveSearchCondition(input.query);
 
@@ -473,6 +517,122 @@ export async function hasActiveJobs() {
   return (await getActiveJobCount()) > 0;
 }
 
+export async function getPotentialDuplicateCandidates(input: {
+  company: string;
+  roleTitle: string;
+  link?: string;
+  limit?: number;
+  sinceDays?: number;
+}) {
+  await ensureDatabaseReady();
+
+  const limit = input.limit ?? 120;
+  const sinceDays = input.sinceDays ?? 365;
+  const normalizedCompany = normalizeText(input.company);
+  const link = input.link?.trim() ?? "";
+  const roleTokenConditions = buildTokenSearchConditions(tokenize(input.roleTitle));
+  const thresholdDate = getDateThreshold(sinceDays);
+
+  if (shouldUseLocalFallback()) {
+    const active = await getLocalJobsByPool("active");
+    const roleTokens = tokenize(input.roleTitle).filter(
+      (token) => token.length >= 3 && !tokenStopwords.has(token)
+    );
+
+    return active
+      .filter((record) => new Date(record.timestamp).getTime() >= thresholdDate.getTime())
+      .filter((record) => {
+        const byCompany =
+          normalizedCompany && normalizeText(record.company) === normalizedCompany;
+        const byLink = Boolean(link && normalizeText(record.link) === normalizeText(link));
+        const byRoleTokens =
+          roleTokens.length > 0 &&
+          roleTokens.some((token) =>
+            normalizeText(
+              `${record.roleTitle} ${record.company} ${record.location}`
+            ).includes(token)
+          );
+
+        return byCompany || byLink || byRoleTokens;
+      })
+      .slice(0, limit);
+  }
+
+  const matchConditions = [
+    normalizedCompany
+      ? sql<boolean>`lower(${jobsTable.company}) = ${normalizedCompany}`
+      : undefined,
+    link ? eq(jobsTable.link, link) : undefined,
+    ...roleTokenConditions
+  ].filter((condition): condition is Exclude<typeof condition, undefined> =>
+    Boolean(condition)
+  );
+
+  const whereClause = and(
+    eq(jobsTable.pool, "active"),
+    gte(jobsTable.timestamp, thresholdDate),
+    ...(matchConditions.length > 0 ? [or(...matchConditions)] : [])
+  );
+
+  const rows = await getDb()
+    .select()
+    .from(jobsTable)
+    .where(whereClause)
+    .orderBy(desc(jobsTable.timestamp))
+    .limit(limit);
+
+  return rows.map(mapJobRow);
+}
+
+export async function getEmailMatchCandidateRecords(input: {
+  emailText: string;
+  limit?: number;
+  sinceDays?: number;
+}) {
+  await ensureDatabaseReady();
+
+  const limit = input.limit ?? 180;
+  const sinceDays = input.sinceDays ?? 365;
+  const thresholdDate = getDateThreshold(sinceDays);
+  const tokenConditions = buildTokenSearchConditions(tokenize(input.emailText));
+
+  if (shouldUseLocalFallback()) {
+    const active = await getLocalJobsByPool("active");
+    const tokens = tokenize(input.emailText).filter(
+      (token) => token.length >= 3 && !tokenStopwords.has(token)
+    );
+
+    const filtered =
+      tokens.length === 0
+        ? active
+        : active.filter((record) => {
+            const haystack = normalizeText(
+              `${record.roleTitle} ${record.company} ${record.location} ${record.jobDescription}`
+            );
+            return tokens.some((token) => haystack.includes(token));
+          });
+
+    return filtered
+      .filter((record) => new Date(record.timestamp).getTime() >= thresholdDate.getTime())
+      .slice(0, limit);
+  }
+
+  const whereClause = and(
+    eq(jobsTable.pool, "active"),
+    gte(jobsTable.timestamp, thresholdDate),
+    ...(tokenConditions.length > 0 ? [or(...tokenConditions)] : [])
+  );
+
+  const rows = await getDb()
+    .select()
+    .from(jobsTable)
+    .where(whereClause)
+    .orderBy(desc(jobsTable.timestamp))
+    .limit(limit);
+
+  return rows.map(mapJobRow);
+}
+
 export async function insertJob(record: JobRecord) {
   await ensureDatabaseReady();
 
@@ -485,6 +645,7 @@ export async function insertJob(record: JobRecord) {
 
   await getDb().insert(jobsTable).values({
     ...nextRecord,
+    searchText: buildSearchText(nextRecord),
     timestamp: new Date(nextRecord.timestamp)
   });
 }
@@ -504,6 +665,7 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
   await getDb().insert(jobsTable).values(
     records.map((record) => ({
       ...record,
+      searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
       timestamp: new Date(record.timestamp)
     }))
@@ -526,6 +688,7 @@ export async function updateJobRecord(record: JobRecord) {
       location: record.location,
       link: record.link,
       jobDescription: record.jobDescription,
+      searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp),
       pool: record.pool,
       comments: record.comments,
@@ -665,8 +828,13 @@ export async function updateDailyGoalState(input: {
 }
 
 export async function matchEmailAgainstActiveRecords(emailText: string) {
-  const activeJobs = await getJobsByPool("active");
-  return findEmailMatches(emailText, activeJobs);
+  const candidates = await getEmailMatchCandidateRecords({
+    emailText,
+    limit: 180,
+    sinceDays: 365
+  });
+
+  return findEmailMatches(emailText, candidates);
 }
 
 export async function resetDatabaseForTests() {
@@ -712,6 +880,7 @@ export async function resetCurrentEnvironmentToSeedState() {
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
+      searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
       timestamp: new Date(record.timestamp)
     }))

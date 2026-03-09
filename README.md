@@ -110,6 +110,5 @@ For local development without Postgres, the app can fall back to a local file st
 
 ## Demo
 
-The personal-use deployment stays private because it contains real job-search data. This repo now supports a separate public demo deployment with its own database, seeded demo records, and a daily reset.
-
-Public demo URL: add the second Vercel project URL here after provisioning the demo deployment.
+The live personal-use deployment stays private because it contains real job-search data.  
+This repository is shared as source code plus screenshots in README.

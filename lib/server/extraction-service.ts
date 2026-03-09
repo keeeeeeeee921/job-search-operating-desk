@@ -1,4 +1,7 @@
+import { lookup } from "node:dns/promises";
+import net from "node:net";
 import { load } from "cheerio";
+import { isPublicDemo } from "@/lib/demo";
 import { buildFallbackExtraction } from "@/lib/extractor";
 import { getMockJobBySlug } from "@/lib/mock-jobs";
 import { validateJobDraft } from "@/lib/recordValidation";
@@ -19,8 +22,154 @@ type ExtractionCandidates = {
   notes?: string[];
 };
 
+const demoRateLimitState: {
+  windowStart: number;
+  count: number;
+} = {
+  windowStart: 0,
+  count: 0
+};
+
+const DEMO_EXTRACTION_WINDOW_MS = 60_000;
+const DEMO_EXTRACTION_MAX_REQUESTS = Number(
+  process.env.JOB_DESK_DEMO_EXTRACT_LIMIT_PER_MINUTE ?? "40"
+);
+const MAX_REDIRECTS = 3;
+
+class UnsafeTargetError extends Error {}
+
 function normalizeWhitespace(input: string) {
   return input.replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function isPrivateOrLocalIpv4(ip: string) {
+  const parts = ip.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) {
+    return true;
+  }
+
+  const [a, b] = parts;
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168)
+  );
+}
+
+function isPrivateOrLocalIpv6(ip: string) {
+  const normalized = ip.toLowerCase();
+  return (
+    normalized === "::1" ||
+    normalized.startsWith("fc") ||
+    normalized.startsWith("fd") ||
+    normalized.startsWith("fe80:") ||
+    normalized.startsWith("::ffff:127.")
+  );
+}
+
+function isUnsafeIpAddress(ip: string) {
+  const family = net.isIP(ip);
+  if (family === 4) {
+    return isPrivateOrLocalIpv4(ip);
+  }
+
+  if (family === 6) {
+    return isPrivateOrLocalIpv6(ip);
+  }
+
+  return true;
+}
+
+async function assertPublicNetworkTarget(url: string) {
+  const parsed = new URL(url);
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new UnsafeTargetError("Only http/https job links are supported.");
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    hostname.endsWith(".lan")
+  ) {
+    throw new UnsafeTargetError("Private or local hostnames are blocked.");
+  }
+
+  if (net.isIP(hostname) && isUnsafeIpAddress(hostname)) {
+    throw new UnsafeTargetError("Private or local IP targets are blocked.");
+  }
+
+  const records = await lookup(hostname, { all: true, verbatim: false }).catch(
+    () => []
+  );
+  if (records.length === 0) {
+    throw new UnsafeTargetError("The job link hostname could not be resolved.");
+  }
+
+  if (records.some((record) => isUnsafeIpAddress(record.address))) {
+    throw new UnsafeTargetError("Private or local network targets are blocked.");
+  }
+}
+
+function isDemoRateLimited() {
+  if (!isPublicDemo()) {
+    return false;
+  }
+
+  const now = Date.now();
+  if (now - demoRateLimitState.windowStart >= DEMO_EXTRACTION_WINDOW_MS) {
+    demoRateLimitState.windowStart = now;
+    demoRateLimitState.count = 0;
+  }
+
+  demoRateLimitState.count += 1;
+  return demoRateLimitState.count > DEMO_EXTRACTION_MAX_REQUESTS;
+}
+
+function buildGuardrailFallback(normalizedUrl: string, reason: string) {
+  const fallback = buildFallbackExtraction(normalizedUrl);
+  return {
+    ...fallback,
+    supported: false,
+    unsupportedReason: reason,
+    notes: uniqueValues([
+      ...fallback.notes,
+      "Server safety guardrails blocked this extraction request."
+    ])
+  } satisfies ExtractionResult;
+}
+
+async function fetchWithSafeRedirects(startUrl: string) {
+  let currentUrl = startUrl;
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    await assertPublicNetworkTarget(currentUrl);
+    const response = await fetch(currentUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
+      },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+      redirect: "manual"
+    });
+
+    if (response.status < 300 || response.status >= 400) {
+      return response;
+    }
+
+    const location = response.headers.get("location");
+    if (!location) {
+      return response;
+    }
+
+    currentUrl = new URL(location, currentUrl).toString();
+  }
+
+  throw new UnsafeTargetError("The job link redirected too many times.");
 }
 
 function normalizeCountryName(value: string) {
@@ -698,6 +847,13 @@ export async function extractJobOnServer(rawUrl: string) {
     return buildFallbackExtraction(normalizedUrl);
   }
 
+  if (isDemoRateLimited()) {
+    return buildGuardrailFallback(
+      normalizedUrl,
+      "Public demo extraction is rate-limited. Please wait a minute and try again."
+    );
+  }
+
   const parsedUrl = new URL(normalizedUrl);
   if (
     ["localhost", "127.0.0.1"].includes(parsedUrl.hostname) &&
@@ -710,14 +866,7 @@ export async function extractJobOnServer(rawUrl: string) {
   }
 
   try {
-    const response = await fetch(normalizedUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36"
-      },
-      signal: AbortSignal.timeout(10000),
-      cache: "no-store"
-    });
+    const response = await fetchWithSafeRedirects(normalizedUrl);
 
     if (!response.ok) {
       return buildFallbackExtraction(normalizedUrl);
@@ -725,7 +874,11 @@ export async function extractJobOnServer(rawUrl: string) {
 
     const html = await response.text();
     return extractCandidatesFromHtml(html, normalizedUrl);
-  } catch {
+  } catch (error) {
+    if (error instanceof UnsafeTargetError) {
+      return buildGuardrailFallback(normalizedUrl, error.message);
+    }
+
     return buildFallbackExtraction(normalizedUrl);
   }
 }

@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { findDuplicateCandidates } from "@/lib/duplicateDetection";
 import { draftFromExtraction } from "@/lib/extractor";
 import { extractJobFromText } from "@/lib/text-extractor";
@@ -8,12 +7,18 @@ import {
   archiveJobRecord,
   deleteJobRecord,
   getDailyGoalsState,
-  getJobsByPool,
+  getPotentialDuplicateCandidates,
   insertJob,
   matchEmailAgainstActiveRecords,
   updateComments,
   updateDailyGoalState
 } from "@/lib/server/job-actions-helpers";
+import {
+  revalidateAfterActiveRecordRemoved,
+  revalidateAfterActiveRecordSaved,
+  revalidateAfterCommentsUpdated,
+  revalidateAfterDailyGoalsUpdated
+} from "@/lib/server/revalidation";
 import type {
   DailyGoalsState,
   DuplicateCandidate,
@@ -51,17 +56,6 @@ type CreateJobResult =
   | { status: "duplicate"; draft: JobDraft; candidates: DuplicateCandidate[] }
   | { status: "saved"; record: JobRecord };
 
-function revalidateAllJobViews(recordId?: string) {
-  revalidatePath("/");
-  revalidatePath("/active");
-  revalidatePath("/search");
-  revalidatePath("/rejected");
-  revalidatePath("/update-by-email");
-  if (recordId) {
-    revalidatePath(`/active/${recordId}`);
-  }
-}
-
 export async function createJobFromLink(rawUrl: string): Promise<CreateJobResult> {
   const { extractJobOnServer } = await import("@/lib/server/extraction-service");
   const extraction = await extractJobOnServer(rawUrl);
@@ -71,15 +65,21 @@ export async function createJobFromLink(rawUrl: string): Promise<CreateJobResult
     return { status: "review", draft };
   }
 
-  const activeJobs = await getJobsByPool("active");
-  const candidates = findDuplicateCandidates(draft, activeJobs);
+  const duplicatePool = await getPotentialDuplicateCandidates({
+    company: draft.company,
+    roleTitle: draft.roleTitle,
+    link: draft.link,
+    limit: 120,
+    sinceDays: 365
+  });
+  const candidates = findDuplicateCandidates(draft, duplicatePool);
   if (candidates.length > 0) {
     return { status: "duplicate", draft, candidates };
   }
 
   const record = createRecordFromDraft(draft);
   await insertJob(record);
-  revalidateAllJobViews(record.id);
+  revalidateAfterActiveRecordSaved(record.id);
   return { status: "saved", record };
 }
 
@@ -91,15 +91,21 @@ export async function createJobFromText(rawText: string): Promise<CreateJobResul
     return { status: "review", draft };
   }
 
-  const activeJobs = await getJobsByPool("active");
-  const candidates = findDuplicateCandidates(draft, activeJobs);
+  const duplicatePool = await getPotentialDuplicateCandidates({
+    company: draft.company,
+    roleTitle: draft.roleTitle,
+    link: draft.link,
+    limit: 120,
+    sinceDays: 365
+  });
+  const candidates = findDuplicateCandidates(draft, duplicatePool);
   if (candidates.length > 0) {
     return { status: "duplicate", draft, candidates };
   }
 
   const record = createRecordFromDraft(draft);
   await insertJob(record);
-  revalidateAllJobViews(record.id);
+  revalidateAfterActiveRecordSaved(record.id);
   return { status: "saved", record };
 }
 
@@ -107,7 +113,13 @@ export async function saveReviewedJob(
   draft: JobDraft,
   allowDuplicate = false
 ): Promise<CreateJobResult> {
-  const activeJobs = await getJobsByPool("active");
+  const activeJobs = await getPotentialDuplicateCandidates({
+    company: draft.company,
+    roleTitle: draft.roleTitle,
+    link: draft.link,
+    limit: 120,
+    sinceDays: 365
+  });
   const candidates = allowDuplicate
     ? []
     : findDuplicateCandidates(draft, activeJobs);
@@ -118,23 +130,23 @@ export async function saveReviewedJob(
 
   const record = createRecordFromDraft(draft);
   await insertJob(record);
-  revalidateAllJobViews(record.id);
+  revalidateAfterActiveRecordSaved(record.id);
   return { status: "saved", record };
 }
 
 export async function updateJobComments(id: string, comments: string) {
   await updateComments(id, comments);
-  revalidateAllJobViews(id);
+  revalidateAfterCommentsUpdated(id);
 }
 
 export async function archiveJobToRejected(id: string) {
   await archiveJobRecord(id);
-  revalidateAllJobViews(id);
+  revalidateAfterActiveRecordRemoved(id);
 }
 
 export async function deleteJobPermanently(id: string) {
   await deleteJobRecord(id);
-  revalidateAllJobViews(id);
+  revalidateAfterActiveRecordRemoved(id);
 }
 
 export async function updateDailyGoal(input: {
@@ -143,7 +155,7 @@ export async function updateDailyGoal(input: {
   value?: number;
 }): Promise<DailyGoalsState> {
   const next = await updateDailyGoalState(input);
-  revalidatePath("/");
+  revalidateAfterDailyGoalsUpdated();
   return next;
 }
 

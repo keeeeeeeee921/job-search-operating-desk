@@ -83,6 +83,15 @@ export function HomeWorkspace({
     router.refresh();
   };
 
+  async function showProcessingStages(stages: string[], delayMs = 120) {
+    for (const stage of stages) {
+      setProcessingStatus(stage);
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, delayMs);
+      });
+    }
+  }
+
   const handleProcess = async () => {
     const activeValue = inputMode === "link" ? linkValue : textValue;
     if (!activeValue.trim()) {
@@ -90,18 +99,22 @@ export function HomeWorkspace({
     }
 
     if (inputMode === "link") {
-      setProcessingStatus("Processing...");
-      setProcessingStatus("Detecting source...");
-      setProcessingStatus("Preparing job record...");
-      setProcessingStatus("Checking duplicates...");
+      await showProcessingStages([
+        "Processing...",
+        "Detecting source...",
+        "Preparing job record...",
+        "Checking duplicates..."
+      ]);
       handleServerResult(await createJobFromLink(linkValue));
       return;
     }
 
-    setProcessingStatus("Processing...");
-    setProcessingStatus("Parsing pasted job text...");
-    setProcessingStatus("Preparing job record...");
-    setProcessingStatus("Checking duplicates...");
+    await showProcessingStages([
+      "Processing...",
+      "Parsing pasted job text...",
+      "Preparing job record...",
+      "Checking duplicates..."
+    ]);
     handleServerResult(await createJobFromText(textValue));
   };
 

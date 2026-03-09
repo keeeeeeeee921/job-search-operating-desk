@@ -3,6 +3,7 @@ node_modules/
 .data/
 .tooling/
 test-results/
+.DS_Store
 .env.local
 .env*.local
 .vercel/
