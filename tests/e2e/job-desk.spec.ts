@@ -69,6 +69,8 @@ test("shows duplicate modal and respects cancel or continue", async ({ page, bas
 test("search scans only active records", async ({ page }) => {
   await page.goto("/search");
   await page.getByPlaceholder("Search Active by company, role title, or both").fill("Canva");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page).toHaveURL(/\/search\?q=Canva/);
   await expect(page.getByText("No matching Active records")).toBeVisible();
 });
 
@@ -93,8 +95,9 @@ test("update by email archives manually", async ({ page }) => {
     page.getByRole("button", { name: "Archive to Rejected" }).first()
   ).toBeVisible();
   await page.getByRole("button", { name: "Archive to Rejected" }).first().click();
+  await expect(page.getByText("Moved to Rejected").first()).toBeVisible();
   await page.goto("/rejected");
-  await expect(page.getByText("Tesla", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tesla").first()).toBeVisible();
 });
 
 test("active records can be deleted from the detail page", async ({ page }) => {

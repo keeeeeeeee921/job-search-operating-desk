@@ -6,27 +6,39 @@ import {
   deleteLocalJob,
   ensureLocalStoreReady,
   getAllLocalRecords,
+  getLocalActiveJobById,
+  getLocalActiveJobCount,
   getLocalDailyGoalsState,
   getLocalJobsByPool,
+  getLocalJobsPage,
+  getLocalRecentActiveJobs,
   insertLocalJob,
   insertLocalJobsWithoutGoalEffects,
   resetLocalStoreToSeedState,
   resetLocalStoreForTests,
+  searchLocalActiveJobsPage,
   seedLocalStoreIfNeeded,
   updateLocalJobRecord,
   updateLocalComments,
   updateLocalDailyGoalState
 } from "@/lib/db/local-store";
+import {
+  buildPaginatedJobListResult,
+  JOB_DESCRIPTION_PREVIEW_LENGTH,
+  normalizePageNumber
+} from "@/lib/job-list";
 import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
 import { findEmailMatches } from "@/lib/emailMatching";
 import { getSeedStateForEnvironment } from "@/lib/seed";
 import type {
   DailyGoalsState,
   GoalKey,
+  JobListItem,
   JobPool,
-  JobRecord
+  JobRecord,
+  PaginatedJobListResult
 } from "@/lib/types";
-import { getEasternDateKey } from "@/lib/utils";
+import { getEasternDateKey, normalizeText } from "@/lib/utils";
 
 let initialized = false;
 
@@ -86,6 +98,56 @@ function withAutoApplyMarker(record: JobRecord) {
     ...record,
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
+}
+
+function getJobListPreviewSelection() {
+  return {
+    id: jobsTable.id,
+    roleTitle: jobsTable.roleTitle,
+    company: jobsTable.company,
+    location: jobsTable.location,
+    link: jobsTable.link,
+    timestamp: jobsTable.timestamp,
+    sourceType: jobsTable.sourceType,
+    sourceConfidence: jobsTable.sourceConfidence,
+    extractionStatus: jobsTable.extractionStatus,
+    jobDescriptionPreview: sql<string>`substring(${jobsTable.jobDescription} from 1 for ${JOB_DESCRIPTION_PREVIEW_LENGTH})`
+  };
+}
+
+function mapJobListRow(row: {
+  id: string;
+  roleTitle: string;
+  company: string;
+  location: string;
+  link: string;
+  timestamp: Date;
+  sourceType: string;
+  sourceConfidence: string;
+  extractionStatus: string;
+  jobDescriptionPreview: string;
+}): JobListItem {
+  return {
+    id: row.id,
+    roleTitle: row.roleTitle,
+    company: row.company,
+    location: row.location,
+    link: row.link,
+    timestamp: row.timestamp.toISOString(),
+    sourceType: row.sourceType as JobRecord["sourceType"],
+    sourceConfidence: row.sourceConfidence as JobRecord["sourceConfidence"],
+    extractionStatus: row.extractionStatus as JobRecord["extractionStatus"],
+    jobDescriptionPreview: row.jobDescriptionPreview
+  };
+}
+
+function buildActiveSearchCondition(query: string) {
+  const normalizedQuery = normalizeText(query);
+  if (!normalizedQuery) {
+    return undefined;
+  }
+
+  return sql<boolean>`lower(concat_ws(' ', ${jobsTable.company}, ${jobsTable.roleTitle}, ${jobsTable.location})) like ${`%${normalizedQuery}%`}`;
 }
 
 function computeDisplayedApplyCount(autoApplyCount: number, applyAdjustment: number) {
@@ -269,12 +331,146 @@ export async function getJobsByPool(pool: JobPool) {
 }
 
 export async function getRecentActiveJobs(limit = 4) {
-  return (await getJobsByPool("active")).slice(0, limit);
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    return getLocalRecentActiveJobs(limit);
+  }
+
+  const rows = await getDb()
+    .select(getJobListPreviewSelection())
+    .from(jobsTable)
+    .where(eq(jobsTable.pool, "active"))
+    .orderBy(desc(jobsTable.timestamp))
+    .limit(limit);
+
+  return rows.map(mapJobListRow);
 }
 
 export async function getActiveJobById(id: string) {
-  const activeJobs = await getJobsByPool("active");
-  return activeJobs.find((job) => job.id === id) ?? null;
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    return getLocalActiveJobById(id);
+  }
+
+  const row = (
+    await getDb()
+      .select()
+      .from(jobsTable)
+      .where(and(eq(jobsTable.pool, "active"), eq(jobsTable.id, id)))
+      .limit(1)
+  )[0];
+
+  return row ? mapJobRow(row) : null;
+}
+
+export async function getJobsPage(input: {
+  pool: JobPool;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedJobListResult> {
+  await ensureDatabaseReady();
+
+  const pageSize = input.pageSize ?? 50;
+  const page = normalizePageNumber(input.page);
+
+  if (shouldUseLocalFallback()) {
+    return getLocalJobsPage({
+      pool: input.pool,
+      page,
+      pageSize
+    });
+  }
+
+  const whereClause = eq(jobsTable.pool, input.pool);
+  const [{ value: totalCount }] = await getDb()
+    .select({ value: count() })
+    .from(jobsTable)
+    .where(whereClause);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+  const rows = await getDb()
+    .select(getJobListPreviewSelection())
+    .from(jobsTable)
+    .where(whereClause)
+    .orderBy(desc(jobsTable.timestamp))
+    .limit(pageSize)
+    .offset(offset);
+
+  return buildPaginatedJobListResult(
+    rows.map(mapJobListRow),
+    safePage,
+    pageSize,
+    totalCount
+  );
+}
+
+export async function searchActiveJobsPage(input: {
+  query: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedJobListResult> {
+  await ensureDatabaseReady();
+
+  const pageSize = input.pageSize ?? 50;
+  const page = normalizePageNumber(input.page);
+  const searchCondition = buildActiveSearchCondition(input.query);
+
+  if (shouldUseLocalFallback()) {
+    return searchLocalActiveJobsPage({
+      query: input.query,
+      page,
+      pageSize
+    });
+  }
+
+  const whereClause = searchCondition
+    ? and(eq(jobsTable.pool, "active"), searchCondition)
+    : eq(jobsTable.pool, "active");
+  const [{ value: totalCount }] = await getDb()
+    .select({ value: count() })
+    .from(jobsTable)
+    .where(whereClause);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+  const rows = await getDb()
+    .select(getJobListPreviewSelection())
+    .from(jobsTable)
+    .where(whereClause)
+    .orderBy(desc(jobsTable.timestamp))
+    .limit(pageSize)
+    .offset(offset);
+
+  return buildPaginatedJobListResult(
+    rows.map(mapJobListRow),
+    safePage,
+    pageSize,
+    totalCount
+  );
+}
+
+export async function getActiveJobCount() {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    return getLocalActiveJobCount();
+  }
+
+  const [{ value }] = await getDb()
+    .select({ value: count() })
+    .from(jobsTable)
+    .where(eq(jobsTable.pool, "active"));
+
+  return value;
+}
+
+export async function hasActiveJobs() {
+  return (await getActiveJobCount()) > 0;
 }
 
 export async function insertJob(record: JobRecord) {

@@ -1,8 +1,8 @@
 import { Surface } from "@/components/ui/surface";
-import type { JobRecord } from "@/lib/types";
+import type { JobListItem } from "@/lib/types";
 import { JobRecordTable } from "@/components/job-record-table";
 
-export function RecentItemsList({ records }: { records: JobRecord[] }) {
+export function RecentItemsList({ records }: { records: JobListItem[] }) {
   return (
     <Surface className="p-6">
       <div className="mb-4">

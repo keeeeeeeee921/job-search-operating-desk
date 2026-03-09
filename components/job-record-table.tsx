@@ -1,4 +1,4 @@
-import type { JobRecord } from "@/lib/types";
+import type { JobListItem } from "@/lib/types";
 import { JobRecordRow } from "@/components/job-record-row";
 
 export function JobRecordTable({
@@ -7,7 +7,7 @@ export function JobRecordTable({
   emptyDescription,
   detailBasePath
 }: {
-  records: JobRecord[];
+  records: JobListItem[];
   emptyTitle: string;
   emptyDescription: string;
   detailBasePath?: string;

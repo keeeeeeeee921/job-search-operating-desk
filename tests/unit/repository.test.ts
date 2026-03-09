@@ -3,12 +3,17 @@ import {
   archiveJobRecord,
   deleteJobRecord,
   getActiveJobById,
+  getActiveJobCount,
   getDailyGoalsState,
+  getJobsPage,
   getJobsByPool,
+  getRecentActiveJobs,
+  hasActiveJobs,
   insertJobsWithoutGoalEffects,
   insertJob,
   resetCurrentEnvironmentToSeedState,
   resetDatabaseForTests,
+  searchActiveJobsPage,
   updateComments,
   updateDailyGoalState
 } from "@/lib/db/repository";
@@ -41,6 +46,53 @@ describe("repository", () => {
 
     expect(active.length).toBeGreaterThan(0);
     expect(rejected.length).toBeGreaterThan(0);
+  });
+
+  it("returns recent active jobs as lightweight preview rows", async () => {
+    const active = await getJobsByPool("active");
+    const recent = await getRecentActiveJobs(2);
+
+    expect(recent).toHaveLength(2);
+    expect(recent[0]?.timestamp >= recent[1]?.timestamp).toBe(true);
+    expect(recent[0]?.jobDescriptionPreview.length).toBeLessThanOrEqual(
+      active[0]?.jobDescription.length ?? 10_000
+    );
+    expect("jobDescription" in recent[0]).toBe(false);
+  });
+
+  it("returns paginated pool rows without full job descriptions", async () => {
+    const page = await getJobsPage({
+      pool: "active",
+      page: 1,
+      pageSize: 2
+    });
+
+    expect(page.records).toHaveLength(2);
+    expect(page.totalCount).toBeGreaterThanOrEqual(2);
+    expect(page.page).toBe(1);
+    expect(page.pageSize).toBe(2);
+    expect(page.totalPages).toBeGreaterThanOrEqual(1);
+    expect("jobDescription" in page.records[0]).toBe(false);
+  });
+
+  it("searches Active records in the repository layer and paginates results", async () => {
+    const page = await searchActiveJobsPage({
+      query: "TikTok Data Analyst",
+      page: 1,
+      pageSize: 5
+    });
+
+    expect(page.records.length).toBeGreaterThan(0);
+    expect(page.records.every((record) => record.company.includes("TikTok"))).toBe(true);
+    expect(page.records.every((record) => "jobDescription" in record === false)).toBe(true);
+  });
+
+  it("returns active counts without loading full records into the page layer", async () => {
+    const active = await getJobsByPool("active");
+    const count = await getActiveJobCount();
+
+    expect(count).toBe(active.length);
+    expect(await hasActiveJobs()).toBe(true);
   });
 
   it("updates comments and archives records", async () => {

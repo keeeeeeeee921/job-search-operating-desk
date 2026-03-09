@@ -13,12 +13,14 @@ import { RecentItemsList } from "@/components/recent-items-list";
 import { ReviewModal } from "@/components/review-modal";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
+import { toJobListItem } from "@/lib/job-list";
 import { useJobDeskStore } from "@/lib/store";
 import type {
   DailyGoalsState,
   DuplicateCandidate,
   InputMode,
   JobDraft,
+  JobListItem,
   JobRecord
 } from "@/lib/types";
 
@@ -26,7 +28,7 @@ export function HomeWorkspace({
   initialRecentItems,
   initialGoals
 }: {
-  initialRecentItems: JobRecord[];
+  initialRecentItems: JobListItem[];
   initialGoals: DailyGoalsState;
 }) {
   const router = useRouter();
@@ -68,7 +70,9 @@ export function HomeWorkspace({
       return;
     }
 
-    setRecentItems((current) => [result.record, ...current].slice(0, 4));
+    setRecentItems((current) =>
+      [toJobListItem(result.record), ...current.filter((item) => item.id !== result.record.id)].slice(0, 4)
+    );
     pushToast("Added to Active", "success");
     setProcessingStatus(null);
     setLinkValue("");

@@ -1,14 +1,21 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { isPublicDemo } from "@/lib/demo";
+import {
+  buildPaginatedJobListResult,
+  normalizePageNumber,
+  toJobListItem
+} from "@/lib/job-list";
 import { getSeedStateForEnvironment } from "@/lib/seed";
 import type {
   DailyGoalsState,
   GoalKey,
+  JobListItem,
   JobPool,
-  JobRecord
+  JobRecord,
+  PaginatedJobListResult
 } from "@/lib/types";
-import { getEasternDateKey } from "@/lib/utils";
+import { getEasternDateKey, normalizeText } from "@/lib/utils";
 
 type DailyGoalsRow = {
   dateKey: string;
@@ -221,6 +228,62 @@ export async function getLocalJobsByPool(pool: JobPool) {
   return store.jobs
     .filter((job) => job.pool === pool)
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+export async function getLocalRecentActiveJobs(limit: number): Promise<JobListItem[]> {
+  const jobs = await getLocalJobsByPool("active");
+  return jobs.slice(0, limit).map(toJobListItem);
+}
+
+export async function getLocalActiveJobById(id: string) {
+  const store = await readLocalStore();
+  const record = store.jobs.find((job) => job.pool === "active" && job.id === id);
+  return record ?? null;
+}
+
+export async function getLocalJobsPage(input: {
+  pool: JobPool;
+  page: number;
+  pageSize: number;
+}): Promise<PaginatedJobListResult> {
+  const records = await getLocalJobsByPool(input.pool);
+  const totalCount = records.length;
+  const page = normalizePageNumber(input.page);
+  const totalPages = Math.max(1, Math.ceil(totalCount / input.pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * input.pageSize;
+  const items = records.slice(start, start + input.pageSize).map(toJobListItem);
+
+  return buildPaginatedJobListResult(items, safePage, input.pageSize, totalCount);
+}
+
+export async function searchLocalActiveJobsPage(input: {
+  query: string;
+  page: number;
+  pageSize: number;
+}): Promise<PaginatedJobListResult> {
+  const records = await getLocalJobsByPool("active");
+  const normalizedQuery = normalizeText(input.query);
+  const filtered = normalizedQuery
+    ? records.filter((record) =>
+        normalizeText(
+          `${record.company} ${record.roleTitle} ${record.location}`
+        ).includes(normalizedQuery)
+      )
+    : records;
+  const totalCount = filtered.length;
+  const page = normalizePageNumber(input.page);
+  const totalPages = Math.max(1, Math.ceil(totalCount / input.pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * input.pageSize;
+  const items = filtered.slice(start, start + input.pageSize).map(toJobListItem);
+
+  return buildPaginatedJobListResult(items, safePage, input.pageSize, totalCount);
+}
+
+export async function getLocalActiveJobCount() {
+  const store = await readLocalStore();
+  return store.jobs.filter((job) => job.pool === "active").length;
 }
 
 export async function insertLocalJob(record: JobRecord) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { JobRecord } from "@/lib/types";
+import type { JobListItem } from "@/lib/types";
 import { cn, formatDate, truncate } from "@/lib/utils";
 
 export function JobRecordRow({
@@ -7,7 +7,7 @@ export function JobRecordRow({
   href,
   compact = false
 }: {
-  record: JobRecord;
+  record: JobListItem;
   href?: string;
   compact?: boolean;
 }) {
@@ -79,7 +79,7 @@ export function JobRecordRow({
           Job Description
         </p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {truncate(record.jobDescription, compact ? 200 : 180)}
+          {truncate(record.jobDescriptionPreview, compact ? 200 : 180)}
         </p>
       </div>
     </div>

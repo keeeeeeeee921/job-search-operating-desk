@@ -38,6 +38,29 @@ export interface JobRecord {
   extractionStatus: ExtractionStatus;
 }
 
+export interface JobListItem {
+  id: string;
+  roleTitle: string;
+  company: string;
+  location: string;
+  link: string;
+  timestamp: string;
+  sourceType: SourceType;
+  sourceConfidence: SourceConfidence;
+  extractionStatus: ExtractionStatus;
+  jobDescriptionPreview: string;
+}
+
+export interface PaginatedJobListResult {
+  records: JobListItem[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 export interface ValidationIssue {
   field: JobField;
   type: ValidationIssueType;
