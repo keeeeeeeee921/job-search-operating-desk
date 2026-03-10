@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteJobRecord } from "@/lib/db/repository";
-import { revalidateAfterActiveRecordRemoved } from "@/lib/server/revalidation";
+import { revalidateAfterActiveRecordDeleted } from "@/lib/server/revalidation";
 
 export async function DELETE(
   _request: Request,
@@ -11,7 +11,7 @@ export async function DELETE(
   const { id } = await context.params;
 
   await deleteJobRecord(id);
-  revalidateAfterActiveRecordRemoved(id);
+  revalidateAfterActiveRecordDeleted();
 
   return NextResponse.json({ ok: true });
 }

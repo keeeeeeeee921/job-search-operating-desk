@@ -35,6 +35,9 @@ const DEMO_EXTRACTION_MAX_REQUESTS = Number(
   process.env.JOB_DESK_DEMO_EXTRACT_LIMIT_PER_MINUTE ?? "40"
 );
 const MAX_REDIRECTS = 3;
+const EXTRACTION_MAX_BYTES = Number(
+  process.env.JOB_DESK_EXTRACT_MAX_BYTES ?? "1048576"
+);
 
 class UnsafeTargetError extends Error {}
 
@@ -140,6 +143,85 @@ function buildGuardrailFallback(normalizedUrl: string, reason: string) {
       "Server safety guardrails blocked this extraction request."
     ])
   } satisfies ExtractionResult;
+}
+
+function isHtmlLikeContentType(contentType: string | null) {
+  if (!contentType) {
+    return true;
+  }
+
+  const normalized = contentType.toLowerCase();
+  return (
+    normalized.includes("text/html") ||
+    normalized.includes("application/xhtml+xml")
+  );
+}
+
+function parseContentLength(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function assertExtractionResponseHeaders(response: Response) {
+  if (!isHtmlLikeContentType(response.headers.get("content-type"))) {
+    throw new UnsafeTargetError(
+      "The job link did not return an HTML page that can be parsed."
+    );
+  }
+
+  const contentLength = parseContentLength(response.headers.get("content-length"));
+  if (contentLength !== null && contentLength > EXTRACTION_MAX_BYTES) {
+    throw new UnsafeTargetError(
+      "The job page is too large to process automatically. Please continue with manual review."
+    );
+  }
+}
+
+async function readResponseTextWithLimit(response: Response) {
+  if (!response.body) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    if (!value) {
+      continue;
+    }
+
+    totalBytes += value.byteLength;
+    if (totalBytes > EXTRACTION_MAX_BYTES) {
+      throw new UnsafeTargetError(
+        "The job page is too large to process automatically. Please continue with manual review."
+      );
+    }
+
+    chunks.push(value);
+  }
+
+  if (chunks.length === 0) {
+    return "";
+  }
+
+  const buffer = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return new TextDecoder().decode(buffer);
 }
 
 async function fetchWithSafeRedirects(startUrl: string) {
@@ -872,7 +954,8 @@ export async function extractJobOnServer(rawUrl: string) {
       return buildFallbackExtraction(normalizedUrl);
     }
 
-    const html = await response.text();
+    assertExtractionResponseHeaders(response);
+    const html = await readResponseTextWithLimit(response);
     return extractCandidatesFromHtml(html, normalizedUrl);
   } catch (error) {
     if (error instanceof UnsafeTargetError) {

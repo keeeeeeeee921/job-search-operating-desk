@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { isPublicDemo } from "@/lib/demo";
 import {
@@ -42,6 +42,70 @@ import type {
 import { getEasternDateKey, normalizeText, tokenize } from "@/lib/utils";
 
 let initialized = false;
+const QUERY_CACHE_TTL_MS = Number(
+  process.env.JOB_DESK_QUERY_CACHE_TTL_MS ?? "15000"
+);
+
+type CacheEntry<T> = {
+  value: T;
+  expiresAt: number;
+};
+
+const paginatedResultCache = new Map<
+  string,
+  CacheEntry<PaginatedJobListResult>
+>();
+const totalCountCache = new Map<string, CacheEntry<number>>();
+const recentActiveCache = new Map<string, CacheEntry<JobListItem[]>>();
+
+function readCache<T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string
+): T | null {
+  const entry = cache.get(key);
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+
+  return entry.value;
+}
+
+function writeCache<T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string,
+  value: T
+) {
+  cache.set(key, {
+    value,
+    expiresAt: Date.now() + QUERY_CACHE_TTL_MS
+  });
+}
+
+async function getOrLoadCached<T>(
+  cache: Map<string, CacheEntry<T>>,
+  key: string,
+  load: () => Promise<T>
+) {
+  const cached = readCache(cache, key);
+  if (cached !== null) {
+    return cached;
+  }
+
+  const value = await load();
+  writeCache(cache, key, value);
+  return value;
+}
+
+function clearQueryCaches() {
+  paginatedResultCache.clear();
+  totalCountCache.clear();
+  recentActiveCache.clear();
+}
 
 function hasDatabaseUrl() {
   return Boolean(process.env.DATABASE_URL);
@@ -191,6 +255,31 @@ function buildTokenSearchConditions(tokens: string[]) {
 
 function getDateThreshold(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
+async function getCachedCount(
+  key: string,
+  load: () => Promise<number>
+) {
+  return getOrLoadCached(totalCountCache, key, load);
+}
+
+async function getRowsByIdsInOrder(ids: string[]) {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const rows = await getDb()
+    .select()
+    .from(jobsTable)
+    .where(inArray(jobsTable.id, ids));
+  const order = new Map(ids.map((id, index) => [id, index]));
+
+  return rows.sort(
+    (left, right) =>
+      (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+      (order.get(right.id) ?? Number.MAX_SAFE_INTEGER)
+  );
 }
 
 function computeDisplayedApplyCount(autoApplyCount: number, applyAdjustment: number) {
@@ -381,14 +470,16 @@ export async function getRecentActiveJobs(limit = 4) {
     return getLocalRecentActiveJobs(limit);
   }
 
-  const rows = await getDb()
-    .select(getJobListPreviewSelection())
-    .from(jobsTable)
-    .where(eq(jobsTable.pool, "active"))
-    .orderBy(desc(jobsTable.timestamp))
-    .limit(limit);
+  return getOrLoadCached(recentActiveCache, `recent-active:${limit}`, async () => {
+    const rows = await getDb()
+      .select(getJobListPreviewSelection())
+      .from(jobsTable)
+      .where(eq(jobsTable.pool, "active"))
+      .orderBy(desc(jobsTable.timestamp))
+      .limit(limit);
 
-  return rows.map(mapJobListRow);
+    return rows.map(mapJobListRow);
+  });
 }
 
 export async function getActiveJobById(id: string) {
@@ -427,11 +518,21 @@ export async function getJobsPage(input: {
     });
   }
 
+  const cacheKey = `jobs-page:${input.pool}:${page}:${pageSize}`;
+  const cachedPage = readCache(paginatedResultCache, cacheKey);
+  if (cachedPage) {
+    return cachedPage;
+  }
+
   const whereClause = eq(jobsTable.pool, input.pool);
-  const [{ value: totalCount }] = await getDb()
-    .select({ value: count() })
-    .from(jobsTable)
-    .where(whereClause);
+  const totalCount = await getCachedCount(`jobs-count:${input.pool}`, async () => {
+    const [{ value }] = await getDb()
+      .select({ value: count() })
+      .from(jobsTable)
+      .where(whereClause);
+
+    return value;
+  });
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -444,12 +545,14 @@ export async function getJobsPage(input: {
     .limit(pageSize)
     .offset(offset);
 
-  return buildPaginatedJobListResult(
+  const pageResult = buildPaginatedJobListResult(
     rows.map(mapJobListRow),
     safePage,
     pageSize,
     totalCount
   );
+  writeCache(paginatedResultCache, cacheKey, pageResult);
+  return pageResult;
 }
 
 export async function searchActiveJobsPage(input: {
@@ -471,13 +574,27 @@ export async function searchActiveJobsPage(input: {
     });
   }
 
+  const normalizedQuery = normalizeText(input.query);
+  const cacheKey = `search-page:${normalizedQuery}:${page}:${pageSize}`;
+  const cachedPage = readCache(paginatedResultCache, cacheKey);
+  if (cachedPage) {
+    return cachedPage;
+  }
+
   const whereClause = searchCondition
     ? and(eq(jobsTable.pool, "active"), searchCondition)
     : eq(jobsTable.pool, "active");
-  const [{ value: totalCount }] = await getDb()
-    .select({ value: count() })
-    .from(jobsTable)
-    .where(whereClause);
+  const totalCount = await getCachedCount(
+    `search-count:${normalizedQuery}`,
+    async () => {
+      const [{ value }] = await getDb()
+        .select({ value: count() })
+        .from(jobsTable)
+        .where(whereClause);
+
+      return value;
+    }
+  );
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -490,12 +607,14 @@ export async function searchActiveJobsPage(input: {
     .limit(pageSize)
     .offset(offset);
 
-  return buildPaginatedJobListResult(
+  const pageResult = buildPaginatedJobListResult(
     rows.map(mapJobListRow),
     safePage,
     pageSize,
     totalCount
   );
+  writeCache(paginatedResultCache, cacheKey, pageResult);
+  return pageResult;
 }
 
 export async function getActiveJobCount() {
@@ -505,12 +624,14 @@ export async function getActiveJobCount() {
     return getLocalActiveJobCount();
   }
 
-  const [{ value }] = await getDb()
-    .select({ value: count() })
-    .from(jobsTable)
-    .where(eq(jobsTable.pool, "active"));
+  return getCachedCount("active-job-count", async () => {
+    const [{ value }] = await getDb()
+      .select({ value: count() })
+      .from(jobsTable)
+      .where(eq(jobsTable.pool, "active"));
 
-  return value;
+    return value;
+  });
 }
 
 export async function hasActiveJobs() {
@@ -574,13 +695,17 @@ export async function getPotentialDuplicateCandidates(input: {
     ...(matchConditions.length > 0 ? [or(...matchConditions)] : [])
   );
 
-  const rows = await getDb()
-    .select()
+  const seedRows = await getDb()
+    .select({
+      id: jobsTable.id
+    })
     .from(jobsTable)
     .where(whereClause)
     .orderBy(desc(jobsTable.timestamp))
     .limit(limit);
 
+  const ids = seedRows.map((row) => row.id);
+  const rows = await getRowsByIdsInOrder(ids);
   return rows.map(mapJobRow);
 }
 
@@ -623,13 +748,17 @@ export async function getEmailMatchCandidateRecords(input: {
     ...(tokenConditions.length > 0 ? [or(...tokenConditions)] : [])
   );
 
-  const rows = await getDb()
-    .select()
+  const seedRows = await getDb()
+    .select({
+      id: jobsTable.id
+    })
     .from(jobsTable)
     .where(whereClause)
     .orderBy(desc(jobsTable.timestamp))
     .limit(limit);
 
+  const ids = seedRows.map((row) => row.id);
+  const rows = await getRowsByIdsInOrder(ids);
   return rows.map(mapJobRow);
 }
 
@@ -640,6 +769,7 @@ export async function insertJob(record: JobRecord) {
 
   if (shouldUseLocalFallback()) {
     await insertLocalJob(nextRecord);
+    clearQueryCaches();
     return;
   }
 
@@ -648,6 +778,7 @@ export async function insertJob(record: JobRecord) {
     searchText: buildSearchText(nextRecord),
     timestamp: new Date(nextRecord.timestamp)
   });
+  clearQueryCaches();
 }
 
 export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
@@ -659,6 +790,7 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
 
   if (shouldUseLocalFallback()) {
     await insertLocalJobsWithoutGoalEffects(records);
+    clearQueryCaches();
     return;
   }
 
@@ -670,6 +802,7 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
       timestamp: new Date(record.timestamp)
     }))
   );
+  clearQueryCaches();
 }
 
 export async function updateJobRecord(record: JobRecord) {
@@ -677,6 +810,7 @@ export async function updateJobRecord(record: JobRecord) {
 
   if (shouldUseLocalFallback()) {
     await updateLocalJobRecord(record);
+    clearQueryCaches();
     return;
   }
 
@@ -698,6 +832,7 @@ export async function updateJobRecord(record: JobRecord) {
       extractionStatus: record.extractionStatus
     })
     .where(eq(jobsTable.id, record.id));
+  clearQueryCaches();
 }
 
 export async function updateComments(id: string, comments: string) {
@@ -705,10 +840,12 @@ export async function updateComments(id: string, comments: string) {
 
   if (shouldUseLocalFallback()) {
     await updateLocalComments(id, comments);
+    clearQueryCaches();
     return;
   }
 
   await getDb().update(jobsTable).set({ comments }).where(eq(jobsTable.id, id));
+  clearQueryCaches();
 }
 
 export async function archiveJobRecord(id: string) {
@@ -716,6 +853,7 @@ export async function archiveJobRecord(id: string) {
 
   if (shouldUseLocalFallback()) {
     await archiveLocalJob(id);
+    clearQueryCaches();
     return;
   }
 
@@ -728,6 +866,7 @@ export async function archiveJobRecord(id: string) {
   }
 
   await getDb().update(jobsTable).set({ pool: "rejected" }).where(eq(jobsTable.id, id));
+  clearQueryCaches();
 }
 
 export async function deleteJobRecord(id: string) {
@@ -735,6 +874,7 @@ export async function deleteJobRecord(id: string) {
 
   if (shouldUseLocalFallback()) {
     await deleteLocalJob(id);
+    clearQueryCaches();
     return;
   }
 
@@ -747,6 +887,7 @@ export async function deleteJobRecord(id: string) {
   }
 
   await getDb().delete(jobsTable).where(eq(jobsTable.id, id));
+  clearQueryCaches();
 }
 
 async function getTodayDailyGoalsRow() {
@@ -823,6 +964,7 @@ export async function updateDailyGoalState(input: {
 
   row.applyCount = computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment);
   await persistDailyGoalsRow(row);
+  clearQueryCaches();
 
   return mapGoalsRow(row, autoApplyCount);
 }
@@ -839,6 +981,7 @@ export async function matchEmailAgainstActiveRecords(emailText: string) {
 
 export async function resetDatabaseForTests() {
   initialized = false;
+  clearQueryCaches();
 
   if (shouldUseLocalFallback()) {
     await resetLocalStoreForTests();
@@ -863,6 +1006,7 @@ export async function getAllRecords() {
 
 export async function resetCurrentEnvironmentToSeedState() {
   initialized = false;
+  clearQueryCaches();
 
   if (shouldUseLocalFallback()) {
     await resetLocalStoreToSeedState();
@@ -897,4 +1041,5 @@ export async function resetCurrentEnvironmentToSeedState() {
   });
 
   initialized = true;
+  clearQueryCaches();
 }

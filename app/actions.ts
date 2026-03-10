@@ -14,7 +14,8 @@ import {
   updateDailyGoalState
 } from "@/lib/server/job-actions-helpers";
 import {
-  revalidateAfterActiveRecordRemoved,
+  revalidateAfterActiveRecordArchived,
+  revalidateAfterActiveRecordDeleted,
   revalidateAfterActiveRecordSaved,
   revalidateAfterCommentsUpdated,
   revalidateAfterDailyGoalsUpdated
@@ -141,12 +142,12 @@ export async function updateJobComments(id: string, comments: string) {
 
 export async function archiveJobToRejected(id: string) {
   await archiveJobRecord(id);
-  revalidateAfterActiveRecordRemoved(id);
+  revalidateAfterActiveRecordArchived();
 }
 
 export async function deleteJobPermanently(id: string) {
   await deleteJobRecord(id);
-  revalidateAfterActiveRecordRemoved(id);
+  revalidateAfterActiveRecordDeleted();
 }
 
 export async function updateDailyGoal(input: {

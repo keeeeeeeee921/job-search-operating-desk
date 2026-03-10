@@ -6,19 +6,16 @@ function revalidatePaths(paths: string[]) {
   }
 }
 
-export function revalidateAfterActiveRecordSaved(recordId: string) {
-  revalidatePaths(["/", "/active", "/search", "/update-by-email", `/active/${recordId}`]);
+export function revalidateAfterActiveRecordSaved(_recordId: string) {
+  revalidatePaths(["/", "/active", "/search", "/update-by-email"]);
 }
 
-export function revalidateAfterActiveRecordRemoved(recordId: string) {
-  revalidatePaths([
-    "/",
-    "/active",
-    "/rejected",
-    "/search",
-    "/update-by-email",
-    `/active/${recordId}`
-  ]);
+export function revalidateAfterActiveRecordArchived() {
+  revalidatePaths(["/", "/active", "/rejected", "/search", "/update-by-email"]);
+}
+
+export function revalidateAfterActiveRecordDeleted() {
+  revalidatePaths(["/", "/active", "/search", "/update-by-email"]);
 }
 
 export function revalidateAfterCommentsUpdated(recordId: string) {

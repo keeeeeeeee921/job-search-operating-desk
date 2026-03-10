@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { archiveJobRecord } from "@/lib/db/repository";
-import { revalidateAfterActiveRecordRemoved } from "@/lib/server/revalidation";
+import { revalidateAfterActiveRecordArchived } from "@/lib/server/revalidation";
 
 export async function POST(
   _request: Request,
@@ -11,7 +11,7 @@ export async function POST(
   const { id } = await context.params;
 
   await archiveJobRecord(id);
-  revalidateAfterActiveRecordRemoved(id);
+  revalidateAfterActiveRecordArchived();
 
   return NextResponse.json({ ok: true });
 }
