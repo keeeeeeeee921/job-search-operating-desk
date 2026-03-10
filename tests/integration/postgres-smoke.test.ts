@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { closeDb, getDb } from "@/lib/db/client";
 import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
 import {
@@ -14,6 +14,7 @@ import { getEasternDateKey } from "@/lib/utils";
 
 const postgresEnabled = Boolean(process.env.DATABASE_URL);
 const smokeId = "postgres-smoke-job";
+const triggerSmokeId = "postgres-smoke-trigger-job";
 
 describe.skipIf(!postgresEnabled)("postgres smoke", () => {
   afterAll(async () => {
@@ -22,6 +23,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
     }
 
     await getDb().delete(jobsTable).where(eq(jobsTable.id, smokeId));
+    await getDb().delete(jobsTable).where(eq(jobsTable.id, triggerSmokeId));
     await closeDb();
   });
 
@@ -75,6 +77,61 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
     expect(updatedGoals.goals.follow.target).toBe(5);
 
     await getDb().delete(jobsTable).where(eq(jobsTable.id, smokeId));
+
+    await db.execute(sql`
+      insert into jobs (
+        id,
+        role_title,
+        company,
+        location,
+        link,
+        job_description,
+        search_text,
+        "timestamp",
+        pool,
+        comments,
+        apply_counted_date_key,
+        source_type,
+        source_confidence,
+        extraction_status
+      ) values (
+        ${triggerSmokeId},
+        'Trigger Analyst',
+        'Trigger Test Co',
+        'Remote',
+        '',
+        'Trigger check for search_text autopopulation.',
+        '',
+        now(),
+        'active',
+        '',
+        null,
+        'unknown',
+        'unknown',
+        'needs_review'
+      )
+    `);
+
+    const inserted = (
+      await db.select().from(jobsTable).where(eq(jobsTable.id, triggerSmokeId)).limit(1)
+    )[0];
+
+    expect(inserted.searchText).toBe("trigger test co trigger analyst remote");
+
+    await db
+      .update(jobsTable)
+      .set({
+        company: "Trigger Updated Co",
+        searchText: ""
+      })
+      .where(eq(jobsTable.id, triggerSmokeId));
+
+    const updated = (
+      await db.select().from(jobsTable).where(eq(jobsTable.id, triggerSmokeId)).limit(1)
+    )[0];
+    expect(updated.searchText).toBe("trigger updated co trigger analyst remote");
+
+    await getDb().delete(jobsTable).where(eq(jobsTable.id, triggerSmokeId));
 
     if (initialGoalsRow) {
       await db

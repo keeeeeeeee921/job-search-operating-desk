@@ -29,6 +29,13 @@
       "when": 1773031641046,
       "tag": "0003_large_shiver_man",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1773171000000,
+      "tag": "0004_jobs_search_text_trigger",
+      "breakpoints": true
     }
   ]
 }

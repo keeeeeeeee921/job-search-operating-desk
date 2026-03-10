@@ -11,6 +11,7 @@
     "build:extraction-corpus": "tsx scripts/build-extraction-corpus.ts",
     "repair:records": "tsx scripts/repair-records.ts",
     "repair:connect-goal": "tsx scripts/repair-connect-goal.ts",
+    "repair:search-text": "tsx scripts/repair-search-text.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
