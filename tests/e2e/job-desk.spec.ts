@@ -95,10 +95,14 @@ test("comments persist after blur", async ({ page }) => {
 
 test("update by email archives manually", async ({ page }) => {
   await page.goto("/update-by-email");
-  await page.getByRole("button", { name: "Tesla rejection demo" }).click();
+  const rejectionText = `Hello,\n\nWe appreciate your interest in the Logistics Planning Engineer role with Tesla Shanghai. After reviewing your background, we have chosen to move forward with other candidates.\n\nThank you again for applying.\n\nTesla Recruiting`;
+  const emailInput = page.getByPlaceholder("Paste a rejection email here...");
+  await emailInput.fill(rejectionText);
+  await emailInput.press("Enter");
   await expect(
     page.getByRole("button", { name: "Archive to Rejected" }).first()
   ).toBeVisible();
+  await expect(emailInput).toHaveValue("");
   await page.getByRole("button", { name: "Archive to Rejected" }).first().click();
   await expect(page.getByText("Moved to Rejected").first()).toBeVisible();
   await page.goto("/rejected");

@@ -7,22 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import { useJobDeskStore } from "@/lib/store";
-import type { DemoEmailExample } from "@/lib/seed";
 import type { EmailMatch } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 export function EmailMatchPanel({
-  hasActiveJobs,
-  examples
+  hasActiveJobs
 }: {
   hasActiveJobs: boolean;
-  examples: DemoEmailExample[];
 }) {
   const router = useRouter();
   const pushToast = useJobDeskStore((state) => state.pushToast);
   const [value, setValue] = useState("");
   const [matches, setMatches] = useState<EmailMatch[]>([]);
+  const [isMatching, setIsMatching] = useState(false);
   const emptyState = !hasActiveJobs;
+
+  async function runMatch() {
+    const nextValue = value.trim();
+
+    if (!nextValue || emptyState || isMatching) {
+      return;
+    }
+
+    setIsMatching(true);
+    try {
+      const nextMatches = await matchRejectionEmail(nextValue);
+      setMatches(nextMatches);
+
+      if (nextMatches.length > 0) {
+        setValue("");
+      }
+    } finally {
+      setIsMatching(false);
+    }
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -39,37 +57,24 @@ export function EmailMatchPanel({
         <Textarea
           className="mt-6 min-h-[280px]"
           onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) {
+              return;
+            }
+
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              startTransition(() => {
+                void runMatch();
+              });
+            }
+          }}
           placeholder="Paste a rejection email here..."
           value={value}
         />
-        <div className="mt-4 flex flex-wrap gap-2">
-          {examples.map((item) => (
-            <Button
-              key={item.id}
-              onClick={() => {
-                setValue(item.body);
-                startTransition(async () => {
-                  setMatches(await matchRejectionEmail(item.body));
-                });
-              }}
-              tone="secondary"
-            >
-              {item.label}
-            </Button>
-          ))}
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            disabled={!value.trim() || emptyState}
-            onClick={() =>
-              startTransition(async () => {
-                setMatches(await matchRejectionEmail(value));
-              })
-            }
-          >
-            Find matches
-          </Button>
-        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Press Enter to find matches. Use Shift+Enter for a new line.
+        </p>
       </Surface>
       <Surface className="p-6">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -84,7 +89,7 @@ export function EmailMatchPanel({
               <p className="mt-2 text-sm text-muted-foreground">
                 {emptyState
                   ? "Save a few Active records first, then come back to archive rejections."
-                  : "Paste an email and run matching to see likely candidates."}
+                  : "Paste a rejection email and press Enter to see likely candidates."}
               </p>
             </div>
           ) : (
