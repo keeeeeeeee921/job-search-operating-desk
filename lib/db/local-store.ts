@@ -6,6 +6,7 @@ import {
   normalizePageNumber,
   toJobListItem
 } from "@/lib/job-list";
+import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { getSeedStateForEnvironment } from "@/lib/seed";
 import type {
   DailyGoalsState,
@@ -70,16 +71,15 @@ function goalsFromRow(row: DailyGoalsRow, autoApplyCount: number): DailyGoalsSta
 }
 
 function goalSeedForToday(): DailyGoalsRow {
-  const seedState = getSeedStateForEnvironment();
   return {
     dateKey: getEasternDateKey(),
-    applyCount: seedState.dailyGoals.goals.apply.count,
-    applyAdjustment: seedState.dailyGoals.goals.apply.count,
-    applyTarget: seedState.dailyGoals.goals.apply.target,
-    connectCount: seedState.dailyGoals.goals.connect.count,
-    connectTarget: seedState.dailyGoals.goals.connect.target,
-    followCount: seedState.dailyGoals.goals.follow.count,
-    followTarget: seedState.dailyGoals.goals.follow.target
+    applyCount: DAILY_GOALS_DEFAULTS.apply.count,
+    applyAdjustment: DAILY_GOALS_DEFAULTS.apply.count,
+    applyTarget: DAILY_GOALS_DEFAULTS.apply.target,
+    connectCount: DAILY_GOALS_DEFAULTS.connect.count,
+    connectTarget: DAILY_GOALS_DEFAULTS.connect.target,
+    followCount: DAILY_GOALS_DEFAULTS.follow.count,
+    followTarget: DAILY_GOALS_DEFAULTS.follow.target
   };
 }
 
@@ -395,6 +395,31 @@ export async function updateLocalDailyGoalState(input: {
     }
 
     row.applyCount = computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment);
+    return goalsFromRow(row, autoApplyCount);
+  });
+}
+
+export async function repairLocalTodayConnectGoalBaseline(input?: {
+  count?: number;
+  target?: number;
+}) {
+  const today = getEasternDateKey();
+  const countValue = Math.max(0, Math.trunc(input?.count ?? 0));
+  const targetValue = Math.max(1, Math.trunc(input?.target ?? 10));
+
+  return mutateLocalStore(async (store) => {
+    let row = store.dailyGoals.find((entry) => entry.dateKey === today);
+    if (!row) {
+      row = goalSeedForToday();
+      store.dailyGoals.push(row);
+    }
+
+    const autoApplyCount = countAutoAppliedActiveRecordsForDate(store, today);
+
+    row.connectCount = countValue;
+    row.connectTarget = targetValue;
+    row.applyCount = computeDisplayedApplyCount(autoApplyCount, row.applyAdjustment);
+
     return goalsFromRow(row, autoApplyCount);
   });
 }

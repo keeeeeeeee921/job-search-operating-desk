@@ -1,4 +1,5 @@
 import { isPublicDemo } from "@/lib/demo";
+import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import type { DailyGoalsState, JobRecord } from "@/lib/types";
 import { getEasternDateKey } from "@/lib/utils";
 
@@ -186,9 +187,21 @@ const defaultSeedStateBase: SeedState = {
   dailyGoals: {
     dateKey: getEasternDateKey(defaultSeedAnchor),
     goals: {
-      apply: { label: "Apply", count: 0, target: 50 },
-      connect: { label: "Connect", count: 1, target: 3 },
-      follow: { label: "Follow", count: 0, target: 2 }
+      apply: {
+        label: "Apply",
+        count: DAILY_GOALS_DEFAULTS.apply.count,
+        target: DAILY_GOALS_DEFAULTS.apply.target
+      },
+      connect: {
+        label: "Connect",
+        count: DAILY_GOALS_DEFAULTS.connect.count,
+        target: DAILY_GOALS_DEFAULTS.connect.target
+      },
+      follow: {
+        label: "Follow",
+        count: DAILY_GOALS_DEFAULTS.follow.count,
+        target: DAILY_GOALS_DEFAULTS.follow.target
+      }
     }
   },
   rejectionEmails: [

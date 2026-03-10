@@ -13,6 +13,7 @@ import {
   hasActiveJobs,
   insertJobsWithoutGoalEffects,
   insertJob,
+  repairTodayConnectGoalBaseline,
   resetCurrentEnvironmentToSeedState,
   resetDatabaseForTests,
   searchActiveJobsPage,
@@ -168,6 +169,33 @@ describe("repository", () => {
 
     expect(incremented.goals.apply.count).toBe(initial.goals.apply.count + 1);
     expect(targeted.goals.follow.target).toBe(5);
+  });
+
+  it("starts connect with a 0/10 daily baseline", async () => {
+    const initial = await getDailyGoalsState();
+
+    expect(initial.goals.connect.count).toBe(0);
+    expect(initial.goals.connect.target).toBe(10);
+  });
+
+  it("can repair today's connect goal back to 0/10", async () => {
+    await updateDailyGoalState({
+      goal: "connect",
+      kind: "increment"
+    });
+    await updateDailyGoalState({
+      goal: "connect",
+      kind: "target",
+      value: 12
+    });
+
+    const repaired = await repairTodayConnectGoalBaseline({
+      count: 0,
+      target: 10
+    });
+
+    expect(repaired.goals.connect.count).toBe(0);
+    expect(repaired.goals.connect.target).toBe(10);
   });
 
   it("increments apply automatically when a new Active record is inserted", async () => {
