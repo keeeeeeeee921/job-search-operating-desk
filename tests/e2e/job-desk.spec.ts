@@ -67,11 +67,16 @@ test("shows duplicate modal and respects cancel or continue", async ({ page, bas
 });
 
 test("search scans only active records", async ({ page }) => {
-  await page.goto("/search");
-  await page.getByPlaceholder("Search Active by company, role title, or both").fill("Canva");
+  await page.goto("/active");
+  await page.getByPlaceholder("Search Active records by company or role").fill("Canva");
   await page.getByRole("button", { name: "Search" }).click();
-  await expect(page).toHaveURL(/\/search\?q=Canva/);
+  await expect(page).toHaveURL(/\/active\?q=Canva/);
   await expect(page.getByText("No matching Active records")).toBeVisible();
+});
+
+test("legacy /search links redirect to /active with query params", async ({ page }) => {
+  await page.goto("/search?q=Canva&page=2");
+  await expect(page).toHaveURL(/\/active\?q=Canva&page=2/);
 });
 
 test("comments persist after blur", async ({ page }) => {

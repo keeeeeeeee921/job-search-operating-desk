@@ -34,6 +34,7 @@ const metadataLabels = new Set([
   "employment type",
   "worker sub-type",
   "worker sub type",
+  "workplace type",
   "remote",
   "location",
   "req id"
@@ -71,11 +72,35 @@ function cleanLine(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
 
+type LocationCandidateSource = "label" | "summary" | "postingMeta" | "top";
+
+type LocationCandidateSeed = {
+  value: string;
+  source: LocationCandidateSource;
+  raw: string;
+  index: number;
+};
+
 function normalizeLocationCandidate(value: string): string {
-  const cleaned = cleanLine(value.replace(/^location:\s*/i, ""));
+  const cleaned = cleanLine(
+    value.replace(/^(location|remote|workplace type)\s*:\s*/i, "")
+  );
 
   if (!cleaned) {
     return "";
+  }
+
+  if (/^(yes|no)$/i.test(cleaned)) {
+    return "";
+  }
+
+  const addressWithZip = cleaned.match(
+    /,\s*([A-Za-z.'\- ]+),\s*([A-Z]{2})\s*\d{5}(?:-\d{4})?,\s*(United States of America|United States|USA|US)\b/i
+  );
+  if (addressWithZip) {
+    const city = cleanLine(addressWithZip[1] ?? "");
+    const state = cleanLine(addressWithZip[2] ?? "");
+    return `${city}, ${state}, United States`;
   }
 
   const remotePrefixed = cleaned.match(/^remote:\s*(.+)$/i);
@@ -99,7 +124,11 @@ function normalizeLocationCandidate(value: string): string {
     return "United States";
   }
 
-  return cleaned.replace(/, United States$/i, ", US");
+  return cleaned
+    .replace(/\bUnited States of America\b/gi, "United States")
+    .replace(/\bUSA\b/gi, "United States")
+    .replace(/,\s*\d{5}(?:-\d{4})?(?=,\s*(United States|US)\b)/i, "")
+    .replace(/, United States$/i, ", US");
 }
 
 function looksLikeLocationShape(value: string) {
@@ -117,7 +146,7 @@ function looksLikeLocationShape(value: string) {
   }
 
   if (
-    /(remote|on-site|hybrid|united states|usa|canada|uk|united kingdom|australia|germany|france|japan|india)/i.test(
+    /\b(remote|on-site|hybrid|united states|usa|us|canada|uk|united kingdom|australia|germany|france|japan|india)\b/i.test(
       normalized
     )
   ) {
@@ -161,6 +190,265 @@ function extractLocationFromPostingMetaLine(line: string) {
   }
 
   return firstSegment;
+}
+
+const locationSourceWeight: Record<LocationCandidateSource, number> = {
+  label: 52,
+  summary: 40,
+  postingMeta: 34,
+  top: 18
+};
+
+function scoreLocationCandidate(seed: LocationCandidateSeed) {
+  const value = cleanLine(seed.value);
+  const raw = cleanLine(seed.raw);
+  const lowerRaw = raw.toLowerCase();
+  let score = locationSourceWeight[seed.source];
+
+  if (/^[A-Za-z.'\- ]+,\s*[A-Z]{2}(?:\b|,)/.test(value)) {
+    score += 18;
+  }
+
+  if (
+    /\b(united states|us|canada|uk|united kingdom|australia|germany|france|japan|india)\b/i.test(
+      value
+    )
+  ) {
+    score += 8;
+  }
+
+  if (/\(remote\)$/i.test(value) || /^remote$/i.test(value)) {
+    score += 20;
+  } else if (/\bremote\b/i.test(raw)) {
+    score += 6;
+  }
+
+  if (/^\d+/.test(raw)) {
+    score -= 20;
+  }
+
+  if (
+    /(applicants|promoted|resume match|save|easy apply|profile photo|logo|response insights)/i.test(
+      lowerRaw
+    )
+  ) {
+    if (seed.source === "top") {
+      score -= 40;
+    } else if (seed.source === "postingMeta") {
+      score -= 6;
+    } else {
+      score -= 18;
+    }
+  }
+
+  if (!looksLikeLocationShape(value)) {
+    if (seed.source === "top") {
+      score -= 50;
+    } else if (seed.source === "summary") {
+      score -= 12;
+    } else if (seed.source === "postingMeta") {
+      score -= 8;
+    } else {
+      score -= 6;
+    }
+  }
+
+  if (value.length > 70) {
+    score -= seed.source === "top" ? 10 : 2;
+  }
+
+  return score;
+}
+
+function rankLocationCandidates(seeds: LocationCandidateSeed[]) {
+  const bestByValue = new Map<
+    string,
+    { score: number; firstIndex: number }
+  >();
+
+  for (const seed of seeds) {
+    const value = cleanLine(seed.value);
+    if (!value) {
+      continue;
+    }
+
+    const score = scoreLocationCandidate(seed);
+    const current = bestByValue.get(value);
+    if (
+      !current ||
+      score > current.score ||
+      (score === current.score && seed.index < current.firstIndex)
+    ) {
+      bestByValue.set(value, {
+        score,
+        firstIndex: seed.index
+      });
+    }
+  }
+
+  const accepted = Array.from(bestByValue.entries())
+    .filter(([, ranked]) => ranked.score >= 35)
+    .sort((left, right) => {
+      if (right[1].score !== left[1].score) {
+        return right[1].score - left[1].score;
+      }
+
+      return left[1].firstIndex - right[1].firstIndex;
+    })
+    .map(([value]) => value);
+
+  return accepted.slice(0, 3);
+}
+
+function collectLabelLocationSeeds(lines: string[]): LocationCandidateSeed[] {
+  const seeds: LocationCandidateSeed[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const lower = line.toLowerCase();
+    if (!lower.startsWith("location:")) {
+      continue;
+    }
+
+    const inlineValue = normalizeLocationCandidate(line.slice("Location:".length));
+    if (inlineValue) {
+      seeds.push({
+        value: inlineValue,
+        source: "label",
+        raw: line,
+        index
+      });
+    }
+
+    for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
+      const next = lines[nextIndex];
+      const nextLower = next.toLowerCase();
+      const labeledMatch = next.match(/^([^:]+):\s*(.*)$/);
+
+      if (isSectionHeader(next)) {
+        break;
+      }
+
+      if (labeledMatch) {
+        const label = cleanLine(labeledMatch[1] ?? "").toLowerCase();
+        if (!["remote", "location", "workplace type"].includes(label)) {
+          break;
+        }
+
+        const normalized = normalizeLocationCandidate(next);
+        if (normalized) {
+          seeds.push({
+            value: normalized,
+            source: "label",
+            raw: next,
+            index: nextIndex
+          });
+        }
+        continue;
+      }
+
+      if (nextLower === "yes" || nextLower === "no" || /^req id\b/i.test(next)) {
+        break;
+      }
+
+      const normalized = normalizeLocationCandidate(next);
+      if (normalized) {
+        seeds.push({
+          value: normalized,
+          source: "label",
+          raw: next,
+          index: nextIndex
+        });
+      }
+    }
+  }
+
+  lines.forEach((line, index) => {
+    if (!/^(remote|workplace type)\s*:/i.test(line)) {
+      return;
+    }
+
+    const normalized = normalizeLocationCandidate(line);
+    if (!normalized) {
+      return;
+    }
+
+    seeds.push({
+      value: normalized,
+      source: "label",
+      raw: line,
+      index
+    });
+  });
+
+  return seeds;
+}
+
+function collectSummaryLocationSeeds(lines: string[]) {
+  const summary = extractSummaryLine(lines);
+  if (!summary) {
+    return [];
+  }
+
+  const summaryIndex = lines.findIndex((line) => line === summary);
+  const summaryCandidates = parseCompanyAndLocationFromSummary(summary).locationCandidates;
+
+  return summaryCandidates.map((candidate) => ({
+    value: candidate,
+    source: "summary" as const,
+    raw: summary,
+    index: summaryIndex >= 0 ? summaryIndex : 0
+  }));
+}
+
+function collectPostingMetaLocationSeeds(lines: string[]) {
+  const seeds: LocationCandidateSeed[] = [];
+
+  lines.forEach((line, index) => {
+    const candidate = extractLocationFromPostingMetaLine(line);
+    if (!candidate) {
+      return;
+    }
+
+    seeds.push({
+      value: candidate,
+      source: "postingMeta",
+      raw: line,
+      index
+    });
+  });
+
+  return seeds;
+}
+
+function collectTopLocationSeeds(lines: string[]) {
+  const seeds: LocationCandidateSeed[] = [];
+  const maxIndex = Math.min(lines.length, 18);
+
+  for (let index = 0; index < maxIndex; index += 1) {
+    const line = lines[index];
+    if (
+      /^(location|remote|workplace type|company|employment type|worker sub-type|worker sub type|category|req id)\s*:/i.test(
+        line
+      )
+    ) {
+      continue;
+    }
+
+    const normalized = normalizeLocationCandidate(line);
+    if (!normalized || !looksLikeLocationShape(normalized)) {
+      continue;
+    }
+
+    seeds.push({
+      value: normalized,
+      source: "top",
+      raw: line,
+      index
+    });
+  }
+
+  return seeds;
 }
 
 function isNoiseLine(line: string) {
@@ -427,76 +715,14 @@ function extractCompanyName(lines: string[], roleTitle: string) {
 }
 
 function extractLocationCandidates(lines: string[]) {
-  const locationIndex = lines.findIndex((line) =>
-    line.toLowerCase().startsWith("location:")
-  );
+  const seeds = [
+    ...collectLabelLocationSeeds(lines),
+    ...collectSummaryLocationSeeds(lines),
+    ...collectPostingMetaLocationSeeds(lines),
+    ...collectTopLocationSeeds(lines)
+  ];
 
-  if (locationIndex >= 0) {
-    const line = lines[locationIndex];
-    const inlineValue = normalizeLocationCandidate(line.slice("Location:".length));
-    const candidates = inlineValue ? [inlineValue] : [];
-
-    for (let nextIndex = locationIndex + 1; nextIndex < lines.length; nextIndex += 1) {
-      const next = lines[nextIndex];
-      const nextLower = next.toLowerCase();
-      const labeledMatch = next.match(/^([^:]+):\s*(.*)$/);
-
-      if (isSectionHeader(next)) {
-        break;
-      }
-
-      if (labeledMatch) {
-        const label = labeledMatch[1].toLowerCase();
-        if (label === "remote") {
-          candidates.push(next);
-          continue;
-        }
-        break;
-      }
-
-      if (
-        nextLower === "yes" ||
-        nextLower === "no" ||
-        /^req id\b/i.test(next)
-      ) {
-        break;
-      }
-
-      candidates.push(next);
-    }
-
-    const normalizedCandidates = uniqueValues(
-      candidates
-        .map((candidate) => normalizeLocationCandidate(candidate))
-        .filter(Boolean)
-    );
-
-    if (normalizedCandidates.length > 0) {
-      return normalizedCandidates;
-    }
-  }
-
-  const summary = extractSummaryLine(lines);
-  const summaryCandidates = parseCompanyAndLocationFromSummary(summary).locationCandidates;
-  if (summaryCandidates.length > 0) {
-    return summaryCandidates;
-  }
-
-  const postingMetaCandidates = uniqueValues(
-    lines
-      .map((line) => extractLocationFromPostingMetaLine(line))
-      .filter(Boolean)
-  );
-  if (postingMetaCandidates.length > 0) {
-    return postingMetaCandidates;
-  }
-
-  return uniqueValues(
-    lines
-      .map((line) => normalizeLocationCandidate(line))
-      .filter((candidate) => looksLikeLocationShape(candidate))
-      .slice(0, 2)
-  );
+  return rankLocationCandidates(seeds);
 }
 
 function extractDescription(lines: string[]) {

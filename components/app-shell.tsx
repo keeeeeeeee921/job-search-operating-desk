@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
 import { getDemoBannerMessage, isPublicDemo } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/active", label: "Active" },
   { href: "/rejected", label: "Rejected" },
-  { href: "/search", label: "Search" },
   { href: "/update-by-email", label: "Update by Email" }
 ];
 
@@ -62,10 +60,6 @@ export function AppShell({
               );
             })}
           </nav>
-          <div className="hidden items-center gap-2 rounded-full border border-border bg-white/80 px-3 py-2 text-sm text-muted-foreground shadow-soft lg:flex">
-            <Search className="size-4" />
-            Search only scans Active records
-          </div>
         </div>
       </header>
       <main className="mx-auto max-w-[1400px] px-6 py-8">{children}</main>

@@ -153,4 +153,35 @@ Run monthly data product refreshes and support SQL workflows.
     expect(result.fields.location).toBe("Cincinnati, OH");
     expect(result.issues.some((issue) => issue.field === "location")).toBe(false);
   });
+
+  it("prefers labeled remote location over street-address lines", () => {
+    const result = extractJobFromText(`
+Data Science Intern (Summer 2026)
+Company: Federal Express Corporation
+Location:
+Remote
+3680 Hacks Cross Road, Memphis, TN 38125-8800, United States
+Description
+As a FedEx Intern, you will be working on projects gaining valuable, real-world experience.
+    `);
+
+    expect(result.fields.location).toBe("Remote");
+    expect(result.candidateValues.location?.[0]).toBe("Remote");
+  });
+
+  it("keeps location missing when only noisy Easy Apply lines are present", () => {
+    const result = extractJobFromText(`
+Entry-Level Implementation Analyst | Fintech | Remote US
+Emma of Torre.ai
+Promoted by hirer · No response insights available yet
+Over 100 applicants
+Easy Apply
+Save
+About the job
+You'll drive financial automation and digital transformation for global clients.
+    `);
+
+    expect(result.fields.location).toBe("");
+    expect(result.issues.some((issue) => issue.field === "location")).toBe(true);
+  });
 });
