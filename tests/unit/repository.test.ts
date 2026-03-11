@@ -124,6 +124,54 @@ describe("repository", () => {
     expect(candidates.every((record) => record.pool === "active")).toBe(true);
   });
 
+  it("keeps older exact company/role email targets in candidates despite recent noisy matches", async () => {
+    const now = Date.now();
+    const noisyRecords: JobRecord[] = Array.from({ length: 190 }, (_, index) => ({
+      id: `email-noise-${index}`,
+      roleTitle: "Data Analyst",
+      company: `Noise Company ${index}`,
+      location: "United States",
+      link: "",
+      jobDescription:
+        "Thank you for your interest in this Data Analyst position. We reviewed your application and will pursue other applicants.",
+      timestamp: new Date(now - index * 60_000).toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "confirmed"
+    }));
+
+    const target: JobRecord = {
+      id: "email-target-ttx",
+      roleTitle: "Data Analyst III",
+      company: "TTX Company",
+      location: "Charlotte, NC",
+      link: "",
+      jobDescription:
+        "Billing transformation analyst role for enterprise data and reporting.",
+      timestamp: new Date(now - 300 * 24 * 60 * 60 * 1000).toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "confirmed"
+    };
+
+    await insertJobsWithoutGoalEffects([...noisyRecords, target]);
+
+    const candidates = await getEmailMatchCandidateRecords({
+      emailText:
+        "Thank you for your interest in the Data Analyst III position at TTX Company. We decided to pursue other applicants.",
+      limit: 180,
+      sinceDays: 365
+    });
+
+    expect(candidates.some((record) => record.id === target.id)).toBe(true);
+  });
+
   it("updates comments and archives records", async () => {
     const active = await getJobsByPool("active");
     const target = active[0];

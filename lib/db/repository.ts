@@ -41,7 +41,7 @@ import type {
   JobRecord,
   PaginatedJobListResult
 } from "@/lib/types";
-import { getEasternDateKey, normalizeText, tokenize } from "@/lib/utils";
+import { getEasternDateKey, normalizeText, tokenize, uniqueValues } from "@/lib/utils";
 
 let initialized = false;
 const QUERY_CACHE_TTL_MS = Number(
@@ -243,13 +243,101 @@ const tokenStopwords = new Set([
   "remote"
 ]);
 
+const emailHintStopwords = new Set([
+  ...tokenStopwords,
+  "dear",
+  "hello",
+  "thank",
+  "thanks",
+  "application",
+  "applicants",
+  "candidate",
+  "candidates",
+  "qualifications",
+  "reviewed",
+  "submission",
+  "profile",
+  "resume",
+  "recruiting",
+  "team",
+  "regards",
+  "sincerely",
+  "opportunity",
+  "opportunities",
+  "employment"
+]);
+
+function escapeSqlLikeToken(value: string) {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+function sanitizeEmailPhrase(value: string) {
+  const normalized = normalizeText(value)
+    .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "")
+    .replace(/\b(position|role|job)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized || normalized.length < 3 || normalized.length > 80) {
+    return "";
+  }
+
+  if (emailHintStopwords.has(normalized)) {
+    return "";
+  }
+
+  return normalized;
+}
+
+function extractEmailMatchingHints(emailText: string) {
+  const companyPhrases: string[] = [];
+  const rolePhrases: string[] = [];
+
+  const roleAtCompanyPattern =
+    /\binterest in (?:the )?(.{3,120}?) position at ([^\n.,;:]+)/gi;
+  for (const match of emailText.matchAll(roleAtCompanyPattern)) {
+    const role = sanitizeEmailPhrase(match[1] ?? "");
+    const company = sanitizeEmailPhrase(match[2] ?? "");
+
+    if (role) {
+      rolePhrases.push(role);
+    }
+
+    if (company) {
+      companyPhrases.push(company);
+    }
+  }
+
+  const companyAtPattern = /\b(?:position|role|job)\s+at\s+([^\n.,;:]+)/gi;
+  for (const match of emailText.matchAll(companyAtPattern)) {
+    const company = sanitizeEmailPhrase(match[1] ?? "");
+    if (company) {
+      companyPhrases.push(company);
+    }
+  }
+
+  const recruitingSignaturePattern =
+    /\b([A-Za-z0-9&.'\- ]{2,80}?)\s+recruiting(?:\s+team)?\b/gi;
+  for (const match of emailText.matchAll(recruitingSignaturePattern)) {
+    const company = sanitizeEmailPhrase(match[1] ?? "");
+    if (company) {
+      companyPhrases.push(company);
+    }
+  }
+
+  return {
+    companyPhrases: uniqueValues(companyPhrases).slice(0, 5),
+    rolePhrases: uniqueValues(rolePhrases).slice(0, 8)
+  };
+}
+
 function buildTokenSearchConditions(tokens: string[]) {
   return tokens
     .map((token) => token.trim())
     .filter((token) => token.length >= 3 && !tokenStopwords.has(token))
     .slice(0, 10)
     .map((token) => {
-      const escaped = token.replace(/[\\%_]/g, "\\$&");
+      const escaped = escapeSqlLikeToken(token);
       return sql<boolean>`${jobsTable.searchText} like ${`%${escaped}%`} escape '\\'`;
     });
 }
@@ -721,14 +809,30 @@ export async function getEmailMatchCandidateRecords(input: {
   const sinceDays = input.sinceDays ?? 365;
   const thresholdDate = getDateThreshold(sinceDays);
   const tokenConditions = buildTokenSearchConditions(tokenize(input.emailText));
+  const hints = extractEmailMatchingHints(input.emailText);
 
   if (shouldUseLocalFallback()) {
-    const active = await getLocalJobsByPool("active");
+    const active = (await getLocalJobsByPool("active")).filter(
+      (record) => new Date(record.timestamp).getTime() >= thresholdDate.getTime()
+    );
     const tokens = tokenize(input.emailText).filter(
       (token) => token.length >= 3 && !tokenStopwords.has(token)
     );
+    const priority = active.filter((record) => {
+      const companyText = normalizeText(record.company);
+      const roleText = normalizeText(record.roleTitle);
 
-    const filtered =
+      const byCompanyHint = hints.companyPhrases.some(
+        (phrase) => companyText.includes(phrase)
+      );
+      const byRoleHint = hints.rolePhrases.some((phrase) =>
+        roleText.includes(phrase)
+      );
+
+      return byCompanyHint || byRoleHint;
+    });
+
+    const broad =
       tokens.length === 0
         ? active
         : active.filter((record) => {
@@ -738,27 +842,63 @@ export async function getEmailMatchCandidateRecords(input: {
             return tokens.some((token) => haystack.includes(token));
           });
 
-    return filtered
-      .filter((record) => new Date(record.timestamp).getTime() >= thresholdDate.getTime())
+    return [...priority, ...broad]
+      .filter(
+        (record, index, source) =>
+          source.findIndex((entry) => entry.id === record.id) === index
+      )
       .slice(0, limit);
   }
 
-  const whereClause = and(
+  const priorityConditions = [
+    ...hints.companyPhrases.map((phrase) => {
+      const escaped = escapeSqlLikeToken(phrase);
+      return sql<boolean>`lower(${jobsTable.company}) like ${`%${escaped}%`} escape '\\'`;
+    }),
+    ...hints.rolePhrases.map((phrase) => {
+      const escaped = escapeSqlLikeToken(phrase);
+      return sql<boolean>`lower(${jobsTable.roleTitle}) like ${`%${escaped}%`} escape '\\'`;
+    })
+  ];
+
+  const priorityIds =
+    priorityConditions.length > 0
+      ? (
+          await getDb()
+            .select({
+              id: jobsTable.id
+            })
+            .from(jobsTable)
+            .where(
+              and(
+                eq(jobsTable.pool, "active"),
+                gte(jobsTable.timestamp, thresholdDate),
+                or(...priorityConditions)
+              )
+            )
+            .orderBy(desc(jobsTable.timestamp))
+            .limit(Math.min(limit, 80))
+        ).map((row) => row.id)
+      : [];
+
+  const broadWhereClause = and(
     eq(jobsTable.pool, "active"),
     gte(jobsTable.timestamp, thresholdDate),
     ...(tokenConditions.length > 0 ? [or(...tokenConditions)] : [])
   );
 
-  const seedRows = await getDb()
-    .select({
-      id: jobsTable.id
-    })
-    .from(jobsTable)
-    .where(whereClause)
-    .orderBy(desc(jobsTable.timestamp))
-    .limit(limit);
+  const broadIds = (
+    await getDb()
+      .select({
+        id: jobsTable.id
+      })
+      .from(jobsTable)
+      .where(broadWhereClause)
+      .orderBy(desc(jobsTable.timestamp))
+      .limit(Math.min(Math.max(limit * 3, 360), 720))
+  ).map((row) => row.id);
 
-  const ids = seedRows.map((row) => row.id);
+  const ids = uniqueValues([...priorityIds, ...broadIds]).slice(0, limit);
   const rows = await getRowsByIdsInOrder(ids);
   return rows.map(mapJobRow);
 }
