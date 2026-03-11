@@ -22,6 +22,23 @@ type ExtractionCandidates = {
   notes?: string[];
 };
 
+type DayforcePostingLocation = {
+  cityName?: string;
+  stateCode?: string;
+  isoCountryCode?: string;
+  formattedAddress?: string;
+};
+
+type DayforceJobData = {
+  jobPostingId?: number;
+  jobTitle?: string;
+  hasVirtualLocation?: boolean;
+  postingLocations?: DayforcePostingLocation[];
+  jobPostingContent?: {
+    jobDescription?: string;
+  };
+};
+
 const demoRateLimitState: {
   windowStart: number;
   count: number;
@@ -309,7 +326,7 @@ function isUsefulTitleCandidate(value: string) {
     return false;
   }
 
-  return !/^(join the team\.?|job\.?|careers?\.?|open roles?\.?)$/i.test(value);
+  return !/^(join the team\.?|job\.?|job details\.?|careers?\.?|open roles?\.?)$/i.test(value);
 }
 
 function cleanCompany(value: string) {
@@ -662,6 +679,155 @@ function parseUkgLocations(locations: unknown) {
   });
 }
 
+function mapCountryCodeToName(code: string | undefined) {
+  if (!code) {
+    return "";
+  }
+
+  const normalized = code.trim().toUpperCase();
+  if (normalized === "US" || normalized === "USA") {
+    return "United States";
+  }
+
+  if (normalized === "CA" || normalized === "CAN") {
+    return "Canada";
+  }
+
+  return normalized;
+}
+
+function parseDayforceNextDataPayload(scriptText: string) {
+  if (!scriptText.includes('"jobData"') && !scriptText.includes('"dehydratedState"')) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(scriptText) as {
+      props?: {
+        pageProps?: {
+          jobData?: DayforceJobData;
+          dehydratedState?: {
+            queries?: Array<{
+              queryKey?: unknown;
+              state?: {
+                data?: Record<string, unknown>;
+              };
+            }>;
+          };
+        };
+      };
+    };
+
+    const pageProps = parsed.props?.pageProps;
+    if (!pageProps) {
+      return null;
+    }
+
+    const queries = pageProps.dehydratedState?.queries ?? [];
+    const jobQueryData = queries
+      .map((entry) => entry.state?.data)
+      .find((value) => typeof value?.jobTitle === "string");
+
+    const siteInfoData = queries
+      .map((entry) => entry.state?.data)
+      .find((value) => typeof value?.candidateCorrespondenceClientName === "string");
+
+    const jobData = pageProps.jobData ?? (jobQueryData as DayforceJobData | undefined);
+
+    if (
+      !jobData ||
+      (!jobData.jobPostingId &&
+        !jobData.jobTitle &&
+        !jobData.jobPostingContent?.jobDescription)
+    ) {
+      return null;
+    }
+
+    return {
+      jobData,
+      siteInfoData
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseDayforceLocations(
+  locations: DayforcePostingLocation[] | undefined,
+  hasVirtualLocation: boolean | undefined
+) {
+  const entries = Array.isArray(locations) ? locations : [];
+  const formatted = uniqueValues(
+    entries
+      .map((entry) => {
+        const city = normalizeWhitespace(entry.cityName ?? "");
+        const state = normalizeWhitespace(entry.stateCode ?? "");
+        const country = mapCountryCodeToName(entry.isoCountryCode);
+
+        if (city && state && country) {
+          return `${city}, ${state}, ${country}`;
+        }
+
+        if (city && state) {
+          return `${city}, ${state}`;
+        }
+
+        return cleanLocation(entry.formattedAddress ?? "");
+      })
+      .map((value) => cleanLocation(value))
+      .filter(Boolean)
+      .filter(isUsefulLocationCandidate)
+  );
+
+  const countries = uniqueValues(
+    entries
+      .map((entry) => mapCountryCodeToName(entry.isoCountryCode))
+      .filter(Boolean)
+  );
+  const primaryCountry = countries[0] ?? "";
+
+  if (hasVirtualLocation && primaryCountry) {
+    return uniqueValues([
+      `${primaryCountry} (Remote)`,
+      ...formatted.slice(0, 2)
+    ]);
+  }
+
+  if (formatted.length <= 1) {
+    return formatted;
+  }
+
+  const multiLocationLabel = primaryCountry
+    ? `${primaryCountry} (Multiple locations)`
+    : "Multiple locations";
+
+  return uniqueValues([multiLocationLabel, ...formatted.slice(0, 2)]);
+}
+
+function parseDayforceCompany(siteInfoData: Record<string, unknown> | undefined) {
+  if (!siteInfoData) {
+    return "";
+  }
+
+  const direct = siteInfoData.candidateCorrespondenceClientName;
+  if (typeof direct === "string") {
+    return cleanCompany(direct);
+  }
+
+  const largeLogo = siteInfoData.largeLogo;
+  if (largeLogo && typeof largeLogo === "object") {
+    const logo = largeLogo as Record<string, unknown>;
+    if (typeof logo.description === "string") {
+      return cleanCompany(logo.description);
+    }
+    if (typeof logo.imageName === "string") {
+      return cleanCompany(logo.imageName);
+    }
+  }
+
+  return "";
+}
+
 function collectScriptPayloadCandidates(
   $: ReturnType<typeof load>,
   normalizedUrl: string
@@ -672,6 +838,34 @@ function collectScriptPayloadCandidates(
   const location: string[] = [];
   const jobDescription: string[] = [];
   const notes: string[] = [];
+
+  const nextDataText = $('script#__NEXT_DATA__[type="application/json"]').first().text();
+  if (nextDataText) {
+    const dayforcePayload = parseDayforceNextDataPayload(nextDataText);
+    if (dayforcePayload) {
+      if (typeof dayforcePayload.jobData.jobTitle === "string") {
+        roleTitle.push(cleanTitle(dayforcePayload.jobData.jobTitle));
+      }
+
+      location.push(
+        ...parseDayforceLocations(
+          dayforcePayload.jobData.postingLocations,
+          dayforcePayload.jobData.hasVirtualLocation
+        )
+      );
+
+      if (typeof dayforcePayload.jobData.jobPostingContent?.jobDescription === "string") {
+        jobDescription.push(stripHtml(dayforcePayload.jobData.jobPostingContent.jobDescription));
+      }
+
+      const parsedCompany = parseDayforceCompany(dayforcePayload.siteInfoData);
+      if (parsedCompany) {
+        company.push(parsedCompany);
+      }
+
+      notes.push("Dayforce job payload was parsed from __NEXT_DATA__.");
+    }
+  }
 
   $('script:not([type="application/ld+json"])').each((_, element) => {
     const scriptText = $(element).text();

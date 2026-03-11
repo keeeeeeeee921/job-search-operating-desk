@@ -89,6 +89,22 @@ describe("server extraction service", () => {
     expect(result.extractionStatus).toBe("confirmed");
   });
 
+  it("parses Dayforce __NEXT_DATA__ payloads for role, company, location, and JD", () => {
+    const result = extractCandidatesFromHtml(
+      readFixture("dayforce-next-data.html"),
+      "https://jobs.dayforcehcm.com/en-US/LUMOS/CANDIDATEPORTAL/jobs/8035"
+    );
+
+    expect(result.fields.roleTitle).toBe("Billing Transformation Data Analyst");
+    expect(result.fields.company).toBe("Segra");
+    expect(result.fields.location).toBe("United States (Multiple locations)");
+    expect(result.fields.jobDescription).toContain(
+      "Segra is searching for a qualified and experienced Billing Transformation Data Analyst"
+    );
+    expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(140);
+    expect(result.extractionStatus).toBe("confirmed");
+  });
+
   it("blocks private-network targets with a safe fallback response", async () => {
     const result = await extractJobOnServer("http://127.0.0.1/internal-job-page");
 
