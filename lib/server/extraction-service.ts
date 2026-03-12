@@ -314,6 +314,7 @@ function parseJsonLd(raw: string) {
 function cleanTitle(value: string) {
   return capitalizeWords(
     value
+      .replace(/^title\s*:\s*/i, "")
       .replace(/\|.*$/, "")
       .replace(/- careers?.*$/i, "")
       .replace(/\s+/g, " ")
@@ -352,9 +353,12 @@ function cleanLocation(value: string) {
       .replace(/^location\s*:?\s*/i, "")
       .replace(/^location\s*\(city\)\*?/i, "")
       .replace(/\*?\s*locate me\b/gi, "")
+      .replace(/#job-location(?:[.-][\w-]+)*\s*\{[^}]*\}/gi, "")
       .replace(/,\s*\d{5}(?:-\d{4})?(?=,\s*(United States|United States of America|USA)\b)/i, "")
+      .replace(/,\s*\d{5}(?:-\d{4})?\s*$/i, "")
       .replace(/\s*\|\s*.*$/, "")
       .replace(/\s*›\s*/g, " ")
+      .replace(/\s*\{[^}]*\}\s*$/g, "")
       .replace(/\s*\(united states of america\)$/i, " (United States)")
   );
 }
@@ -373,7 +377,15 @@ function looksLikeInternalLocationCandidate(value: string) {
 }
 
 function isUsefulCompanyCandidate(value: string) {
-  return Boolean(value) && value.length <= 80 && !/^(job|careers?)$/i.test(value);
+  if (!value || value.length > 80) {
+    return false;
+  }
+
+  if (/^(job|careers?|us|usa|united states)$/i.test(value)) {
+    return false;
+  }
+
+  return value.length >= 3;
 }
 
 function isUsefulLocationCandidate(value: string) {

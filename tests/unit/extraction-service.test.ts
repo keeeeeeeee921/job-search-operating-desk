@@ -142,6 +142,33 @@ describe("server extraction service", () => {
     expect(result.fields.jobDescription).not.toContain("Apply for this job");
   });
 
+  it("filters JetBlue shell artifacts from title/company/location candidates", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Title: Analyst Workforce Systems Optimization | Careers</title>
+            <meta property="og:title" content="Title: Analyst Workforce Systems Optimization" />
+            <meta property="og:description" content="Long Island City, NY, US, 11101 #job-location.job-location-inline { display: inline; }" />
+          </head>
+          <body>
+            <main>
+              <p>Company: US</p>
+              <p>Location: Long Island City, NY, US, 11101 #job-location.job-location-inline { display: inline; }</p>
+              <p>Position Summary The Workforce Systems Optimization Analyst helps optimize airport labor planning.</p>
+            </main>
+          </body>
+        </html>
+      `,
+      "https://careers.jetblue.com/job/Long-Island-City-Analyst-Workforce-Systems-Optimization-NY-11101/1372233500/"
+    );
+
+    expect(result.fields.roleTitle).toBe("Analyst Workforce Systems Optimization");
+    expect(result.fields.company).not.toBe("US");
+    expect(result.fields.location).toBe("Long Island City, NY, US");
+    expect(result.fields.location).not.toContain("#job-location");
+  });
+
   it("blocks private-network targets with a safe fallback response", async () => {
     const result = await extractJobOnServer("http://127.0.0.1/internal-job-page");
 
