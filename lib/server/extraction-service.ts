@@ -348,7 +348,10 @@ function cleanCompany(value: string) {
 function cleanLocation(value: string) {
   return normalizeCountryName(
     value
+      .replace(/^remote\s*\((.+)\)$/i, "$1 (Remote)")
       .replace(/^location\s*:?\s*/i, "")
+      .replace(/^location\s*\(city\)\*?/i, "")
+      .replace(/\*?\s*locate me\b/gi, "")
       .replace(/,\s*\d{5}(?:-\d{4})?(?=,\s*(United States|United States of America|USA)\b)/i, "")
       .replace(/\s*\|\s*.*$/, "")
       .replace(/\s*›\s*/g, " ")
@@ -382,7 +385,7 @@ function isUsefulLocationCandidate(value: string) {
     return false;
   }
 
-  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence)/i.test(
+  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence|locate me|location\s*\(city\)|select\.\.\.|^\(?city\)?\*?$)/i.test(
     value
   );
 }
@@ -473,7 +476,7 @@ function extractCompanyFromDescriptions(values: string[]) {
     }
 
     const matchAt = value.match(
-      /\bAt\s+([A-Z][A-Za-z0-9&.'’\-/ ]{2,80}?)(?:[®,]|,|\s+(?:we|you|our)\b)/i
+      /\bAt\s+([A-Z][A-Za-z0-9&.'’\-/ ]{2,80}?)(?:[®,]|,|\s+(?:we|you|our)\b)/
     );
     if (matchAt?.[1]) {
       candidates.push(matchAt[1]);
@@ -501,6 +504,42 @@ function extractCompanyFromDescriptions(values: string[]) {
   }
 
   return candidates;
+}
+
+function isGreenhouseJobBoardUrl(parsedUrl: URL) {
+  return (
+    parsedUrl.hostname.toLowerCase().includes("greenhouse.io") &&
+    parsedUrl.pathname.split("/").filter(Boolean)[1] === "jobs"
+  );
+}
+
+function parseGreenhouseTitleHints(title: string) {
+  const match = normalizeWhitespace(title).match(
+    /^Job Application for (.+?) at (.+)$/
+  );
+
+  return {
+    roleTitle: match?.[1]?.trim() ?? "",
+    company: match?.[2]?.trim() ?? ""
+  };
+}
+
+function parseGreenhouseCompanyFromUrl(parsedUrl: URL) {
+  if (!isGreenhouseJobBoardUrl(parsedUrl)) {
+    return "";
+  }
+
+  const organizationSlug = parsedUrl.pathname.split("/").filter(Boolean)[0] ?? "";
+  if (!organizationSlug) {
+    return "";
+  }
+
+  return capitalizeWords(
+    organizationSlug
+      .replace(/[-_]+/g, " ")
+      .replace(/(?:\s+|[-_]?)(usa|us|canada|ca|uk|emea|apac)$/i, "")
+      .trim()
+  );
 }
 
 function prioritizeCompanyCandidates(values: string[]) {
@@ -541,6 +580,9 @@ function extractLabeledValues(
 
 function extractStructuredDescriptionCandidates($: ReturnType<typeof load>) {
   const selectors = [
+    '[data-test-description-text]',
+    ".job__description",
+    ".job-post-container .job__description",
     '[itemprop="description"]',
     '[data-job-description]',
     '[data-automation-id="jobDescriptionText"]',
@@ -955,9 +997,14 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
   const parsedUrl = new URL(normalizedUrl);
   const scriptPayload = collectScriptPayloadCandidates($, normalizedUrl);
   const jsonLd = collectJsonLdCandidates($);
+  const documentTitle = $("title").text();
+  const ogTitle = $('meta[property="og:title"]').attr("content") ?? "";
+  const ogDescription = $('meta[property="og:description"]').attr("content") ?? "";
+  const greenhouseHints = parseGreenhouseTitleHints(documentTitle);
+  const greenhouseCompanyFromUrl = parseGreenhouseCompanyFromUrl(parsedUrl);
   const metaDescriptions = uniqueValues([
     $('meta[name="description"]').attr("content") ?? "",
-    $('meta[property="og:description"]').attr("content") ?? ""
+    ogDescription
   ]).map((value) => normalizeWhitespace(value));
   const structuredDescriptionCandidates = extractStructuredDescriptionCandidates($);
   const companyDescriptionSeeds = uniqueValues([
@@ -966,16 +1013,19 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     ...structuredDescriptionCandidates.slice(0, 2)
   ]);
   const titleCandidates = uniqueValues([
+    greenhouseHints.roleTitle,
     ...scriptPayload.roleTitle,
     ...jsonLd.roleTitle,
     $("h1").first().text(),
     $("h2").first().text(),
-    $('meta[property="og:title"]').attr("content") ?? "",
-    $("title").text()
+    ogTitle,
+    documentTitle
   ])
     .map((value) => cleanTitle(value))
     .filter(isUsefulTitleCandidate);
   const companyCandidates = prioritizeCompanyCandidates([
+    greenhouseHints.company,
+    greenhouseCompanyFromUrl,
     ...scriptPayload.company,
     ...jsonLd.company,
     ...extractCompanyFromDescriptions(companyDescriptionSeeds),
@@ -983,12 +1033,14 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     $('meta[name="author"]').attr("content") ?? "",
     ...(
       parsedUrl.hostname.includes("myworkdayjobs.com") ||
-      parsedUrl.hostname.includes("rec.pro.ukg.net")
+      parsedUrl.hostname.includes("rec.pro.ukg.net") ||
+      parsedUrl.hostname.includes("greenhouse.io")
         ? []
         : [hostToCompany(parsedUrl.hostname)]
     )
   ]);
   const locationCandidates = uniqueValues([
+    ...(isGreenhouseJobBoardUrl(parsedUrl) ? [ogDescription] : []),
     ...scriptPayload.location,
     ...jsonLd.location,
     ...extractLabeledValues($, "location"),

@@ -105,6 +105,43 @@ describe("server extraction service", () => {
     expect(result.extractionStatus).toBe("confirmed");
   });
 
+  it("prefers Greenhouse title and meta hints over page copy and form placeholders", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Job Application for Supply Chain Analyst, D365 ERP (Contract) at Nutrafol</title>
+            <meta property="og:title" content="Supply Chain Analyst, D365 ERP (Contract)" />
+            <meta property="og:description" content="Remote (United States)" />
+          </head>
+          <body>
+            <main>
+              <p>
+                Keep Growing with Nutrafol. At Nutrafol, we create clinically tested products
+                for hair growth and provide support for people at every step of their hair journey.
+              </p>
+              <p>
+                About You Nutrafol is seeking a Contract Supply Chain Analyst (D365 ERP).
+              </p>
+            </main>
+            <div>Location (City)*<button type="button">Locate me</button></div>
+          </body>
+        </html>
+      `,
+      "https://job-boards.greenhouse.io/nutrafol/jobs/4667705005"
+    );
+
+    expect(result.fields.company).toBe("Nutrafol");
+    expect(result.fields.location).toBe("United States (Remote)");
+    expect(result.fields.company).not.toBe("every step of their hair journey.");
+    expect(
+      result.candidateValues.location.some((value) => /locate me/i.test(value))
+    ).toBe(false);
+    expect(result.fields.jobDescription).toContain("Keep Growing with Nutrafol.");
+    expect(result.fields.jobDescription).not.toContain("Create a Job Alert");
+    expect(result.fields.jobDescription).not.toContain("Apply for this job");
+  });
+
   it("blocks private-network targets with a safe fallback response", async () => {
     const result = await extractJobOnServer("http://127.0.0.1/internal-job-page");
 

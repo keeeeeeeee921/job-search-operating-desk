@@ -10,6 +10,7 @@
     "import:historical": "tsx scripts/import-historical-applications.ts",
     "build:extraction-corpus": "tsx scripts/build-extraction-corpus.ts",
     "repair:records": "tsx scripts/repair-records.ts",
+    "manual-fix:records": "tsx scripts/manual-fix-records.ts",
     "repair:connect-goal": "tsx scripts/repair-connect-goal.ts",
     "repair:search-text": "tsx scripts/repair-search-text.ts",
     "db:generate": "drizzle-kit generate",
