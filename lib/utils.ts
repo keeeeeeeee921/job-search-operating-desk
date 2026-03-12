@@ -59,6 +59,231 @@ export function truncate(value: string, length = 140) {
   return `${value.slice(0, length).trimEnd()}…`;
 }
 
+const US_STATE_CODE_TO_NAME: Record<string, string> = {
+  AL: "Alabama",
+  AK: "Alaska",
+  AZ: "Arizona",
+  AR: "Arkansas",
+  CA: "California",
+  CO: "Colorado",
+  CT: "Connecticut",
+  DE: "Delaware",
+  FL: "Florida",
+  GA: "Georgia",
+  HI: "Hawaii",
+  ID: "Idaho",
+  IL: "Illinois",
+  IN: "Indiana",
+  IA: "Iowa",
+  KS: "Kansas",
+  KY: "Kentucky",
+  LA: "Louisiana",
+  ME: "Maine",
+  MD: "Maryland",
+  MA: "Massachusetts",
+  MI: "Michigan",
+  MN: "Minnesota",
+  MS: "Mississippi",
+  MO: "Missouri",
+  MT: "Montana",
+  NE: "Nebraska",
+  NV: "Nevada",
+  NH: "New Hampshire",
+  NJ: "New Jersey",
+  NM: "New Mexico",
+  NY: "New York",
+  NC: "North Carolina",
+  ND: "North Dakota",
+  OH: "Ohio",
+  OK: "Oklahoma",
+  OR: "Oregon",
+  PA: "Pennsylvania",
+  RI: "Rhode Island",
+  SC: "South Carolina",
+  SD: "South Dakota",
+  TN: "Tennessee",
+  TX: "Texas",
+  UT: "Utah",
+  VT: "Vermont",
+  VA: "Virginia",
+  WA: "Washington",
+  WV: "West Virginia",
+  WI: "Wisconsin",
+  WY: "Wyoming",
+  DC: "District of Columbia"
+};
+
+const CANADA_PROVINCE_CODE_TO_NAME: Record<string, string> = {
+  AB: "Alberta",
+  BC: "British Columbia",
+  MB: "Manitoba",
+  NB: "New Brunswick",
+  NL: "Newfoundland and Labrador",
+  NS: "Nova Scotia",
+  NT: "Northwest Territories",
+  NU: "Nunavut",
+  ON: "Ontario",
+  PE: "Prince Edward Island",
+  QC: "Quebec",
+  SK: "Saskatchewan",
+  YT: "Yukon"
+};
+
+const US_STATE_NAME_LOOKUP = new Map(
+  Object.values(US_STATE_CODE_TO_NAME).map((value) => [
+    value.toLowerCase(),
+    value
+  ])
+);
+const CANADA_PROVINCE_NAME_LOOKUP = new Map(
+  Object.values(CANADA_PROVINCE_CODE_TO_NAME).map((value) => [
+    value.toLowerCase(),
+    value
+  ])
+);
+
+function normalizeCountryToken(value: string) {
+  const normalized = value
+    .toLowerCase()
+    .replace(/[.]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    [
+      "us",
+      "usa",
+      "united states",
+      "united states of america",
+      "u s",
+      "u s a"
+    ].includes(normalized)
+  ) {
+    return "United States";
+  }
+
+  if (
+    ["canada", "ca", "can", "canada (ca)"].includes(normalized)
+  ) {
+    return "Canada";
+  }
+
+  return null;
+}
+
+function normalizeAdministrativeRegion(value: string): {
+  region: string;
+  country: "United States" | "Canada";
+} | null {
+  const normalized = value
+    .replace(/[.]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const code = normalized.toUpperCase();
+  if (US_STATE_CODE_TO_NAME[code]) {
+    return {
+      region: US_STATE_CODE_TO_NAME[code],
+      country: "United States"
+    };
+  }
+
+  if (CANADA_PROVINCE_CODE_TO_NAME[code]) {
+    return {
+      region: CANADA_PROVINCE_CODE_TO_NAME[code],
+      country: "Canada"
+    };
+  }
+
+  const lowerName = normalized.toLowerCase();
+  if (US_STATE_NAME_LOOKUP.has(lowerName)) {
+    return {
+      region: US_STATE_NAME_LOOKUP.get(lowerName) ?? normalized,
+      country: "United States"
+    };
+  }
+
+  if (CANADA_PROVINCE_NAME_LOOKUP.has(lowerName)) {
+    return {
+      region: CANADA_PROVINCE_NAME_LOOKUP.get(lowerName) ?? normalized,
+      country: "Canada"
+    };
+  }
+
+  return null;
+}
+
+export function normalizeLocationForStorage(rawLocation: string) {
+  const trimmed = rawLocation.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const remoteFromPrefix = /^(remote|workplace type)\s*:/i.test(trimmed);
+  const hasRemoteToken = remoteFromPrefix || /\bremote\b/i.test(trimmed);
+
+  let base = trimmed
+    .replace(/^(location|remote|workplace type)\s*:\s*/i, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s*[-/|]\s*(on-site|onsite|hybrid)\b/gi, "")
+    .replace(/\((on-site|onsite|hybrid)\)/gi, "")
+    .replace(/\(remote\)/gi, "")
+    .replace(/\bremote\b/gi, "")
+    .replace(/\bUnited States of America\b/gi, "United States")
+    .replace(/\s+,/g, ",")
+    .replace(/,\s*$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  if (/^(yes|no)$/i.test(base)) {
+    return hasRemoteToken ? "Remote" : "";
+  }
+
+  if (!base) {
+    return hasRemoteToken ? "Remote" : "";
+  }
+
+  const countryOnly = normalizeCountryToken(base);
+  if (countryOnly) {
+    return hasRemoteToken ? `${countryOnly} (Remote)` : countryOnly;
+  }
+
+  const parts = base.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    const city = parts[0] ?? "";
+    const administrativeRegion = normalizeAdministrativeRegion(parts[1] ?? "");
+    if (city && administrativeRegion) {
+      const explicitCountry = normalizeCountryToken(parts[2] ?? "");
+      const country = explicitCountry ?? administrativeRegion.country;
+      const normalizedLocation = `${city}, ${administrativeRegion.region}, ${country}`;
+      return hasRemoteToken ? `${normalizedLocation} (Remote)` : normalizedLocation;
+    }
+
+    if (parts.length === 2) {
+      const secondPartCountry = normalizeCountryToken(parts[1] ?? "");
+      if (city && secondPartCountry) {
+        const normalizedLocation = `${city}, ${secondPartCountry}`;
+        return hasRemoteToken ? `${normalizedLocation} (Remote)` : normalizedLocation;
+      }
+    }
+  }
+
+  if (hasRemoteToken) {
+    return `${base} (Remote)`;
+  }
+
+  return base;
+}
+
 export function normalizeUrl(rawUrl: string) {
   const value = rawUrl.trim();
 

@@ -28,7 +28,7 @@ import type {
   JobDraft,
   JobRecord
 } from "@/lib/types";
-import { createId } from "@/lib/utils";
+import { createId, normalizeLocationForStorage } from "@/lib/utils";
 
 function createRecordFromDraft(draft: JobDraft): JobRecord {
   const confirmedOrigins = Object.values(draft.fieldOrigins).every(
@@ -39,7 +39,7 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
     id: createId(),
     roleTitle: draft.roleTitle,
     company: draft.company,
-    location: draft.location,
+    location: normalizeLocationForStorage(draft.location),
     link: draft.link,
     jobDescription: draft.jobDescription,
     timestamp: new Date().toISOString(),
