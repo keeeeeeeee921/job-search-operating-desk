@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { getDemoBannerMessage, isPublicDemo } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -16,18 +15,8 @@ export function AppShell({
   currentPath: string;
   children: ReactNode;
 }) {
-  const publicDemo = isPublicDemo();
-
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {publicDemo ? (
-        <div className="border-b border-accent/40 bg-accent/10">
-          <div className="mx-auto max-w-[1400px] px-6 py-3 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Public demo.</span>{" "}
-            {getDemoBannerMessage()}
-          </div>
-        </div>
-      ) : null}
       <header className="border-b border-white/70 bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5">
           <Link

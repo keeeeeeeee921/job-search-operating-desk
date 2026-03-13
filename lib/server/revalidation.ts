@@ -25,7 +25,3 @@ export function revalidateAfterCommentsUpdated(recordId: string) {
 export function revalidateAfterDailyGoalsUpdated() {
   revalidatePath("/");
 }
-
-export function revalidateAfterDemoReset() {
-  revalidatePaths(["/", "/active", "/rejected", "/update-by-email"]);
-}

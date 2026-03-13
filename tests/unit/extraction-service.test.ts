@@ -165,8 +165,48 @@ describe("server extraction service", () => {
 
     expect(result.fields.roleTitle).toBe("Analyst Workforce Systems Optimization");
     expect(result.fields.company).not.toBe("US");
-    expect(result.fields.location).toBe("Long Island City, NY, US");
+    expect(result.fields.location).toBe("Long Island City, NY, United States");
     expect(result.fields.location).not.toContain("#job-location");
+  });
+
+  it("parses Phenom-style inline payloads before generic page scraping", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Senior Analyst, Pricing</title>
+          </head>
+          <body>
+            <script>
+              window.__INITIAL_STATE__ = {
+                "jobDetail": {
+                  "data": {
+                    "title": "Senior Analyst, Pricing",
+                    "companyName": "JetBlue",
+                    "description": "<p>Help pricing and commercial teams evaluate fare strategy.</p><p>Build reporting and operational decision support.</p>",
+                    "locations": [
+                      {
+                        "city": "Long Island City",
+                        "stateCode": "NY",
+                        "countryCode": "US"
+                      }
+                    ]
+                  }
+                }
+              };
+            </script>
+          </body>
+        </html>
+      `,
+      "https://careers.jetblue.com/job/Long-Island-City-Senior-Analyst-Pricing-NY-11101/1234567890/"
+    );
+
+    expect(result.fields.roleTitle).toBe("Senior Analyst, Pricing");
+    expect(result.fields.company).toBe("JetBlue");
+    expect(result.fields.location).toBe("Long Island City, NY, United States");
+    expect(result.fields.jobDescription).toContain(
+      "Help pricing and commercial teams evaluate fare strategy."
+    );
   });
 
   it("blocks private-network targets with a safe fallback response", async () => {

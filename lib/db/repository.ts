@@ -1,6 +1,5 @@
 import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { isPublicDemo } from "@/lib/demo";
 import {
   archiveLocalJob,
   deleteLocalJob,
@@ -32,7 +31,7 @@ import {
 } from "@/lib/job-list";
 import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
 import { findEmailMatches } from "@/lib/emailMatching";
-import { getSeedStateForEnvironment } from "@/lib/seed";
+import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
   GoalKey,
@@ -468,7 +467,7 @@ async function assertPostgresSchemaReady() {
 }
 
 async function seedPostgresIfExplicitlyEnabled() {
-  if (!isPublicDemo() && !shouldExplicitlySeedPostgres()) {
+  if (!shouldExplicitlySeedPostgres()) {
     return;
   }
 
@@ -483,7 +482,7 @@ async function seedPostgresIfExplicitlyEnabled() {
     return;
   }
 
-  const seedState = getSeedStateForEnvironment();
+  const seedState = getDefaultSeedState();
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
@@ -998,14 +997,6 @@ export async function archiveJobRecord(id: string) {
     return;
   }
 
-  const existing = (
-    await getDb().select().from(jobsTable).where(eq(jobsTable.id, id)).limit(1)
-  )[0];
-
-  if (!existing) {
-    return;
-  }
-
   await getDb().update(jobsTable).set({ pool: "rejected" }).where(eq(jobsTable.id, id));
   clearQueryCaches();
 }
@@ -1016,14 +1007,6 @@ export async function deleteJobRecord(id: string) {
   if (shouldUseLocalFallback()) {
     await deleteLocalJob(id);
     clearQueryCaches();
-    return;
-  }
-
-  const existing = (
-    await getDb().select().from(jobsTable).where(eq(jobsTable.id, id)).limit(1)
-  )[0];
-
-  if (!existing) {
     return;
   }
 
@@ -1185,7 +1168,7 @@ export async function resetCurrentEnvironmentToSeedState() {
 
   await ensurePostgresReady();
   const db = getDb();
-  const seedState = getSeedStateForEnvironment();
+  const seedState = getDefaultSeedState();
 
   await db.delete(dailyGoalsTable);
   await db.delete(jobsTable);

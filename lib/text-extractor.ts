@@ -48,7 +48,7 @@ const linkedinNoisePatterns = [
   /^help me stand out$/i,
   /^people you can reach out to$/i,
   /^promoted by /i,
-  /^save /i,
+  /^save$/i,
   /^message$/i,
   /^share$/i,
   /^simplify$/i,
@@ -66,6 +66,28 @@ const linkedinNoisePatterns = [
   /^.+ profile photo$/i,
   /^.+ is verified$/i,
   /^school alum /i
+];
+
+const pastedTextFormStopPatterns = [
+  /^create a job alert$/i,
+  /^interested in building your career/i,
+  /^apply for this job$/i,
+  /^autofill with mygreenhouse$/i,
+  /^first name\*?$/i,
+  /^last name\*?$/i,
+  /^preferred first name$/i,
+  /^email\*?$/i,
+  /^phone\*?$/i,
+  /^country\*?$/i,
+  /^resume\/cv\*?$/i,
+  /^attach$/i,
+  /^dropbox$/i,
+  /^google drive$/i,
+  /^enter manually$/i,
+  /^accepted file types:/i,
+  /^voluntary self-identification/i,
+  /^public burden statement:/i,
+  /^submit application$/i
 ];
 
 function cleanLine(value: string) {
@@ -668,7 +690,7 @@ function looksLikeCompanyName(line: string, roleTitle: string) {
   }
 
   if (
-    /(minutes ago|hours ago|days ago|clicked apply|applicants|remote|on-site|hybrid|full-time|part-time|contract)/i.test(
+    /(minutes ago|hours ago|days ago|clicked apply|applicants|remote|on-site|hybrid|full-time|part-time|contract|easy apply|resume match|show match details|tailor my resume)/i.test(
       line
     )
   ) {
@@ -688,6 +710,19 @@ function extractCompanyName(lines: string[], roleTitle: string) {
   const summaryCompany = parseCompanyAndLocationFromSummary(summaryLine).company;
   if (summaryCompany) {
     return summaryCompany;
+  }
+
+  const saveLine = lines.find((line) =>
+    new RegExp(`^Save\\s+${escapeRegExp(roleTitle)}\\s+at\\s+(.+)$`, "i").test(line)
+  );
+  if (saveLine) {
+    const match = saveLine.match(
+      new RegExp(`^Save\\s+${escapeRegExp(roleTitle)}\\s+at\\s+(.+)$`, "i")
+    );
+    const extracted = cleanLine(match?.[1] ?? "");
+    if (extracted) {
+      return extracted;
+    }
   }
 
   const topLines = lines.slice(0, 8);
@@ -743,7 +778,8 @@ function extractDescription(lines: string[]) {
 
     if (
       /^people you can reach out to$/i.test(line) ||
-      /^about the company$/i.test(line)
+      /^about the company$/i.test(line) ||
+      pastedTextFormStopPatterns.some((pattern) => pattern.test(line))
     ) {
       break;
     }

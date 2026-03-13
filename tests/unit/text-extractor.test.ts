@@ -114,6 +114,18 @@ Remote: USA
     expect(result.issues.some((issue) => issue.field === "company")).toBe(false);
   });
 
+  it("extracts company from save-line text when the summary block is missing", () => {
+    const result = extractJobFromText(`
+Entry-Level Implementation Analyst | Fintech | Remote US
+Save Entry-Level Implementation Analyst | Fintech | Remote US at Emma of Torre.ai
+United States · 16 minutes ago · 5 people clicked apply
+About the job
+You'll drive financial automation and digital transformation for global clients.
+    `);
+
+    expect(result.fields.company).toBe("Emma of Torre.ai");
+  });
+
   it("captures a standalone company line placed between role and location blocks", () => {
     const result = extractJobFromText(`
 Entry-Level Implementation Analyst | Fintech | Remote US
@@ -183,5 +195,25 @@ You'll drive financial automation and digital transformation for global clients.
 
     expect(result.fields.location).toBe("");
     expect(result.issues.some((issue) => issue.field === "location")).toBe(true);
+  });
+
+  it("stops description extraction before pasted application form shells", () => {
+    const result = extractJobFromText(`
+Supply Chain Analyst, D365 ERP (Contract)
+Nutrafol · Remote (United States)
+About the job
+Keep Growing with Nutrafol.
+About You Nutrafol is seeking a Contract Supply Chain Analyst (D365 ERP).
+Create a Job Alert
+Interested in building your career at Nutrafol?
+Apply for this job
+First Name*
+Last Name*
+Submit application
+    `);
+
+    expect(result.fields.jobDescription).toContain("Keep Growing with Nutrafol.");
+    expect(result.fields.jobDescription).not.toContain("Create a Job Alert");
+    expect(result.fields.jobDescription).not.toContain("First Name*");
   });
 });

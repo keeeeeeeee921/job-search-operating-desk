@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   archiveJobRecord,
   deleteJobRecord,
@@ -26,21 +26,10 @@ delete process.env.DATABASE_URL;
 delete process.env.DATABASE_URL_UNPOOLED;
 delete process.env.VERCEL;
 process.env.JOB_DESK_DB_DIR = ".data/job-desk-vitest";
-const originalPublicDemo = process.env.JOB_DESK_PUBLIC_DEMO;
 
 describe("repository", () => {
   beforeEach(async () => {
-    process.env.JOB_DESK_PUBLIC_DEMO = "false";
     await resetDatabaseForTests();
-  });
-
-  afterEach(() => {
-    if (originalPublicDemo === undefined) {
-      delete process.env.JOB_DESK_PUBLIC_DEMO;
-      return;
-    }
-
-    process.env.JOB_DESK_PUBLIC_DEMO = originalPublicDemo;
   });
 
   it("loads seeded active and rejected records from the database", async () => {
@@ -391,14 +380,8 @@ describe("repository", () => {
     expect(nextCount).toBe(beforeCount + 1);
   });
 
-  it("restores the curated demo baseline when demo state is reset", async () => {
-    process.env.JOB_DESK_PUBLIC_DEMO = "true";
-
-    await resetCurrentEnvironmentToSeedState();
-    const demoActive = await getJobsByPool("active");
-    expect(demoActive.some((job) => job.company === "Pi3AI")).toBe(true);
-
-    await deleteJobRecord("demo-active-3");
+  it("restores the default seed baseline when the environment is reset", async () => {
+    await deleteJobRecord("seed-active-3");
     await updateDailyGoalState({
       goal: "apply",
       kind: "increment"
@@ -409,8 +392,8 @@ describe("repository", () => {
     const restoredActive = await getJobsByPool("active");
     const restoredGoals = await getDailyGoalsState();
 
-    expect(restoredActive.some((job) => job.id === "demo-active-3")).toBe(true);
-    expect(restoredGoals.goals.apply.count).toBe(3);
-    expect(restoredGoals.goals.apply.target).toBe(6);
+    expect(restoredActive.some((job) => job.id === "seed-active-3")).toBe(true);
+    expect(restoredGoals.goals.apply.target).toBe(50);
+    expect(restoredGoals.goals.connect.target).toBe(10);
   });
 });

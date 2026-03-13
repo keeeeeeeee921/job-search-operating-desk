@@ -1,7 +1,6 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 import { load } from "cheerio";
-import { isPublicDemo } from "@/lib/demo";
 import { buildFallbackExtraction } from "@/lib/extractor";
 import { getMockJobBySlug } from "@/lib/mock-jobs";
 import { validateJobDraft } from "@/lib/recordValidation";
@@ -38,19 +37,6 @@ type DayforceJobData = {
     jobDescription?: string;
   };
 };
-
-const demoRateLimitState: {
-  windowStart: number;
-  count: number;
-} = {
-  windowStart: 0,
-  count: 0
-};
-
-const DEMO_EXTRACTION_WINDOW_MS = 60_000;
-const DEMO_EXTRACTION_MAX_REQUESTS = Number(
-  process.env.JOB_DESK_DEMO_EXTRACT_LIMIT_PER_MINUTE ?? "40"
-);
 const MAX_REDIRECTS = 3;
 const EXTRACTION_MAX_BYTES = Number(
   process.env.JOB_DESK_EXTRACT_MAX_BYTES ?? "1048576"
@@ -134,21 +120,6 @@ async function assertPublicNetworkTarget(url: string) {
   }
 }
 
-function isDemoRateLimited() {
-  if (!isPublicDemo()) {
-    return false;
-  }
-
-  const now = Date.now();
-  if (now - demoRateLimitState.windowStart >= DEMO_EXTRACTION_WINDOW_MS) {
-    demoRateLimitState.windowStart = now;
-    demoRateLimitState.count = 0;
-  }
-
-  demoRateLimitState.count += 1;
-  return demoRateLimitState.count > DEMO_EXTRACTION_MAX_REQUESTS;
-}
-
 function buildGuardrailFallback(normalizedUrl: string, reason: string) {
   const fallback = buildFallbackExtraction(normalizedUrl);
   return {
@@ -160,6 +131,41 @@ function buildGuardrailFallback(normalizedUrl: string, reason: string) {
       "Server safety guardrails blocked this extraction request."
     ])
   } satisfies ExtractionResult;
+}
+
+function logExtractionEvent(input: {
+  normalizedUrl: string;
+  result: ExtractionResult;
+  reason?: string;
+}) {
+  let hostname = "unknown";
+
+  try {
+    hostname = new URL(input.normalizedUrl).hostname.toLowerCase();
+  } catch {
+    // ignore invalid url logging fallback
+  }
+
+  const payload = {
+    hostname,
+    sourceType: input.result.sourceType,
+    sourceConfidence: input.result.sourceConfidence,
+    extractionStatus: input.result.extractionStatus,
+    supported: input.result.supported,
+    issues: input.result.issues.map((issue) => `${issue.field}:${issue.type}`),
+    fieldsPresent: {
+      roleTitle: Boolean(input.result.fields.roleTitle),
+      company: Boolean(input.result.fields.company),
+      location: Boolean(input.result.fields.location),
+      jobDescription: Boolean(input.result.fields.jobDescription)
+    },
+    notes: input.result.notes.slice(0, 3),
+    reason: input.reason
+  };
+
+  const logger =
+    input.result.extractionStatus === "confirmed" ? console.info : console.warn;
+  logger(`[extraction] ${JSON.stringify(payload)}`);
 }
 
 function isHtmlLikeContentType(contentType: string | null) {
@@ -276,6 +282,8 @@ function normalizeCountryName(value: string) {
     value
       .replace(/\bUnited States of America\b/gi, "United States")
       .replace(/\bUSA\b/gi, "United States")
+      .replace(/\bUS\b/g, "United States")
+      .replace(/\bU\.S\.\b/g, "United States")
   );
 }
 
@@ -336,6 +344,10 @@ function cleanCompany(value: string) {
       value
         .replace(/[®™]/g, "")
         .replace(/^\d+\s+/, "")
+        .replace(/\blogo\b/gi, "")
+        .replace(/\bcareer's?\s+page\b/gi, "")
+        .replace(/\bcareer\s+site\b/gi, "")
+        .replace(/\bthe location for this job\b/gi, "")
         .replace(/\bMSO LLC\b/gi, "")
         .replace(/\bLLC\b$/gi, "")
         .replace(/\bL\.L\.C\.\b$/gi, "")
@@ -353,10 +365,14 @@ function cleanLocation(value: string) {
       .replace(/^location\s*:?\s*/i, "")
       .replace(/^location\s*\(city\)\*?/i, "")
       .replace(/\*?\s*locate me\b/gi, "")
+      .replace(/\bworkplace type\s*:?\s*/gi, "")
+      .replace(/\bremote:\s*/gi, "")
       .replace(/#job-location(?:[.-][\w-]+)*\s*\{[^}]*\}/gi, "")
+      .replace(/\bjob location\b/gi, "")
       .replace(/,\s*\d{5}(?:-\d{4})?(?=,\s*(United States|United States of America|USA)\b)/i, "")
       .replace(/,\s*\d{5}(?:-\d{4})?\s*$/i, "")
       .replace(/\s*\|\s*.*$/, "")
+      .replace(/\s*[>›]\s*/g, ", ")
       .replace(/\s*›\s*/g, " ")
       .replace(/\s*\{[^}]*\}\s*$/g, "")
       .replace(/\s*\(united states of america\)$/i, " (United States)")
@@ -381,11 +397,20 @@ function isUsefulCompanyCandidate(value: string) {
     return false;
   }
 
-  if (/^(job|careers?|us|usa|united states)$/i.test(value)) {
+  if (
+    /^(job|careers?|us|usa|united states|remote|on-site|hybrid|select\.\.\.)$/i.test(
+      value
+    )
+  ) {
     return false;
   }
 
-  return value.length >= 3;
+  return (
+    value.length >= 3 &&
+    !/(the location for this job|every step of their hair journey|apply for this job|create a job alert|autofill with mygreenhouse|submit application|profile photo|logo)/i.test(
+      value
+    )
+  );
 }
 
 function isUsefulLocationCandidate(value: string) {
@@ -397,7 +422,7 @@ function isUsefulLocationCandidate(value: string) {
     return false;
   }
 
-  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence|locate me|location\s*\(city\)|select\.\.\.|^\(?city\)?\*?$)/i.test(
+  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence|locate me|location\s*\(city\)|workplace type|select\.\.\.|^\(?city\)?\*?$|display:\s*inline|job-location|first name|last name|phone\b|country\b)/i.test(
     value
   );
 }
@@ -407,9 +432,25 @@ function isUsefulDescriptionCandidate(value: string) {
     return false;
   }
 
-  return !/(\$\s*\(\s*function|\bvar\s+\w+\s*=|new\s+US\.Opportunity|CandidateOpportunityDetail|ko\.applyBindings|twitter-wjs|Recruiting\.TenantFeatureToggle|siteBundle|bootstrapBundle|descriptionteaser|save job|apply now|recently viewed jobs|profile recommendations|search-results|jobcart|window\.__|document\.createElement)/i.test(
-    value
+  return (
+    !/(\$\s*\(\s*function|\bvar\s+\w+\s*=|new\s+US\.Opportunity|CandidateOpportunityDetail|ko\.applyBindings|twitter-wjs|Recruiting\.TenantFeatureToggle|siteBundle|bootstrapBundle|descriptionteaser|save job|apply now|recently viewed jobs|profile recommendations|search-results|jobcart|window\.__|document\.createElement)/i.test(
+      value
+    ) &&
+    !/(create a job alert|autofill with mygreenhouse|submit application|accepted file types|voluntary self-identification|first name\*|last name\*|phone\*|resume\/cv\*|dropbox|google drive|select\.\.\.)/i.test(
+      value
+    )
   );
+}
+
+function normalizeFamilyLocationCandidate(value: string) {
+  const cleaned = cleanLocation(value);
+  if (!cleaned || !isUsefulLocationCandidate(cleaned)) {
+    return "";
+  }
+
+  return cleaned
+    .replace(/,\s*United States$/i, ", US")
+    .replace(/,\s*Canada$/i, ", Canada");
 }
 
 function parseLocationFromJobLocation(
@@ -593,6 +634,8 @@ function extractLabeledValues(
 function extractStructuredDescriptionCandidates($: ReturnType<typeof load>) {
   const selectors = [
     '[data-test-description-text]',
+    '[data-ph-id="jobDescription"]',
+    '[data-ph-id*="description"]',
     ".job__description",
     ".job-post-container .job__description",
     '[itemprop="description"]',
@@ -663,6 +706,181 @@ function extractBalancedCallArgument(scriptText: string, signature: string) {
       if (depth === 0) {
         return scriptText.slice(start, index).trim();
       }
+    }
+  }
+
+  return null;
+}
+
+function extractBalancedObjectAfterMarker(scriptText: string, marker: string) {
+  const markerIndex = scriptText.indexOf(marker);
+  if (markerIndex === -1) {
+    return null;
+  }
+
+  const start = scriptText.indexOf("{", markerIndex + marker.length);
+  if (start === -1) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let stringQuote = "";
+  let escaped = false;
+
+  for (let index = start; index < scriptText.length; index += 1) {
+    const char = scriptText[index];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+
+      if (char === stringQuote) {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === "`") {
+      inString = true;
+      stringQuote = char;
+      continue;
+    }
+
+    if (char === "{") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return scriptText.slice(start, index + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function parsePhenomLocations(input: unknown) {
+  const entries = Array.isArray(input) ? input : input ? [input] : [];
+
+  return entries.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return [];
+    }
+
+    const value = entry as Record<string, unknown>;
+    const directStrings = [
+      value.city,
+      value.state,
+      value.stateCode,
+      value.country,
+      value.countryCode,
+      value.location,
+      value.label,
+      value.displayName,
+      value.name
+    ]
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const city = directStrings[0] ?? "";
+    const state = directStrings[1] ?? "";
+    const country = directStrings[2] ?? "";
+
+    const joined = normalizeFamilyLocationCandidate(
+      [city, state, country].filter(Boolean).join(", ")
+    );
+
+    if (joined) {
+      return [joined];
+    }
+
+    return directStrings
+      .map((item) => normalizeFamilyLocationCandidate(item))
+      .filter(Boolean);
+  });
+}
+
+function parsePhenomPayload(scriptText: string) {
+  const candidateMarkers = [
+    '"jobDetail":',
+    "jobDetail:",
+    '"job_details":',
+    "job_details:"
+  ];
+
+  for (const marker of candidateMarkers) {
+    const objectText = extractBalancedObjectAfterMarker(scriptText, marker);
+    if (!objectText) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(objectText) as Record<string, unknown>;
+      const data =
+        parsed.data && typeof parsed.data === "object"
+          ? (parsed.data as Record<string, unknown>)
+          : parsed;
+
+      const titleCandidates = [
+        data.title,
+        data.jobTitle,
+        data.job_title,
+        data.name
+      ].filter((value): value is string => typeof value === "string");
+
+      const companyCandidates = [
+        data.companyName,
+        data.company_name,
+        data.company,
+        data.brand,
+        data.brandName,
+        data.clientName
+      ].filter((value): value is string => typeof value === "string");
+
+      const descriptionCandidates = [
+        data.description,
+        data.jobDescription,
+        data.job_description,
+        data.longDescription,
+        data.long_description
+      ].filter((value): value is string => typeof value === "string");
+
+      const locationCandidates = [
+        ...parsePhenomLocations(data.locations),
+        ...parsePhenomLocations(data.location),
+        ...parsePhenomLocations(data.jobLocation)
+      ];
+
+      if (
+        titleCandidates.length === 0 &&
+        companyCandidates.length === 0 &&
+        locationCandidates.length === 0 &&
+        descriptionCandidates.length === 0
+      ) {
+        continue;
+      }
+
+      return {
+        titleCandidates,
+        companyCandidates,
+        locationCandidates,
+        descriptionCandidates
+      };
+    } catch {
+      continue;
     }
   }
 
@@ -923,6 +1141,20 @@ function collectScriptPayloadCandidates(
 
   $('script:not([type="application/ld+json"])').each((_, element) => {
     const scriptText = $(element).text();
+
+    const phenomPayload = parsePhenomPayload(scriptText);
+    if (phenomPayload) {
+      roleTitle.push(...phenomPayload.titleCandidates.map((value) => cleanTitle(value)));
+      company.push(
+        ...phenomPayload.companyCandidates.map((value) => cleanCompany(value))
+      );
+      location.push(...phenomPayload.locationCandidates);
+      jobDescription.push(
+        ...phenomPayload.descriptionCandidates.map((value) => stripHtml(value))
+      );
+      notes.push("Phenom-style job payload was parsed from an inline script.");
+    }
+
     const ukgPayload = parseUkgPayload(scriptText);
     if (!ukgPayload) {
       return;
@@ -1179,19 +1411,24 @@ function extractMockJob(url: string) {
 export async function extractJobOnServer(rawUrl: string) {
   const normalizedUrl = normalizeUrl(rawUrl);
   if (!normalizedUrl) {
-    return buildFallbackExtraction(rawUrl);
+    const fallback = buildFallbackExtraction(rawUrl);
+    logExtractionEvent({
+      normalizedUrl: rawUrl,
+      result: fallback,
+      reason: "invalid-url"
+    });
+    return fallback;
   }
 
   const source = detectSource(normalizedUrl);
   if (source.sourceType === "linkedin") {
-    return buildFallbackExtraction(normalizedUrl);
-  }
-
-  if (isDemoRateLimited()) {
-    return buildGuardrailFallback(
+    const fallback = buildFallbackExtraction(normalizedUrl);
+    logExtractionEvent({
       normalizedUrl,
-      "Public demo extraction is rate-limited. Please wait a minute and try again."
-    );
+      result: fallback,
+      reason: "linkedin-fallback"
+    });
+    return fallback;
   }
 
   const parsedUrl = new URL(normalizedUrl);
@@ -1201,6 +1438,11 @@ export async function extractJobOnServer(rawUrl: string) {
   ) {
     const mock = extractMockJob(normalizedUrl);
     if (mock) {
+      logExtractionEvent({
+        normalizedUrl,
+        result: mock,
+        reason: "mock-job"
+      });
       return mock;
     }
   }
@@ -1209,17 +1451,40 @@ export async function extractJobOnServer(rawUrl: string) {
     const response = await fetchWithSafeRedirects(normalizedUrl);
 
     if (!response.ok) {
-      return buildFallbackExtraction(normalizedUrl);
+      const fallback = buildFallbackExtraction(normalizedUrl);
+      logExtractionEvent({
+        normalizedUrl,
+        result: fallback,
+        reason: `http-${response.status}`
+      });
+      return fallback;
     }
 
     assertExtractionResponseHeaders(response);
     const html = await readResponseTextWithLimit(response);
-    return extractCandidatesFromHtml(html, normalizedUrl);
+    const result = extractCandidatesFromHtml(html, normalizedUrl);
+    logExtractionEvent({
+      normalizedUrl,
+      result
+    });
+    return result;
   } catch (error) {
     if (error instanceof UnsafeTargetError) {
-      return buildGuardrailFallback(normalizedUrl, error.message);
+      const fallback = buildGuardrailFallback(normalizedUrl, error.message);
+      logExtractionEvent({
+        normalizedUrl,
+        result: fallback,
+        reason: "guardrail"
+      });
+      return fallback;
     }
 
-    return buildFallbackExtraction(normalizedUrl);
+    const fallback = buildFallbackExtraction(normalizedUrl);
+    logExtractionEvent({
+      normalizedUrl,
+      result: fallback,
+      reason: error instanceof Error ? error.message : "unknown-error"
+    });
+    return fallback;
   }
 }

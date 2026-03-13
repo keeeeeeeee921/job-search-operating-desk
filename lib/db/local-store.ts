@@ -1,13 +1,12 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isPublicDemo } from "@/lib/demo";
 import {
   buildPaginatedJobListResult,
   normalizePageNumber,
   toJobListItem
 } from "@/lib/job-list";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
-import { getSeedStateForEnvironment } from "@/lib/seed";
+import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
   GoalKey,
@@ -99,7 +98,6 @@ function withAutoApplyMarker(record: JobRecord) {
 
 function shouldSeedLocalStore() {
   return (
-    isPublicDemo() ||
     process.env.JOB_DESK_ENABLE_SEED === "true" ||
     process.env.NODE_ENV !== "production"
   );
@@ -195,7 +193,7 @@ export async function seedLocalStoreIfNeeded() {
       return;
     }
 
-    const seedState = getSeedStateForEnvironment();
+    const seedState = getDefaultSeedState();
     store.jobs = [...seedState.activeJobs, ...seedState.rejectedJobs];
     if (!store.dailyGoals.some((row) => row.dateKey === getEasternDateKey())) {
       store.dailyGoals.push(goalSeedForToday());
@@ -204,7 +202,7 @@ export async function seedLocalStoreIfNeeded() {
 }
 
 export async function resetLocalStoreToSeedState() {
-  const seedState = getSeedStateForEnvironment();
+  const seedState = getDefaultSeedState();
 
   await mutateLocalStore(async (store) => {
     store.jobs = [...seedState.activeJobs, ...seedState.rejectedJobs];
