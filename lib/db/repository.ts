@@ -46,6 +46,12 @@ let initialized = false;
 const QUERY_CACHE_TTL_MS = Number(
   process.env.JOB_DESK_QUERY_CACHE_TTL_MS ?? "15000"
 );
+const QUERY_CACHE_MAX_ENTRIES = Number(
+  process.env.JOB_DESK_QUERY_CACHE_MAX_ENTRIES ?? "300"
+);
+const RECENT_CACHE_MAX_ENTRIES = 40;
+const COUNT_CACHE_MAX_ENTRIES = 120;
+const PAGE_CACHE_MAX_ENTRIES = 300;
 
 type CacheEntry<T> = {
   value: T;
@@ -79,8 +85,25 @@ function readCache<T>(
 function writeCache<T>(
   cache: Map<string, CacheEntry<T>>,
   key: string,
-  value: T
+  value: T,
+  maxEntries = QUERY_CACHE_MAX_ENTRIES
 ) {
+  if (maxEntries > 0 && cache.size >= maxEntries && !cache.has(key)) {
+    for (const [entryKey, entryValue] of cache) {
+      if (entryValue.expiresAt <= Date.now()) {
+        cache.delete(entryKey);
+      }
+    }
+  }
+
+  while (maxEntries > 0 && cache.size >= maxEntries && !cache.has(key)) {
+    const oldestKey = cache.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    cache.delete(oldestKey);
+  }
+
   cache.set(key, {
     value,
     expiresAt: Date.now() + QUERY_CACHE_TTL_MS
@@ -90,7 +113,8 @@ function writeCache<T>(
 async function getOrLoadCached<T>(
   cache: Map<string, CacheEntry<T>>,
   key: string,
-  load: () => Promise<T>
+  load: () => Promise<T>,
+  maxEntries = QUERY_CACHE_MAX_ENTRIES
 ) {
   const cached = readCache(cache, key);
   if (cached !== null) {
@@ -98,7 +122,7 @@ async function getOrLoadCached<T>(
   }
 
   const value = await load();
-  writeCache(cache, key, value);
+  writeCache(cache, key, value, maxEntries);
   return value;
 }
 
@@ -349,7 +373,7 @@ async function getCachedCount(
   key: string,
   load: () => Promise<number>
 ) {
-  return getOrLoadCached(totalCountCache, key, load);
+  return getOrLoadCached(totalCountCache, key, load, COUNT_CACHE_MAX_ENTRIES);
 }
 
 async function getRowsByIdsInOrder(ids: string[]) {
@@ -567,7 +591,7 @@ export async function getRecentActiveJobs(limit = 4) {
       .limit(limit);
 
     return rows.map(mapJobListRow);
-  });
+  }, RECENT_CACHE_MAX_ENTRIES);
 }
 
 export async function getActiveJobById(id: string) {
@@ -639,7 +663,7 @@ export async function getJobsPage(input: {
     pageSize,
     totalCount
   );
-  writeCache(paginatedResultCache, cacheKey, pageResult);
+  writeCache(paginatedResultCache, cacheKey, pageResult, PAGE_CACHE_MAX_ENTRIES);
   return pageResult;
 }
 
@@ -701,7 +725,7 @@ export async function searchActiveJobsPage(input: {
     pageSize,
     totalCount
   );
-  writeCache(paginatedResultCache, cacheKey, pageResult);
+  writeCache(paginatedResultCache, cacheKey, pageResult, PAGE_CACHE_MAX_ENTRIES);
   return pageResult;
 }
 

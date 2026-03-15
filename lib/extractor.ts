@@ -212,6 +212,7 @@ function toDraft(result: ExtractionResult): JobDraft {
     jobDescription: result.fields.jobDescription ?? "",
     sourceType: result.sourceType,
     sourceConfidence: result.sourceConfidence,
+    confidenceScores: result.confidenceScores,
     extractionStatus: result.extractionStatus,
     fieldOrigins: result.fieldOrigins,
     candidateValues: result.candidateValues,

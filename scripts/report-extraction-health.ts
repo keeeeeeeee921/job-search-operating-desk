@@ -8,6 +8,8 @@ type ParsedArgs = {
   days: number;
   pool: "active" | "rejected" | "all";
   limit: number;
+  weekly: boolean;
+  json: boolean;
 };
 
 type HealthRow = {
@@ -51,6 +53,8 @@ function parseArgs(argv: string[]): ParsedArgs {
   let days = 7;
   let pool: ParsedArgs["pool"] = "active";
   let limit = 20;
+  let weekly = false;
+  let json = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -78,15 +82,25 @@ function parseArgs(argv: string[]): ParsedArgs {
         limit = Math.trunc(parsed);
       }
       index += 1;
+      continue;
+    }
+
+    if (value === "--weekly") {
+      weekly = true;
+      continue;
+    }
+
+    if (value === "--json") {
+      json = true;
     }
   }
 
-  return { days, pool, limit };
+  return { days, pool, limit, weekly, json };
 }
 
 async function main() {
   loadEnvFile(path.join(process.cwd(), ".env.local"));
-  const { days, pool, limit } = parseArgs(process.argv.slice(2));
+  const { days, pool, limit, weekly, json } = parseArgs(process.argv.slice(2));
   const threshold = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const db = getDb();
   const poolFilter =
@@ -109,29 +123,64 @@ async function main() {
     limit ${limit}
   `)) as HealthRow[];
 
-  console.log(`Extraction health (${pool}, last ${days} day(s))`);
-  console.table(rows);
+  const weeklyRows = weekly
+    ? ((await db.execute(sql`
+        select
+          to_char(date_trunc('week', timestamp at time zone 'America/New_York'), 'YYYY-MM-DD') as "weekStart",
+          extraction_status as "extractionStatus",
+          count(*)::int as "total"
+        from jobs
+        where timestamp >= ${threshold}
+          and ${poolFilter}
+        group by 1, 2
+        order by "weekStart" desc, "total" desc
+      `)) as Array<{ weekStart: string; extractionStatus: string; total: number }>)
+    : [];
 
-  console.log("Top failing host/source families:");
-  console.table(
-    rows
-      .filter((row) => row.extractionStatus !== "confirmed")
-      .slice(0, 10)
-      .map((row) => ({
-        hostname: row.hostname,
-        sourceType: row.sourceType,
-        extractionStatus: row.extractionStatus,
-        total: row.total,
-        issueSummary: [
-          row.missingRoleTitle ? `role:${row.missingRoleTitle}` : "",
-          row.missingCompany ? `company:${row.missingCompany}` : "",
-          row.missingLocation ? `location:${row.missingLocation}` : "",
-          row.missingDescription ? `jd:${row.missingDescription}` : ""
-        ]
-          .filter(Boolean)
-          .join(", ")
-      }))
-  );
+  const failingFamilies = rows
+    .filter((row) => row.extractionStatus !== "confirmed")
+    .slice(0, 10)
+    .map((row) => ({
+      hostname: row.hostname,
+      sourceType: row.sourceType,
+      extractionStatus: row.extractionStatus,
+      total: row.total,
+      issueSummary: [
+        row.missingRoleTitle ? `role:${row.missingRoleTitle}` : "",
+        row.missingCompany ? `company:${row.missingCompany}` : "",
+        row.missingLocation ? `location:${row.missingLocation}` : "",
+        row.missingDescription ? `jd:${row.missingDescription}` : ""
+      ]
+        .filter(Boolean)
+        .join(", ")
+    }));
+
+  if (json) {
+    console.log(
+      JSON.stringify(
+        {
+          pool,
+          days,
+          rows,
+          weekly: weeklyRows,
+          failingFamilies
+        },
+        null,
+        2
+      )
+    );
+  } else {
+    console.log(`Extraction health (${pool}, last ${days} day(s))`);
+    console.table(rows);
+
+    if (weekly) {
+      console.log("Weekly trend:");
+      console.table(weeklyRows);
+    }
+
+    console.log("Top failing host/source families:");
+    console.table(failingFamilies);
+  }
 
   await closeDb();
 }

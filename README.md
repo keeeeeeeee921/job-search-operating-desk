@@ -104,6 +104,8 @@ For managed Postgres runtime:
 
 For local development without Postgres, the app can fall back to a local file store. For deployment and migration notes, see `docs/postgres-deployment.md`.
 
+Operational scripts and maintenance workflow are documented in `docs/operations-runbook.md`.
+
 ## Daily goals
 
 `Apply` resets on `America/New_York` midnight boundaries. New Active records automatically increment `Apply`, while `Connect` and `Follow` are tracked as daily counts with manual updates.

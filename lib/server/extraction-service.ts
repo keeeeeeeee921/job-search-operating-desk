@@ -21,6 +21,23 @@ type ExtractionCandidates = {
   notes?: string[];
 };
 
+type ExtractionFamilyContext = {
+  $: ReturnType<typeof load>;
+  normalizedUrl: string;
+  parsedUrl: URL;
+  documentTitle: string;
+  ogTitle: string;
+  ogDescription: string;
+  metaDescriptions: string[];
+  structuredDescriptionCandidates: string[];
+};
+
+type ExtractionFamilyStrategy = {
+  id: string;
+  matches: (context: ExtractionFamilyContext) => boolean;
+  collect: (context: ExtractionFamilyContext) => ExtractionCandidates;
+};
+
 type DayforcePostingLocation = {
   cityName?: string;
   stateCode?: string;
@@ -310,6 +327,55 @@ function pickField(
   return (candidates[field] ?? [])[0] ?? "";
 }
 
+function estimateLocationConfidence(value: string, candidateCount: number) {
+  if (!value) {
+    return 0;
+  }
+
+  let score = candidateCount > 1 ? 0.86 : 0.74;
+  if (/\(remote\)$/i.test(value)) {
+    score += 0.06;
+  }
+  if (/^[A-Za-z.'\- ]+,\s*[A-Z]{2}(,\s*[A-Za-z ]+)?$/.test(value)) {
+    score += 0.04;
+  }
+
+  return Math.min(0.96, score);
+}
+
+function estimateFieldConfidenceScores(input: {
+  roleTitleCandidates: string[];
+  companyCandidates: string[];
+  locationCandidates: string[];
+  descriptionCandidates: string[];
+}) {
+  const primaryDescription = input.descriptionCandidates[0] ?? "";
+
+  return {
+    roleTitle:
+      input.roleTitleCandidates.length > 1
+        ? 0.9
+        : input.roleTitleCandidates.length === 1
+          ? 0.76
+          : 0,
+    company:
+      input.companyCandidates.length > 1
+        ? 0.88
+        : input.companyCandidates.length === 1
+          ? 0.74
+          : 0,
+    location: estimateLocationConfidence(
+      input.locationCandidates[0] ?? "",
+      input.locationCandidates.length
+    ),
+    jobDescription: primaryDescription
+      ? primaryDescription.length >= 500
+        ? 0.84
+        : 0.72
+      : 0
+  } satisfies Partial<Record<JobField, number>>;
+}
+
 function parseJsonLd(raw: string) {
   try {
     const parsed = JSON.parse(raw);
@@ -328,6 +394,15 @@ function cleanTitle(value: string) {
       .replace(/\s+/g, " ")
       .trim()
   );
+}
+
+function providerHostCompany(hostname: string) {
+  const normalized = hostname.toLowerCase();
+  if (normalized.endsWith(".myworkdayjobs.com")) {
+    return capitalizeWords(normalized.split(".")[0] ?? "");
+  }
+
+  return "";
 }
 
 function isUsefulTitleCandidate(value: string) {
@@ -1100,99 +1175,276 @@ function parseDayforceCompany(siteInfoData: Record<string, unknown> | undefined)
   return "";
 }
 
-function collectScriptPayloadCandidates(
-  $: ReturnType<typeof load>,
-  normalizedUrl: string
+function emptyExtractionCandidates(): ExtractionCandidates {
+  return {
+    roleTitle: [],
+    company: [],
+    location: [],
+    jobDescription: [],
+    notes: []
+  };
+}
+
+function mergeExtractionCandidates(
+  base: ExtractionCandidates,
+  next: ExtractionCandidates
 ): ExtractionCandidates {
-  const parsedUrl = new URL(normalizedUrl);
-  const roleTitle: string[] = [];
-  const company: string[] = [];
-  const location: string[] = [];
-  const jobDescription: string[] = [];
-  const notes: string[] = [];
+  return {
+    roleTitle: uniqueValues([...base.roleTitle, ...next.roleTitle]),
+    company: uniqueValues([...base.company, ...next.company]),
+    location: uniqueValues([...base.location, ...next.location]),
+    jobDescription: uniqueValues([...base.jobDescription, ...next.jobDescription]),
+    notes: uniqueValues([...(base.notes ?? []), ...(next.notes ?? [])])
+  };
+}
 
-  const nextDataText = $('script#__NEXT_DATA__[type="application/json"]').first().text();
-  if (nextDataText) {
-    const dayforcePayload = parseDayforceNextDataPayload(nextDataText);
-    if (dayforcePayload) {
-      if (typeof dayforcePayload.jobData.jobTitle === "string") {
-        roleTitle.push(cleanTitle(dayforcePayload.jobData.jobTitle));
+function extractGeoLocationCandidatesFromText(values: string[]) {
+  const locations: string[] = [];
+  const locationPattern =
+    /\b([A-Z][A-Za-z.'\- ]+,\s*[A-Z]{2})(?:,\s*(United States|USA|US|Canada))?\b/g;
+
+  for (const value of values) {
+    const normalized = normalizeWhitespace(value);
+    const remoteMatch = normalized.match(
+      /\bremote\s*:?\s*(united states|usa|us|canada)\b/i
+    );
+    if (remoteMatch?.[1]) {
+      locations.push(`${normalizeCountryName(remoteMatch[1])} (Remote)`);
+    }
+
+    for (const match of normalized.matchAll(locationPattern)) {
+      let cityState = normalizeWhitespace(match[1] ?? "");
+      if (/\bin\s+/i.test(cityState)) {
+        cityState = cityState.replace(/^.*\bin\s+/i, "");
       }
-
-      location.push(
-        ...parseDayforceLocations(
-          dayforcePayload.jobData.postingLocations,
-          dayforcePayload.jobData.hasVirtualLocation
-        )
-      );
-
-      if (typeof dayforcePayload.jobData.jobPostingContent?.jobDescription === "string") {
-        jobDescription.push(stripHtml(dayforcePayload.jobData.jobPostingContent.jobDescription));
-      }
-
-      const parsedCompany = parseDayforceCompany(dayforcePayload.siteInfoData);
-      if (parsedCompany) {
-        company.push(parsedCompany);
-      }
-
-      notes.push("Dayforce job payload was parsed from __NEXT_DATA__.");
+      const country = normalizeCountryName(match[2] ?? "");
+      locations.push(country ? `${cityState}, ${country}` : cityState);
     }
   }
 
-  $('script:not([type="application/ld+json"])').each((_, element) => {
-    const scriptText = $(element).text();
+  return uniqueValues(
+    locations.map((value) => cleanLocation(value)).filter(isUsefulLocationCandidate)
+  );
+}
 
+function collectDayforceFamilyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  const nextDataText = context.$('script#__NEXT_DATA__[type="application/json"]')
+    .first()
+    .text();
+  if (!nextDataText) {
+    return emptyExtractionCandidates();
+  }
+
+  const dayforcePayload = parseDayforceNextDataPayload(nextDataText);
+  if (!dayforcePayload) {
+    return emptyExtractionCandidates();
+  }
+
+  const candidates = emptyExtractionCandidates();
+
+  if (typeof dayforcePayload.jobData.jobTitle === "string") {
+    candidates.roleTitle.push(cleanTitle(dayforcePayload.jobData.jobTitle));
+  }
+
+  candidates.location.push(
+    ...parseDayforceLocations(
+      dayforcePayload.jobData.postingLocations,
+      dayforcePayload.jobData.hasVirtualLocation
+    )
+  );
+
+  if (
+    typeof dayforcePayload.jobData.jobPostingContent?.jobDescription === "string"
+  ) {
+    candidates.jobDescription.push(
+      stripHtml(dayforcePayload.jobData.jobPostingContent.jobDescription)
+    );
+  }
+
+  const parsedCompany = parseDayforceCompany(dayforcePayload.siteInfoData);
+  if (parsedCompany) {
+    candidates.company.push(parsedCompany);
+  }
+
+  candidates.notes?.push("Dayforce job payload was parsed from __NEXT_DATA__.");
+  return candidates;
+}
+
+function collectPhenomFamilyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  const candidates = emptyExtractionCandidates();
+
+  context.$('script:not([type="application/ld+json"])').each((_, element) => {
+    const scriptText = context.$(element).text();
     const phenomPayload = parsePhenomPayload(scriptText);
-    if (phenomPayload) {
-      roleTitle.push(...phenomPayload.titleCandidates.map((value) => cleanTitle(value)));
-      company.push(
-        ...phenomPayload.companyCandidates.map((value) => cleanCompany(value))
-      );
-      location.push(...phenomPayload.locationCandidates);
-      jobDescription.push(
-        ...phenomPayload.descriptionCandidates.map((value) => stripHtml(value))
-      );
-      notes.push("Phenom-style job payload was parsed from an inline script.");
+    if (!phenomPayload) {
+      return;
     }
 
+    candidates.roleTitle.push(
+      ...phenomPayload.titleCandidates.map((value) => cleanTitle(value))
+    );
+    candidates.company.push(
+      ...phenomPayload.companyCandidates.map((value) => cleanCompany(value))
+    );
+    candidates.location.push(...phenomPayload.locationCandidates);
+    candidates.jobDescription.push(
+      ...phenomPayload.descriptionCandidates.map((value) => stripHtml(value))
+    );
+    candidates.notes?.push("Phenom-style job payload was parsed from an inline script.");
+  });
+
+  return candidates;
+}
+
+function collectUkgFamilyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  const candidates = emptyExtractionCandidates();
+  const isUkgHost = context.parsedUrl.hostname.includes("rec.pro.ukg.net");
+
+  context.$('script:not([type="application/ld+json"])').each((_, element) => {
+    const scriptText = context.$(element).text();
     const ukgPayload = parseUkgPayload(scriptText);
     if (!ukgPayload) {
       return;
     }
 
     if (typeof ukgPayload.Title === "string") {
-      roleTitle.push(ukgPayload.Title);
+      candidates.roleTitle.push(cleanTitle(ukgPayload.Title));
     }
 
-    location.push(...parseUkgLocations(ukgPayload.Locations));
+    candidates.location.push(...parseUkgLocations(ukgPayload.Locations));
 
     if (typeof ukgPayload.Description === "string") {
-      jobDescription.push(stripHtml(ukgPayload.Description));
+      candidates.jobDescription.push(stripHtml(ukgPayload.Description));
     }
 
-    notes.push("Inline job payload was parsed from the page script.");
+    candidates.notes?.push("Inline job payload was parsed from the page script.");
   });
 
-  if (jobDescription.length > 0) {
-    company.push(
-      ...extractCompanyFromDescriptions(jobDescription),
-      $('meta[property="og:site_name"]').attr("content") ?? "",
-      $('meta[name="author"]').attr("content") ?? "",
-      ...(
-        parsedUrl.hostname.includes("rec.pro.ukg.net")
-          ? [capitalizeWords(parsedUrl.hostname.split(".")[0] ?? "")]
-          : []
-      )
+  if (candidates.jobDescription.length > 0) {
+    candidates.company.push(
+      ...extractCompanyFromDescriptions(candidates.jobDescription),
+      context.$('meta[property="og:site_name"]').attr("content") ?? "",
+      context.$('meta[name="author"]').attr("content") ?? "",
+      ...(isUkgHost
+        ? [capitalizeWords(context.parsedUrl.hostname.split(".")[0] ?? "")]
+        : [])
     );
   }
 
-  return {
-    roleTitle,
-    company,
-    location,
-    jobDescription,
-    notes
-  };
+  return candidates;
+}
+
+function collectGreenhouseFamilyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  if (!isGreenhouseJobBoardUrl(context.parsedUrl)) {
+    return emptyExtractionCandidates();
+  }
+
+  const candidates = emptyExtractionCandidates();
+  const hints = parseGreenhouseTitleHints(context.documentTitle);
+  const companyFromUrl = parseGreenhouseCompanyFromUrl(context.parsedUrl);
+
+  if (hints.roleTitle) {
+    candidates.roleTitle.push(cleanTitle(hints.roleTitle));
+  }
+
+  if (hints.company) {
+    candidates.company.push(cleanCompany(hints.company));
+  }
+
+  if (companyFromUrl) {
+    candidates.company.push(cleanCompany(companyFromUrl));
+  }
+
+  candidates.location.push(
+    ...extractGeoLocationCandidatesFromText([
+      context.ogDescription,
+      ...context.metaDescriptions
+    ])
+  );
+  candidates.notes?.push("Greenhouse title and location hints were prioritized.");
+  return candidates;
+}
+
+function collectWorkdayFamilyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  if (!context.parsedUrl.hostname.toLowerCase().includes("myworkdayjobs.com")) {
+    return emptyExtractionCandidates();
+  }
+
+  const candidates = emptyExtractionCandidates();
+
+  candidates.roleTitle.push(cleanTitle(context.documentTitle), cleanTitle(context.ogTitle));
+
+  candidates.location.push(
+    ...extractGeoLocationCandidatesFromText([
+      ...context.metaDescriptions,
+      ...context.structuredDescriptionCandidates.slice(0, 2)
+    ])
+  );
+  candidates.notes?.push("Workday host and metadata hints were prioritized.");
+  return candidates;
+}
+
+const extractionFamilyStrategies: ExtractionFamilyStrategy[] = [
+  {
+    id: "dayforce",
+    matches: (context) =>
+      context.parsedUrl.hostname.toLowerCase().includes("mydayforcejobs.com") ||
+      Boolean(
+        context.$('script#__NEXT_DATA__[type="application/json"]').first().text()
+      ),
+    collect: collectDayforceFamilyCandidates
+  },
+  {
+    id: "phenom",
+    matches: (context) =>
+      context.parsedUrl.hostname.toLowerCase().includes("phenom") ||
+      context.parsedUrl.hostname.toLowerCase().includes("jetblue.com") ||
+      context.normalizedUrl.includes("job-"),
+    collect: collectPhenomFamilyCandidates
+  },
+  {
+    id: "ukg",
+    matches: (context) =>
+      context.parsedUrl.hostname.toLowerCase().includes("rec.pro.ukg.net"),
+    collect: collectUkgFamilyCandidates
+  },
+  {
+    id: "greenhouse",
+    matches: (context) => isGreenhouseJobBoardUrl(context.parsedUrl),
+    collect: collectGreenhouseFamilyCandidates
+  },
+  {
+    id: "workday",
+    matches: (context) =>
+      context.parsedUrl.hostname.toLowerCase().includes("myworkdayjobs.com"),
+    collect: collectWorkdayFamilyCandidates
+  }
+];
+
+function collectFamilyStrategyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  let merged = emptyExtractionCandidates();
+
+  for (const strategy of extractionFamilyStrategies) {
+    if (!strategy.matches(context)) {
+      continue;
+    }
+
+    merged = mergeExtractionCandidates(merged, strategy.collect(context));
+  }
+
+  return merged;
 }
 
 function collectJsonLdCandidates($: ReturnType<typeof load>) {
@@ -1239,11 +1491,11 @@ function collectJsonLdCandidates($: ReturnType<typeof load>) {
 export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
   const $ = load(html);
   const parsedUrl = new URL(normalizedUrl);
-  const scriptPayload = collectScriptPayloadCandidates($, normalizedUrl);
-  const jsonLd = collectJsonLdCandidates($);
   const documentTitle = $("title").text();
   const ogTitle = $('meta[property="og:title"]').attr("content") ?? "";
   const ogDescription = $('meta[property="og:description"]').attr("content") ?? "";
+  const source = detectSource(normalizedUrl);
+  const jsonLd = collectJsonLdCandidates($);
   const greenhouseHints = parseGreenhouseTitleHints(documentTitle);
   const greenhouseCompanyFromUrl = parseGreenhouseCompanyFromUrl(parsedUrl);
   const metaDescriptions = uniqueValues([
@@ -1251,14 +1503,24 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     ogDescription
   ]).map((value) => normalizeWhitespace(value));
   const structuredDescriptionCandidates = extractStructuredDescriptionCandidates($);
+  const familyCandidates = collectFamilyStrategyCandidates({
+    $,
+    normalizedUrl,
+    parsedUrl,
+    documentTitle,
+    ogTitle,
+    ogDescription,
+    metaDescriptions,
+    structuredDescriptionCandidates
+  });
   const companyDescriptionSeeds = uniqueValues([
-    ...scriptPayload.jobDescription.slice(0, 2),
+    ...familyCandidates.jobDescription.slice(0, 2),
     ...metaDescriptions,
     ...structuredDescriptionCandidates.slice(0, 2)
   ]);
   const titleCandidates = uniqueValues([
+    ...familyCandidates.roleTitle,
     greenhouseHints.roleTitle,
-    ...scriptPayload.roleTitle,
     ...jsonLd.roleTitle,
     $("h1").first().text(),
     $("h2").first().text(),
@@ -1268,9 +1530,9 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     .map((value) => cleanTitle(value))
     .filter(isUsefulTitleCandidate);
   const companyCandidates = prioritizeCompanyCandidates([
+    ...familyCandidates.company,
     greenhouseHints.company,
     greenhouseCompanyFromUrl,
-    ...scriptPayload.company,
     ...jsonLd.company,
     ...extractCompanyFromDescriptions(companyDescriptionSeeds),
     $('meta[property="og:site_name"]').attr("content") ?? "",
@@ -1283,10 +1545,17 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
         : [hostToCompany(parsedUrl.hostname)]
     )
   ]);
+  if (companyCandidates.length === 0 && source.sourceType === "workday") {
+    const hostCompany = cleanCompany(providerHostCompany(parsedUrl.hostname));
+    if (hostCompany) {
+      companyCandidates.push(hostCompany);
+    }
+  }
   const locationCandidates = uniqueValues([
+    ...familyCandidates.location,
     ...(isGreenhouseJobBoardUrl(parsedUrl) ? [ogDescription] : []),
-    ...scriptPayload.location,
     ...jsonLd.location,
+    ...extractGeoLocationCandidatesFromText(metaDescriptions),
     ...extractLabeledValues($, "location"),
     $('[data-qa="job-location"]').text(),
     $('[class*="location"]').first().text()
@@ -1294,19 +1563,26 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     .map((value) => cleanLocation(value))
     .filter(isUsefulLocationCandidate);
   const descriptionCandidates = uniqueValues([
-    ...scriptPayload.jobDescription,
+    ...familyCandidates.jobDescription,
     ...jsonLd.jobDescription,
     ...structuredDescriptionCandidates,
     ...metaDescriptions
   ])
     .map((value) => stripHtml(value))
     .filter(isUsefulDescriptionCandidate);
+  const confidenceScores = estimateFieldConfidenceScores({
+    roleTitleCandidates: titleCandidates,
+    companyCandidates: companyCandidates,
+    locationCandidates: locationCandidates,
+    descriptionCandidates: descriptionCandidates
+  });
 
   const result: ExtractionResult = {
     normalizedUrl,
     inputMode: "link",
-    sourceType: detectSource(normalizedUrl).sourceType,
-    sourceConfidence: detectSource(normalizedUrl).sourceConfidence,
+    sourceType: source.sourceType,
+    sourceConfidence: source.sourceConfidence,
+    confidenceScores,
     extractionStatus: "needs_review",
     supported: true,
     fields: {
@@ -1337,7 +1613,7 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
     issues: [],
     notes: uniqueValues([
       "Public page metadata was parsed on the server.",
-      ...(scriptPayload.notes ?? [])
+      ...(familyCandidates.notes ?? [])
     ])
   };
 

@@ -856,6 +856,7 @@ function buildDraft(result: ExtractionResult): JobDraft {
     jobDescription: result.fields.jobDescription ?? "",
     sourceType: result.sourceType,
     sourceConfidence: result.sourceConfidence,
+    confidenceScores: result.confidenceScores,
     extractionStatus: result.extractionStatus,
     fieldOrigins: result.fieldOrigins,
     candidateValues: result.candidateValues,
@@ -905,18 +906,24 @@ export function extractJobFromText(rawText: string): ExtractionResult {
     location: locationCandidates[0] ?? ""
   });
   const fieldOrigins = emptyFieldOrigins();
+  const confidenceScores: Partial<Record<JobField, number>> = {};
 
   if (roleTitle) {
     fieldOrigins.roleTitle = "confirmed";
+    confidenceScores.roleTitle = roleTitle.length >= 10 ? 0.82 : 0.74;
   }
   if (company) {
     fieldOrigins.company = "confirmed";
+    confidenceScores.company = summaryLine ? 0.84 : 0.72;
   }
   if (locationCandidates.length) {
     fieldOrigins.location = "confirmed";
+    confidenceScores.location =
+      locationCandidates[0]?.includes("(Remote)") ? 0.86 : 0.78;
   }
   if (description) {
     fieldOrigins.jobDescription = "confirmed";
+    confidenceScores.jobDescription = description.length >= 200 ? 0.76 : 0.68;
   }
 
   const result: ExtractionResult = {
@@ -924,6 +931,7 @@ export function extractJobFromText(rawText: string): ExtractionResult {
     inputMode: "text",
     sourceType: source.sourceType,
     sourceConfidence: source.sourceConfidence,
+    confidenceScores,
     extractionStatus: "needs_review",
     supported: true,
     fields: {

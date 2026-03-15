@@ -72,6 +72,7 @@ export interface ExtractionResult {
   inputMode: InputMode;
   sourceType: SourceType;
   sourceConfidence: SourceConfidence;
+  confidenceScores?: Partial<Record<JobField, number>>;
   extractionStatus: ExtractionStatus;
   supported: boolean;
   unsupportedReason?: string;
@@ -91,6 +92,7 @@ export interface JobDraft {
   jobDescription: string;
   sourceType: SourceType;
   sourceConfidence: SourceConfidence;
+  confidenceScores?: Partial<Record<JobField, number>>;
   extractionStatus: ExtractionStatus;
   fieldOrigins: Partial<Record<JobField, FieldOrigin>>;
   candidateValues: Partial<Record<JobField, string[]>>;

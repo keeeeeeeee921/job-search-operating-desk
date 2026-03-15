@@ -51,6 +51,18 @@ export function ReviewModal({
     return null;
   }
 
+  const sortedFields = [...requiredJobFields].sort((left, right) => {
+    const leftIssues = issueForField(localDraft.issues, left);
+    const rightIssues = issueForField(localDraft.issues, right);
+    if (leftIssues.length !== rightIssues.length) {
+      return rightIssues.length - leftIssues.length;
+    }
+
+    const leftScore = localDraft.confidenceScores?.[left] ?? 0;
+    const rightScore = localDraft.confidenceScores?.[right] ?? 0;
+    return leftScore - rightScore;
+  });
+
   return (
     <Dialog
       className="h-[min(82dvh,860px)] sm:h-[min(86dvh,920px)]"
@@ -72,9 +84,10 @@ export function ReviewModal({
                 {localDraft.unsupportedReason}
               </div>
             ) : null}
-            {requiredJobFields.map((field) => {
+            {sortedFields.map((field) => {
               const issues = issueForField(localDraft.issues, field);
               const value = localDraft[field];
+              const confidenceScore = localDraft.confidenceScores?.[field];
               const candidates = Array.from(
                 new Set((localDraft.candidateValues[field] ?? []).filter(Boolean))
               );
@@ -117,6 +130,11 @@ export function ReviewModal({
                       {localDraft.fieldOrigins[field] ?? "missing"}
                     </p>
                   </div>
+                  {confidenceScore !== undefined ? (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Confidence {Math.round(confidenceScore * 100)}%
+                    </p>
+                  ) : null}
                   {shouldShowCandidates ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {candidates.map((candidate) => (

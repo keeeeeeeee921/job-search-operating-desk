@@ -13,6 +13,7 @@
     "manual-fix:records": "tsx scripts/manual-fix-records.ts",
     "audit:active-records": "tsx scripts/audit-active-records.ts",
     "report:extraction-health": "tsx scripts/report-extraction-health.ts",
+    "report:extraction-health:weekly": "tsx scripts/report-extraction-health.ts --weekly --days 28",
     "repair:connect-goal": "tsx scripts/repair-connect-goal.ts",
     "repair:search-text": "tsx scripts/repair-search-text.ts",
     "db:generate": "drizzle-kit generate",
