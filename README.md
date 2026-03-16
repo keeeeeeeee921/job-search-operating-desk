@@ -105,6 +105,7 @@ For managed Postgres runtime:
 For local development without Postgres, the app can fall back to a local file store. For deployment and migration notes, see `docs/postgres-deployment.md`.
 
 Operational scripts and maintenance workflow are documented in `docs/operations-runbook.md`.
+Common issue diagnosis is documented in `docs/troubleshooting.md`.
 
 ## Daily goals
 

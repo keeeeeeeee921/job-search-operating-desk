@@ -31,6 +31,11 @@ import {
 } from "@/lib/job-list";
 import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
 import { findEmailMatches } from "@/lib/emailMatching";
+import {
+  QUERY_CACHE_BUCKET_LIMITS,
+  QUERY_CACHE_MAX_ENTRIES,
+  QUERY_CACHE_TTL_MS
+} from "@/lib/query-cache-config";
 import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
@@ -43,15 +48,9 @@ import type {
 import { getEasternDateKey, normalizeText, tokenize, uniqueValues } from "@/lib/utils";
 
 let initialized = false;
-const QUERY_CACHE_TTL_MS = Number(
-  process.env.JOB_DESK_QUERY_CACHE_TTL_MS ?? "15000"
-);
-const QUERY_CACHE_MAX_ENTRIES = Number(
-  process.env.JOB_DESK_QUERY_CACHE_MAX_ENTRIES ?? "300"
-);
-const RECENT_CACHE_MAX_ENTRIES = 40;
-const COUNT_CACHE_MAX_ENTRIES = 120;
-const PAGE_CACHE_MAX_ENTRIES = 300;
+const RECENT_CACHE_MAX_ENTRIES = QUERY_CACHE_BUCKET_LIMITS.recent;
+const COUNT_CACHE_MAX_ENTRIES = QUERY_CACHE_BUCKET_LIMITS.count;
+const PAGE_CACHE_MAX_ENTRIES = QUERY_CACHE_BUCKET_LIMITS.page;
 
 type CacheEntry<T> = {
   value: T;

@@ -46,9 +46,14 @@ const linkedinNoisePatterns = [
   /^tailor my resume$/i,
   /^create cover letter$/i,
   /^help me stand out$/i,
+  /^your ai-powered job assessment$/i,
+  /^you'?d be a top applicant/i,
+  /^responses managed off linkedin$/i,
+  /^unsupported$/i,
   /^people you can reach out to$/i,
   /^promoted by /i,
   /^save$/i,
+  /^apply$/i,
   /^message$/i,
   /^share$/i,
   /^simplify$/i,
@@ -62,6 +67,10 @@ const linkedinNoisePatterns = [
   /^matches your job preferences/i,
   /^no response insights/i,
   /^over \d+ applicants$/i,
+  /^\d+\s+people clicked apply$/i,
+  /^\d+\s+people have clicked apply$/i,
+  /^posted \d+/i,
+  /^reposted \d+/i,
   /^.+ logo$/i,
   /^.+ profile photo$/i,
   /^.+ is verified$/i,
@@ -116,6 +125,10 @@ function normalizeLocationCandidate(value: string): string {
     return "";
   }
 
+  if (/\b(locate me|location\s*\(city\)|#job-location|display:\s*inline)\b/i.test(cleaned)) {
+    return "";
+  }
+
   const addressWithZip = cleaned.match(
     /,\s*([A-Za-z.'\- ]+),\s*([A-Z]{2})\s*\d{5}(?:-\d{4})?,\s*(United States of America|United States|USA|US)\b/i
   );
@@ -149,8 +162,7 @@ function normalizeLocationCandidate(value: string): string {
   return cleaned
     .replace(/\bUnited States of America\b/gi, "United States")
     .replace(/\bUSA\b/gi, "United States")
-    .replace(/,\s*\d{5}(?:-\d{4})?(?=,\s*(United States|US)\b)/i, "")
-    .replace(/, United States$/i, ", US");
+    .replace(/,\s*\d{5}(?:-\d{4})?(?=,\s*(United States|US)\b)/i, "");
 }
 
 function looksLikeLocationShape(value: string) {
@@ -160,7 +172,7 @@ function looksLikeLocationShape(value: string) {
   }
 
   if (
-    /(promoted by|response insights|clicked apply|applicants|resume match|easy apply|hiring|logo|profile photo)/i.test(
+    /(promoted by|response insights|clicked apply|applicants|resume match|easy apply|hiring|logo|profile photo|location\s*\(city\)|locate me|display:\s*inline|#job-location)/i.test(
       normalized
     )
   ) {
@@ -592,18 +604,39 @@ function extractLabeledValue(lines: string[], label: string) {
 function extractSummaryLine(lines: string[]) {
   return (
     lines.find((line) => {
-      const normalized = line.toLowerCase();
+      if (!line.includes("·")) {
+        return false;
+      }
+
+      const segments = line
+        .split("·")
+        .map((segment) => cleanLine(segment))
+        .filter(Boolean);
+      if (segments.length < 2) {
+        return false;
+      }
+
+      const companySegment = segments[0] ?? "";
+      const locationSegment = segments[1] ?? "";
+      const normalizedLocation = normalizeLocationCandidate(locationSegment);
+
+      if (!companySegment || !normalizedLocation) {
+        return false;
+      }
+
+      if (!looksLikeLocationShape(normalizedLocation)) {
+        return false;
+      }
 
       if (
-        normalized.includes("applicants") ||
-        normalized.includes("hours ago") ||
-        normalized.includes("minutes ago") ||
-        normalized.includes("days ago")
+        /(promoted by|response insights|resume match|tailor my resume|create cover letter)/i.test(
+          line
+        )
       ) {
         return false;
       }
 
-      return /^[^·]+ · [^(]+(?: \((?:On-site|Remote|Hybrid)\))?$/i.test(line);
+      return true;
     }) ?? ""
   );
 }
@@ -616,7 +649,9 @@ function parseCompanyAndLocationFromSummary(summaryLine: string) {
     };
   }
 
-  const [companyPart, locationPart] = summaryLine.split(" · ");
+  const [companyPart, locationPart] = summaryLine
+    .split("·")
+    .map((segment) => cleanLine(segment));
   const company = cleanLine(companyPart ?? "");
   const rawLocation = cleanLine(locationPart ?? "");
   const primaryLocation = normalizeLocationCandidate(
@@ -646,7 +681,7 @@ function looksLikeRoleTitle(line: string) {
   }
 
   if (
-    /^(Agility Partners|Save|Easy Apply|Contract|On-site|Remote|Hybrid)$/i.test(
+    /^(Agility Partners|Save|Easy Apply|Contract|On-site|Remote|Hybrid|Apply)$/i.test(
       line
     )
   ) {
@@ -661,55 +696,111 @@ function looksLikeRoleTitle(line: string) {
     return false;
   }
 
+  if (/(logo|profile photo|promoted by|resume match|show match details)/i.test(line)) {
+    return false;
+  }
+
   return /(engineer|analyst|scientist|manager|intern|developer|specialist|consultant|associate|administrator|architect|lead|director)/i.test(
     line
   );
 }
 
+function normalizeRoleTitle(value: string) {
+  return cleanLine(
+    value
+      .replace(/^(title|role|role title|job title)\s*:\s*/i, "")
+      .replace(/\s+/g, " ")
+  );
+}
+
 function extractRoleTitle(lines: string[]) {
+  for (const label of ["Role Title", "Job Title", "Role", "Title"]) {
+    const labeled = extractLabeledValue(lines, label);
+    const normalized = normalizeRoleTitle(labeled?.value ?? "");
+    if (normalized && looksLikeRoleTitle(normalized)) {
+      return normalized;
+    }
+  }
+
   for (const line of lines.slice(0, 14)) {
-    if (looksLikeRoleTitle(line)) {
-      return line;
+    const normalized = normalizeRoleTitle(line);
+    if (looksLikeRoleTitle(normalized)) {
+      return normalized;
     }
   }
 
   return "";
 }
 
+function normalizeCompany(value: string) {
+  return cleanLine(
+    value
+      .replace(/\blogo\b/gi, "")
+      .replace(/\s+/g, " ")
+  );
+}
+
+function looksLikeCountryOnlyCompany(value: string) {
+  const normalized = value.toLowerCase();
+  return ["us", "usa", "united states", "united states of america", "canada"].includes(
+    normalized
+  );
+}
+
 function looksLikeCompanyName(line: string, roleTitle: string) {
-  if (!line || line === roleTitle) {
+  const normalizedLine = normalizeCompany(line);
+  if (!normalizedLine || normalizedLine === roleTitle) {
     return false;
   }
 
-  if (isMetadataLine(line)) {
+  if (isMetadataLine(normalizedLine)) {
     return false;
   }
 
-  if (line.includes("·") || line.includes("|") || line.includes(":")) {
+  if (normalizedLine.includes("·") || normalizedLine.includes("|")) {
     return false;
   }
 
   if (
     /(minutes ago|hours ago|days ago|clicked apply|applicants|remote|on-site|hybrid|full-time|part-time|contract|easy apply|resume match|show match details|tailor my resume)/i.test(
-      line
+      normalizedLine
     )
   ) {
     return false;
   }
 
-  return /^[A-Za-z0-9&.,'()\-\/\s]+$/.test(line);
+  if (
+    /(position|responsibilities|about the job|job details|job description|location\s*\(city\)|select\.\.\.)/i.test(
+      normalizedLine
+    )
+  ) {
+    return false;
+  }
+
+  if (looksLikeCountryOnlyCompany(normalizedLine)) {
+    return false;
+  }
+
+  return /^[A-Za-z0-9&.,'()\-\/\s]+$/.test(normalizedLine);
 }
 
 function extractCompanyName(lines: string[], roleTitle: string) {
   const companyResult = extractLabeledValue(lines, "Company");
   if (companyResult?.value) {
-    return companyResult.value;
+    const normalized = normalizeCompany(companyResult.value);
+    if (looksLikeCompanyName(normalized, roleTitle)) {
+      return normalized;
+    }
   }
 
   const summaryLine = extractSummaryLine(lines);
-  const summaryCompany = parseCompanyAndLocationFromSummary(summaryLine).company;
+  const summaryCompany = normalizeCompany(
+    parseCompanyAndLocationFromSummary(summaryLine).company
+  );
   if (summaryCompany) {
-    return summaryCompany;
+    if (looksLikeCompanyName(summaryCompany, roleTitle)) {
+      return summaryCompany;
+    }
   }
 
   const saveLine = lines.find((line) =>
@@ -721,7 +812,10 @@ function extractCompanyName(lines: string[], roleTitle: string) {
     );
     const extracted = cleanLine(match?.[1] ?? "");
     if (extracted) {
-      return extracted;
+      const normalized = normalizeCompany(extracted);
+      if (looksLikeCompanyName(normalized, roleTitle)) {
+        return normalized;
+      }
     }
   }
 
@@ -742,7 +836,7 @@ function extractCompanyName(lines: string[], roleTitle: string) {
       previous === roleTitle ||
       looksLikeRoleTitle(previous)
     ) {
-      return line;
+      return normalizeCompany(line);
     }
   }
 

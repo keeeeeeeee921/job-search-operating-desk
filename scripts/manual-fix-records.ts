@@ -12,6 +12,11 @@ type RecordPatch = {
   company?: string;
 };
 
+type ParsedArgs = {
+  mode: ScriptMode;
+  patchFile: string | null;
+};
+
 const TARGET_PATCHES = new Map<string, RecordPatch>([
   [
     "800ec2d0-2958-44e8-979e-c4d54859b94f",
@@ -98,10 +103,12 @@ function loadEnvFile(filePath: string) {
   }
 }
 
-function parseArgs(argv: string[]) {
+function parseArgs(argv: string[]): ParsedArgs {
   let mode: ScriptMode = "dry-run";
+  let patchFile: string | null = null;
 
-  for (const value of argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
     if (value === "--apply") {
       mode = "apply";
       continue;
@@ -109,30 +116,69 @@ function parseArgs(argv: string[]) {
 
     if (value === "--dry-run") {
       mode = "dry-run";
+      continue;
+    }
+
+    if (value === "--patch-file") {
+      const next = argv[index + 1] ?? "";
+      if (next) {
+        patchFile = path.resolve(process.cwd(), next);
+      }
+      index += 1;
     }
   }
 
-  return { mode };
+  return { mode, patchFile };
 }
 
 function buildSearchText(record: Pick<JobRecord, "company" | "roleTitle" | "location">) {
   return normalizeText(`${record.company} ${record.roleTitle} ${record.location}`);
 }
 
+function loadPatchMapFromFile(filePath: string): Map<string, RecordPatch> {
+  if (!existsSync(filePath)) {
+    throw new Error(`Patch file does not exist: ${filePath}`);
+  }
+
+  const raw = readFileSync(filePath, "utf8");
+  const parsed = JSON.parse(raw) as Record<string, RecordPatch>;
+  const entries = Object.entries(parsed).filter(
+    ([, patch]) => Boolean(patch.roleTitle?.trim() || patch.company?.trim())
+  );
+
+  return new Map(
+    entries.map(([id, patch]) => [
+      id,
+      {
+        roleTitle: patch.roleTitle?.trim() || undefined,
+        company: patch.company?.trim() || undefined
+      } satisfies RecordPatch
+    ])
+  );
+}
+
 async function main() {
   loadEnvFile(path.join(process.cwd(), ".env.local"));
-  const { mode } = parseArgs(process.argv.slice(2));
+  const { mode, patchFile } = parseArgs(process.argv.slice(2));
+  const patchMap = patchFile
+    ? loadPatchMapFromFile(patchFile)
+    : TARGET_PATCHES;
+
+  if (patchFile) {
+    console.log(`Using patch file: ${patchFile}`);
+  }
+
   const records = await getAllRecords();
   const recordMap = new Map(records.map((record) => [record.id, record]));
 
-  const missingIds = [...TARGET_PATCHES.keys()].filter((id) => !recordMap.has(id));
+  const missingIds = [...patchMap.keys()].filter((id) => !recordMap.has(id));
   if (missingIds.length > 0) {
     throw new Error(`Missing target records: ${missingIds.join(", ")}`);
   }
 
   const skippedRejected: string[] = [];
 
-  const updates = [...TARGET_PATCHES.entries()].flatMap(([id, patch]) => {
+  const updates = [...patchMap.entries()].flatMap(([id, patch]) => {
     const record = recordMap.get(id)!;
 
     if (record.pool !== "active") {

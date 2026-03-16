@@ -7,15 +7,15 @@ function revalidatePaths(paths: string[]) {
 }
 
 export function revalidateAfterActiveRecordSaved(_recordId: string) {
-  revalidatePaths(["/", "/active", "/update-by-email"]);
+  revalidatePaths(["/", "/active"]);
 }
 
 export function revalidateAfterActiveRecordArchived() {
-  revalidatePaths(["/", "/active", "/rejected", "/update-by-email"]);
+  revalidatePaths(["/", "/active", "/rejected"]);
 }
 
 export function revalidateAfterActiveRecordDeleted() {
-  revalidatePaths(["/", "/active", "/update-by-email"]);
+  revalidatePaths(["/", "/active"]);
 }
 
 export function revalidateAfterCommentsUpdated(recordId: string) {

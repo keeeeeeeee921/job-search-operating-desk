@@ -10,9 +10,12 @@ type AuditRow = {
   id: string;
   dateEt: string;
   timestamp: string;
+  hostname: string;
+  sourceType: string;
   roleTitle: string;
   company: string;
   location: string;
+  jobDescription: string;
   searchText: string;
 };
 
@@ -120,7 +123,48 @@ function buildReasons(row: AuditRow) {
     reasons.push("search_text_empty");
   }
 
+  const description = row.jobDescription.trim();
+  if (!description) {
+    reasons.push("job_description_missing");
+  } else if (
+    description.length < 120 ||
+    /^(about the job|job details|description)\s*$/i.test(description)
+  ) {
+    reasons.push("job_description_thin");
+  }
+
   return reasons;
+}
+
+function classifySourceFamily(row: Pick<AuditRow, "hostname" | "sourceType">) {
+  const host = row.hostname.toLowerCase();
+  const sourceType = row.sourceType.toLowerCase();
+
+  if (sourceType === "linkedin" || host.includes("linkedin.com")) {
+    return "linkedin";
+  }
+
+  if (sourceType === "greenhouse" || host.includes("greenhouse.io")) {
+    return "greenhouse";
+  }
+
+  if (sourceType === "workday" || host.includes("workdayjobs.com")) {
+    return "workday";
+  }
+
+  if (host.includes("dayforce")) {
+    return "dayforce";
+  }
+
+  if (host.includes("ukg.net") || host.includes("rec.pro.ukg.net")) {
+    return "ukg";
+  }
+
+  if (host.includes("phenompeople") || host.includes("jobs.")) {
+    return "company-site";
+  }
+
+  return sourceType || "unknown";
 }
 
 async function main() {
@@ -133,9 +177,12 @@ async function main() {
       id: jobsTable.id,
       dateEt: sql<string>`to_char(${jobsTable.timestamp} at time zone 'America/New_York', 'YYYY-MM-DD')`,
       timestamp: sql<string>`to_char(${jobsTable.timestamp} at time zone 'America/New_York', 'YYYY-MM-DD HH24:MI')`,
+      hostname: sql<string>`coalesce(nullif(regexp_replace(${jobsTable.link}, '^https?://([^/]+).*$','\\1'), ''), '(no-link)')`,
+      sourceType: jobsTable.sourceType,
       roleTitle: jobsTable.roleTitle,
       company: jobsTable.company,
       location: jobsTable.location,
+      jobDescription: jobsTable.jobDescription,
       searchText: jobsTable.searchText
     })
     .from(jobsTable)
@@ -189,6 +236,94 @@ async function main() {
         .join(", ")
     }));
 
+  const familyTrendMap = new Map<
+    string,
+    { family: string; scanned: number; suspicious: number }
+  >();
+  const hostnameTrendMap = new Map<
+    string,
+    { hostname: string; scanned: number; suspicious: number }
+  >();
+
+  for (const row of rows) {
+    const reasons = buildReasons(row);
+    const family = classifySourceFamily(row);
+    const familyKey = `${row.dateEt}:${family}`;
+    const familyTrend =
+      familyTrendMap.get(familyKey) ??
+      ({
+        family,
+        scanned: 0,
+        suspicious: 0
+      } satisfies { family: string; scanned: number; suspicious: number });
+    familyTrend.scanned += 1;
+    if (reasons.length > 0) {
+      familyTrend.suspicious += 1;
+    }
+    familyTrendMap.set(familyKey, familyTrend);
+
+    const hostKey = `${row.dateEt}:${row.hostname}`;
+    const hostTrend =
+      hostnameTrendMap.get(hostKey) ??
+      ({
+        hostname: row.hostname,
+        scanned: 0,
+        suspicious: 0
+      } satisfies { hostname: string; scanned: number; suspicious: number });
+    hostTrend.scanned += 1;
+    if (reasons.length > 0) {
+      hostTrend.suspicious += 1;
+    }
+    hostnameTrendMap.set(hostKey, hostTrend);
+  }
+
+  const familyTrendRows = Array.from(familyTrendMap.entries())
+    .map(([key, value]) => {
+      const [dateEt] = key.split(":");
+      return {
+        dateEt,
+        sourceFamily: value.family,
+        scanned: value.scanned,
+        suspicious: value.suspicious
+      };
+    })
+    .sort((left, right) => {
+      if (right.dateEt !== left.dateEt) {
+        return right.dateEt.localeCompare(left.dateEt);
+      }
+
+      return right.suspicious - left.suspicious;
+    });
+
+  const hostnameTrendRows = Array.from(hostnameTrendMap.entries())
+    .map(([key, value]) => {
+      const [dateEt] = key.split(":");
+      return {
+        dateEt,
+        hostname: value.hostname,
+        scanned: value.scanned,
+        suspicious: value.suspicious
+      };
+    })
+    .sort((left, right) => {
+      if (right.dateEt !== left.dateEt) {
+        return right.dateEt.localeCompare(left.dateEt);
+      }
+
+      return right.suspicious - left.suspicious;
+    })
+    .slice(0, 25);
+
+  const patchTemplate = Object.fromEntries(
+    suspicious.slice(0, 25).map((row) => [
+      row.id,
+      {
+        roleTitle: row.roleTitle,
+        company: row.company
+      }
+    ])
+  );
+
   if (json) {
     console.log(
       JSON.stringify(
@@ -198,9 +333,15 @@ async function main() {
           suspicious: suspicious.length,
           todayEt: getEasternDateKey(),
           trend: trendRows,
+          familyTrend: familyTrendRows,
+          hostnameTrend: hostnameTrendRows,
+          patchTemplate,
           items: suspicious.map((row) => ({
             id: row.id,
             timestamp: row.timestamp,
+            hostname: row.hostname,
+            sourceType: row.sourceType,
+            sourceFamily: classifySourceFamily(row),
             roleTitle: row.roleTitle,
             company: row.company,
             location: row.location,
@@ -217,18 +358,27 @@ async function main() {
     );
     console.log(`Scanned rows: ${rows.length}`);
     console.log(`Suspicious rows: ${suspicious.length}`);
-    console.log("7-day trend:");
+    console.log("Daily trend:");
     console.table(trendRows);
+    console.log("Daily trend by source family:");
+    console.table(familyTrendRows.slice(0, 30));
+    console.log("Daily trend by hostname (top 25):");
+    console.table(hostnameTrendRows);
     console.table(
       suspicious.map((row) => ({
         id: row.id,
         timestamp: row.timestamp,
+        hostname: row.hostname,
+        sourceType: row.sourceType,
+        sourceFamily: classifySourceFamily(row),
         roleTitle: row.roleTitle,
         company: row.company,
         location: row.location,
         reason: row.reasons.join(", ")
       }))
     );
+    console.log("Patch template (copy into manual-fix mapping):");
+    console.log(JSON.stringify(patchTemplate, null, 2));
   }
 
   await closeDb();
