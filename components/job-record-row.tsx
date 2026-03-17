@@ -14,8 +14,8 @@ export function JobRecordRow({
   const roleLabel = record.roleTitle || "Role title not extracted";
   const sourceLabel =
     record.sourceType === "unknown"
-      ? "Source not confirmed"
-      : `${record.extractionStatus === "needs_review" ? "Reviewed manually" : "Confirmed"} · ${record.sourceType}`;
+      ? "Source unconfirmed"
+      : `${record.extractionStatus === "needs_review" ? "Manual review" : "Confirmed"} · ${record.sourceType}`;
 
   return (
     <div
@@ -56,7 +56,7 @@ export function JobRecordRow({
             {record.link}
           </a>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Link not saved</p>
+          <p className="mt-2 text-sm text-muted-foreground">No link saved</p>
         )}
       </div>
       <div className="xl:border-l xl:border-border/70 xl:pl-4">

@@ -28,7 +28,7 @@ function formatRange(pageData: PaginatedJobListResult) {
 
   const start = (pageData.page - 1) * pageData.pageSize + 1;
   const end = Math.min(pageData.totalCount, pageData.page * pageData.pageSize);
-  return `Showing ${start}-${end} of ${pageData.totalCount}`;
+  return `Showing ${start}-${end} of ${pageData.totalCount} records`;
 }
 
 export function ListPageView({

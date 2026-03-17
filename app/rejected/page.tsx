@@ -20,7 +20,7 @@ export default async function RejectedPage({
     <AppShell currentPath="/rejected">
       <ListPageView
         basePath="/rejected"
-        description="Rejected is a quiet archive. It stays outside the default search flow so the working area remains clean."
+        description="Rejected records are archived here, outside your active queue."
         pageData={rejectedJobs}
         title="Rejected"
       />

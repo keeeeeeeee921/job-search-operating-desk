@@ -23,7 +23,7 @@ export function DuplicateModal({
   return (
     <Dialog
       className="overflow-hidden"
-      description="These existing records look similar. Review them before you add another Active record."
+      description="These existing records look similar. Review before adding another Active record."
       onOpenChange={onOpenChange}
       open={open}
       title="Possible duplicate found"
@@ -57,7 +57,7 @@ export function DuplicateModal({
                 {candidate.record.link}
               </a>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Link not saved</p>
+              <p className="mt-3 text-sm text-muted-foreground">No link saved</p>
             )}
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {truncate(candidate.record.jobDescription, 180)}
@@ -72,7 +72,7 @@ export function DuplicateModal({
         <Button onClick={onCancel} tone="ghost">
           Cancel
         </Button>
-        <Button onClick={onContinue}>Continue anyway</Button>
+        <Button onClick={onContinue}>Save anyway</Button>
       </div>
     </Dialog>
   );

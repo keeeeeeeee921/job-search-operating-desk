@@ -28,7 +28,7 @@ export function ActiveDetailPageClient({
             });
 
             if (!response.ok) {
-              pushToast("Record could not be deleted", "error");
+              pushToast("Delete failed", "error");
               return;
             }
 
@@ -52,7 +52,7 @@ export function ActiveDetailPageClient({
             });
 
             if (!response.ok) {
-              pushToast("Comments could not be saved", "error");
+              pushToast("Comments not saved", "error");
               return;
             }
 
@@ -67,7 +67,7 @@ export function ActiveDetailPageClient({
             Active record not found
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            The record may have been archived or removed from the database.
+            This record may have been archived or deleted.
           </p>
           <div className="mt-5">
             <Link

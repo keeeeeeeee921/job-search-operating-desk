@@ -29,11 +29,11 @@ export function JobTextInput({
                 Paste job text
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Best for LinkedIn Easy Apply and copied postings. Link can stay empty here.
+                Best for LinkedIn Easy Apply and copied listings. Link can be empty.
               </p>
             </div>
             <div className="hidden rounded-full border border-border/80 bg-white/90 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:block">
-              Enter to process
+              Press Enter
             </div>
           </div>
           <Textarea
@@ -46,11 +46,11 @@ export function JobTextInput({
                 onSubmit();
               }
             }}
-            placeholder="Paste the copied job text here. Press Enter to process, or Shift + Enter for a new line."
+            placeholder="Paste copied job text. Press Enter to process, or Shift+Enter for a new line."
             value={value}
           />
           <p className="mt-3 text-xs text-muted-foreground">
-            LinkedIn UI noise like Save, Easy Apply, Resume Match, and profile blocks will be ignored when possible.
+            UI noise such as Save, Easy Apply, Resume Match, and profile blocks is filtered when possible.
           </p>
         </div>
       </div>

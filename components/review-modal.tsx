@@ -66,7 +66,7 @@ export function ReviewModal({
   return (
     <Dialog
       className="h-[min(82dvh,860px)] sm:h-[min(86dvh,920px)]"
-      description="Required fields are missing or low-confidence. Confirm the record before it can be saved to Active."
+      description="Some required fields are missing or low confidence. Confirm values before saving to Active."
       onOpenChange={onOpenChange}
       open={open}
       title="Missing fields need review"
@@ -120,8 +120,8 @@ export function ReviewModal({
                         ) : (
                           <p className="text-xs text-muted-foreground">
                             {field === "link" && !isFieldRequiredForDraft(localDraft, field)
-                              ? "Optional for pasted job text."
-                              : "Ready to save."}
+                              ? "Optional when saving pasted job text."
+                              : "Looks good."}
                           </p>
                         )}
                       </div>
