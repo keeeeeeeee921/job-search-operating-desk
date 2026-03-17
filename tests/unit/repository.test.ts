@@ -8,6 +8,7 @@ import {
   getEmailMatchCandidateRecords,
   getJobsPage,
   getJobsByPool,
+  matchEmailAgainstActiveRecords,
   getPotentialDuplicateCandidates,
   getRecentActiveJobs,
   hasActiveJobs,
@@ -111,6 +112,75 @@ describe("repository", () => {
     expect(candidates.length).toBeGreaterThan(0);
     expect(candidates.length).toBeLessThanOrEqual(5);
     expect(candidates.every((record) => record.pool === "active")).toBe(true);
+  });
+
+  it("supports title + company query matching in Update by Email hybrid mode", async () => {
+    const now = Date.now();
+    const target: JobRecord = {
+      id: "email-query-capital-one",
+      roleTitle: "Senior Associate, Data Scientist - Applied AI",
+      company: "Capital One",
+      location: "McLean, Virginia, United States",
+      link: "https://www.capitalonecareers.com/job/123",
+      jobDescription:
+        "Applied AI role supporting commercial credit modeling and experimentation.",
+      timestamp: new Date(now - 60_000).toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "high",
+      extractionStatus: "confirmed"
+    };
+
+    await insertJobsWithoutGoalEffects([target]);
+
+    const matches = await matchEmailAgainstActiveRecords(
+      "Senior Associate, Data Scientist - Applied AI Capital One"
+    );
+
+    expect(matches.length).toBeGreaterThan(0);
+    expect(matches.length).toBeLessThanOrEqual(10);
+    expect(matches.some((item) => item.record.id === target.id)).toBe(true);
+    const targetMatch = matches.find((item) => item.record.id === target.id);
+    expect(
+      targetMatch?.reasons.includes("Matched title/company keywords")
+    ).toBe(true);
+  });
+
+  it("returns hybrid Update by Email matches ordered by newest timestamp", async () => {
+    const now = Date.now();
+    const newer: JobRecord = {
+      id: "email-query-order-newer",
+      roleTitle: "Data Analyst",
+      company: "Capital One",
+      location: "New York, New York, United States",
+      link: "",
+      jobDescription: "Data Analyst role supporting card risk analytics.",
+      timestamp: new Date(now).toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "confirmed"
+    };
+    const older: JobRecord = {
+      ...newer,
+      id: "email-query-order-older",
+      timestamp: new Date(now - 86_400_000).toISOString()
+    };
+
+    await insertJobsWithoutGoalEffects([older, newer]);
+
+    const matches = await matchEmailAgainstActiveRecords(
+      "Data Analyst Capital One"
+    );
+
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+    expect(new Date(matches[0]?.record.timestamp ?? 0).getTime()).toBeGreaterThanOrEqual(
+      new Date(matches[1]?.record.timestamp ?? 0).getTime()
+    );
   });
 
   it("keeps older exact company/role email targets in candidates despite recent noisy matches", async () => {

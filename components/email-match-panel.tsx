@@ -52,7 +52,7 @@ export function EmailMatchPanel({
           Match a rejection email to the right Active record
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Paste the email body, search Active records for the closest matches, then archive the correct job manually.
+          Paste a rejection email or a job title + company query, then archive the correct Active record manually.
         </p>
         <Textarea
           className="mt-6 min-h-[280px]"
@@ -69,7 +69,7 @@ export function EmailMatchPanel({
               });
             }
           }}
-          placeholder="Paste a rejection email here..."
+          placeholder="Paste a rejection email or job title + company..."
           value={value}
         />
         <p className="mt-4 text-xs text-muted-foreground">
@@ -89,7 +89,7 @@ export function EmailMatchPanel({
               <p className="mt-2 text-sm text-muted-foreground">
                 {emptyState
                   ? "Save a few Active records first, then come back to archive rejections."
-                  : "Paste a rejection email and press Enter to see likely candidates."}
+                  : "Paste a rejection email or title/company query and press Enter to see likely candidates."}
               </p>
             </div>
           ) : (

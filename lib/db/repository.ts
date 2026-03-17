@@ -39,6 +39,7 @@ import {
 import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
+  EmailMatch,
   GoalKey,
   JobListItem,
   JobPool,
@@ -289,6 +290,13 @@ const emailHintStopwords = new Set([
   "employment"
 ]);
 
+type EmailPanelInputKind = "email-like" | "query-like" | "uncertain";
+
+const EMAIL_PANEL_MAX_RESULTS = 10;
+const EMAIL_PANEL_KEYWORD_LIMIT = 120;
+const EMAIL_PANEL_SEMANTIC_CANDIDATE_LIMIT = 180;
+const EMAIL_PANEL_SEMANTIC_POOL_DAYS = 365;
+
 function escapeSqlLikeToken(value: string) {
   return value.replace(/[\\%_]/g, "\\$&");
 }
@@ -351,6 +359,38 @@ function extractEmailMatchingHints(emailText: string) {
     companyPhrases: uniqueValues(companyPhrases).slice(0, 5),
     rolePhrases: uniqueValues(rolePhrases).slice(0, 8)
   };
+}
+
+function classifyEmailPanelInput(rawInput: string): EmailPanelInputKind {
+  const input = rawInput.trim();
+  if (!input) {
+    return "uncertain";
+  }
+
+  const normalized = normalizeText(input);
+  const lineCount = input.split(/\r?\n/).length;
+  const tokenCount = tokenize(input).length;
+
+  const hasEmailSignals =
+    /\b(dear|hello|thank you|thanks|regards|sincerely|we regret|we have decided|move forward|application|candidate|recruiting)\b/i.test(
+      input
+    ) || /\bposition\b/i.test(input);
+
+  const hasQuerySignals =
+    lineCount <= 2 &&
+    tokenCount <= 18 &&
+    normalized.length <= 160 &&
+    !/\b(dear|hello|regards|sincerely)\b/i.test(input);
+
+  if (hasEmailSignals && !hasQuerySignals) {
+    return "email-like";
+  }
+
+  if (hasQuerySignals && !hasEmailSignals) {
+    return "query-like";
+  }
+
+  return "uncertain";
 }
 
 function buildTokenSearchConditions(tokens: string[]) {
@@ -925,6 +965,122 @@ export async function getEmailMatchCandidateRecords(input: {
   return rows.map(mapJobRow);
 }
 
+export async function searchActiveEmailPanelCandidates(input: {
+  query: string;
+  limit?: number;
+}) {
+  await ensureDatabaseReady();
+
+  const query = input.query.trim();
+  const limit = input.limit ?? EMAIL_PANEL_KEYWORD_LIMIT;
+  const searchCondition = buildActiveSearchCondition(query);
+  const tokenConditions = buildTokenSearchConditions(tokenize(query));
+
+  if (!query || (!searchCondition && tokenConditions.length === 0)) {
+    return [] as JobRecord[];
+  }
+
+  if (shouldUseLocalFallback()) {
+    const normalizedQuery = normalizeText(query);
+    const tokens = tokenize(query).filter(
+      (token) => token.length >= 3 && !tokenStopwords.has(token)
+    );
+    const active = await getLocalJobsByPool("active");
+    return active
+      .filter((record) => {
+        const haystack = normalizeText(
+          `${record.company} ${record.roleTitle} ${record.location}`
+        );
+        if (haystack.includes(normalizedQuery)) {
+          return true;
+        }
+
+        return tokens.some((token) => haystack.includes(token));
+      })
+      .slice(0, limit);
+  }
+
+  const matchConditions = [
+    searchCondition,
+    ...tokenConditions
+  ].filter((condition): condition is Exclude<typeof condition, undefined> =>
+    Boolean(condition)
+  );
+
+  const rows = await getDb()
+    .select()
+    .from(jobsTable)
+    .where(
+      and(
+        eq(jobsTable.pool, "active"),
+        ...(matchConditions.length > 0 ? [or(...matchConditions)] : [])
+      )
+    )
+    .orderBy(desc(jobsTable.timestamp))
+    .limit(limit);
+
+  return rows.map(mapJobRow);
+}
+
+function toKeywordEmailMatches(candidates: JobRecord[]): EmailMatch[] {
+  return candidates.map((record) => ({
+    record,
+    score: 0.2,
+    reasons: ["Matched title/company keywords"]
+  }));
+}
+
+function mergeEmailMatches(...groups: EmailMatch[][]) {
+  const merged = new Map<string, EmailMatch>();
+
+  for (const group of groups) {
+    for (const match of group) {
+      const existing = merged.get(match.record.id);
+      if (!existing) {
+        merged.set(match.record.id, {
+          record: match.record,
+          score: match.score,
+          reasons: uniqueValues(match.reasons)
+        });
+        continue;
+      }
+
+      merged.set(match.record.id, {
+        record: existing.record,
+        score: Math.max(existing.score, match.score),
+        reasons: uniqueValues([...existing.reasons, ...match.reasons])
+      });
+    }
+  }
+
+  return Array.from(merged.values())
+    .sort(
+      (left, right) =>
+        new Date(right.record.timestamp).getTime() -
+        new Date(left.record.timestamp).getTime()
+    )
+    .slice(0, EMAIL_PANEL_MAX_RESULTS);
+}
+
+async function runSemanticEmailMatch(input: string) {
+  const candidates = await getEmailMatchCandidateRecords({
+    emailText: input,
+    limit: EMAIL_PANEL_SEMANTIC_CANDIDATE_LIMIT,
+    sinceDays: EMAIL_PANEL_SEMANTIC_POOL_DAYS
+  });
+
+  return findEmailMatches(input, candidates, EMAIL_PANEL_MAX_RESULTS);
+}
+
+async function runKeywordEmailMatch(input: string) {
+  const candidates = await searchActiveEmailPanelCandidates({
+    query: input,
+    limit: EMAIL_PANEL_KEYWORD_LIMIT
+  });
+
+  return toKeywordEmailMatches(candidates).slice(0, EMAIL_PANEL_MAX_RESULTS);
+}
+
 export async function insertJob(record: JobRecord) {
   await ensureDatabaseReady();
 
@@ -1145,13 +1301,39 @@ export async function repairTodayConnectGoalBaseline(input?: {
 }
 
 export async function matchEmailAgainstActiveRecords(emailText: string) {
-  const candidates = await getEmailMatchCandidateRecords({
-    emailText,
-    limit: 180,
-    sinceDays: 365
-  });
+  const input = emailText.trim();
+  if (!input) {
+    return [];
+  }
 
-  return findEmailMatches(emailText, candidates);
+  const inputKind = classifyEmailPanelInput(input);
+
+  if (inputKind === "email-like") {
+    const semanticMatches = await runSemanticEmailMatch(input);
+    if (semanticMatches.length >= EMAIL_PANEL_MAX_RESULTS) {
+      return semanticMatches;
+    }
+
+    const keywordMatches = await runKeywordEmailMatch(input);
+    return mergeEmailMatches(semanticMatches, keywordMatches);
+  }
+
+  if (inputKind === "query-like") {
+    const keywordMatches = await runKeywordEmailMatch(input);
+    if (keywordMatches.length >= EMAIL_PANEL_MAX_RESULTS) {
+      return keywordMatches;
+    }
+
+    const semanticMatches = await runSemanticEmailMatch(input);
+    return mergeEmailMatches(keywordMatches, semanticMatches);
+  }
+
+  const [keywordMatches, semanticMatches] = await Promise.all([
+    runKeywordEmailMatch(input),
+    runSemanticEmailMatch(input)
+  ]);
+
+  return mergeEmailMatches(keywordMatches, semanticMatches);
 }
 
 export async function resetDatabaseForTests() {

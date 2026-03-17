@@ -96,7 +96,9 @@ test("comments persist after blur", async ({ page }) => {
 test("update by email archives manually", async ({ page }) => {
   await page.goto("/update-by-email");
   const rejectionText = `Hello,\n\nWe appreciate your interest in the Logistics Planning Engineer role with Tesla Shanghai. After reviewing your background, we have chosen to move forward with other candidates.\n\nThank you again for applying.\n\nTesla Recruiting`;
-  const emailInput = page.getByPlaceholder("Paste a rejection email here...");
+  const emailInput = page.getByPlaceholder(
+    "Paste a rejection email or job title + company..."
+  );
   await emailInput.fill(rejectionText);
   await emailInput.press("Enter");
   await expect(

@@ -1,7 +1,11 @@
 import type { EmailMatch, JobRecord } from "@/lib/types";
 import { normalizeText, tokenOverlapScore } from "@/lib/utils";
 
-export function findEmailMatches(emailText: string, records: JobRecord[]) {
+export function findEmailMatches(
+  emailText: string,
+  records: JobRecord[],
+  maxResults = 5
+) {
   const normalizedEmail = normalizeText(emailText);
 
   return records
@@ -39,5 +43,5 @@ export function findEmailMatches(emailText: string, records: JobRecord[]) {
     })
     .filter((item) => item.score > 0.12)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
+    .slice(0, maxResults);
 }
