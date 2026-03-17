@@ -32,13 +32,8 @@ export function findEmailMatches(emailText: string, records: JobRecord[]) {
         reasons.push("Description keywords overlap");
       }
 
-      const daysSinceSaved =
-        (Date.now() - new Date(record.timestamp).getTime()) /
-        (1000 * 60 * 60 * 24);
-      if (daysSinceSaved <= 21) {
-        score += 0.15;
-        reasons.push("Saved recently");
-      }
+      // Keep ranking purely semantic so older exact matches are not
+      // suppressed by unrelated recency bias.
 
       return { record, score, reasons } satisfies EmailMatch;
     })
