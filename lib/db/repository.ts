@@ -46,7 +46,13 @@ import type {
   JobRecord,
   PaginatedJobListResult
 } from "@/lib/types";
-import { getEasternDateKey, normalizeText, tokenize, uniqueValues } from "@/lib/utils";
+import {
+  getEasternDateKey,
+  normalizeText,
+  tokenOverlapScore,
+  tokenize,
+  uniqueValues
+} from "@/lib/utils";
 
 let initialized = false;
 const RECENT_CACHE_MAX_ENTRIES = QUERY_CACHE_BUCKET_LIMITS.recent;
@@ -293,7 +299,7 @@ const emailHintStopwords = new Set([
 type EmailPanelInputKind = "email-like" | "query-like" | "uncertain";
 
 const EMAIL_PANEL_MAX_RESULTS = 10;
-const EMAIL_PANEL_KEYWORD_LIMIT = 120;
+const EMAIL_PANEL_KEYWORD_LIMIT = 240;
 const EMAIL_PANEL_SEMANTIC_CANDIDATE_LIMIT = 180;
 const EMAIL_PANEL_SEMANTIC_POOL_DAYS = 365;
 
@@ -400,6 +406,35 @@ function buildTokenSearchConditions(tokens: string[]) {
     .slice(0, 10)
     .map((token) => {
       const escaped = escapeSqlLikeToken(token);
+      return sql<boolean>`${jobsTable.searchText} like ${`%${escaped}%`} escape '\\'`;
+    });
+}
+
+function toSearchTokens(value: string) {
+  return tokenize(value)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3 && !tokenStopwords.has(token));
+}
+
+function buildPhraseSearchConditions(tokens: string[]) {
+  if (tokens.length < 2) {
+    return [];
+  }
+
+  const phrases: string[] = [];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    const left = tokens[index] ?? "";
+    const right = tokens[index + 1] ?? "";
+    if (!left || !right) {
+      continue;
+    }
+    phrases.push(`${left} ${right}`);
+  }
+
+  return uniqueValues(phrases)
+    .slice(0, 8)
+    .map((phrase) => {
+      const escaped = escapeSqlLikeToken(phrase);
       return sql<boolean>`${jobsTable.searchText} like ${`%${escaped}%`} escape '\\'`;
     });
 }
@@ -973,18 +1008,20 @@ export async function searchActiveEmailPanelCandidates(input: {
 
   const query = input.query.trim();
   const limit = input.limit ?? EMAIL_PANEL_KEYWORD_LIMIT;
+  const tokens = toSearchTokens(query);
   const searchCondition = buildActiveSearchCondition(query);
-  const tokenConditions = buildTokenSearchConditions(tokenize(query));
+  const tokenConditions = buildTokenSearchConditions(tokens);
+  const phraseConditions = buildPhraseSearchConditions(tokens);
 
-  if (!query || (!searchCondition && tokenConditions.length === 0)) {
+  if (
+    !query ||
+    (!searchCondition && tokenConditions.length === 0 && phraseConditions.length === 0)
+  ) {
     return [] as JobRecord[];
   }
 
   if (shouldUseLocalFallback()) {
     const normalizedQuery = normalizeText(query);
-    const tokens = tokenize(query).filter(
-      (token) => token.length >= 3 && !tokenStopwords.has(token)
-    );
     const active = await getLocalJobsByPool("active");
     return active
       .filter((record) => {
@@ -1000,34 +1037,110 @@ export async function searchActiveEmailPanelCandidates(input: {
       .slice(0, limit);
   }
 
-  const matchConditions = [
+  const broadMatchConditions = [
     searchCondition,
     ...tokenConditions
   ].filter((condition): condition is Exclude<typeof condition, undefined> =>
     Boolean(condition)
   );
 
-  const rows = await getDb()
-    .select()
-    .from(jobsTable)
-    .where(
-      and(
-        eq(jobsTable.pool, "active"),
-        ...(matchConditions.length > 0 ? [or(...matchConditions)] : [])
-      )
-    )
-    .orderBy(desc(jobsTable.timestamp))
-    .limit(limit);
+  const strictIds = searchCondition
+    ? (
+        await getDb()
+          .select({
+            id: jobsTable.id
+          })
+          .from(jobsTable)
+          .where(and(eq(jobsTable.pool, "active"), searchCondition))
+          .orderBy(desc(jobsTable.timestamp))
+          .limit(Math.min(Math.max(limit, 80), 140))
+      ).map((row) => row.id)
+    : [];
 
+  const phraseIds =
+    phraseConditions.length > 0
+      ? (
+          await getDb()
+            .select({
+              id: jobsTable.id
+            })
+            .from(jobsTable)
+            .where(
+              and(eq(jobsTable.pool, "active"), or(...phraseConditions))
+            )
+            .orderBy(desc(jobsTable.timestamp))
+            .limit(Math.min(Math.max(limit, 120), 180))
+        ).map((row) => row.id)
+      : [];
+
+  const broadIds =
+    broadMatchConditions.length > 0
+      ? (
+          await getDb()
+            .select({
+              id: jobsTable.id
+            })
+            .from(jobsTable)
+            .where(and(eq(jobsTable.pool, "active"), or(...broadMatchConditions)))
+            .orderBy(desc(jobsTable.timestamp))
+            .limit(Math.min(Math.max(limit * 2, 360), 720))
+        ).map((row) => row.id)
+      : [];
+
+  const ids = uniqueValues([...strictIds, ...phraseIds, ...broadIds]).slice(
+    0,
+    Math.max(limit, EMAIL_PANEL_MAX_RESULTS)
+  );
+  const rows = await getRowsByIdsInOrder(ids);
   return rows.map(mapJobRow);
 }
 
-function toKeywordEmailMatches(candidates: JobRecord[]): EmailMatch[] {
-  return candidates.map((record) => ({
-    record,
-    score: 0.2,
-    reasons: ["Matched title/company keywords"]
-  }));
+function toKeywordEmailMatches(
+  query: string,
+  candidates: JobRecord[]
+): EmailMatch[] {
+  const normalizedQuery = normalizeText(query);
+
+  return candidates
+    .map((record) => {
+      const roleOverlap = tokenOverlapScore(query, record.roleTitle);
+      const companyOverlap = tokenOverlapScore(query, record.company);
+      const locationOverlap = tokenOverlapScore(query, record.location);
+      const combinedOverlap = tokenOverlapScore(
+        query,
+        `${record.roleTitle} ${record.company}`
+      );
+      const exactCompanyMention =
+        record.company.trim().length > 0 &&
+        normalizedQuery.includes(normalizeText(record.company));
+
+      const score =
+        roleOverlap * 0.5 +
+        companyOverlap * 0.55 +
+        combinedOverlap * 0.35 +
+        locationOverlap * 0.05 +
+        (exactCompanyMention ? 0.2 : 0);
+      const reasons: string[] = [];
+
+      if (roleOverlap > 0.12) {
+        reasons.push("Matched role keywords");
+      }
+
+      if (companyOverlap > 0.12 || exactCompanyMention) {
+        reasons.push("Matched company keywords");
+      }
+
+      if (reasons.length === 0 && score > 0.1) {
+        reasons.push("Matched title/company keywords");
+      }
+
+      return {
+        record,
+        score,
+        reasons
+      } satisfies EmailMatch;
+    })
+    .filter((match) => match.score > 0.12);
 }
 
 function mergeEmailMatches(...groups: EmailMatch[][]) {
@@ -1056,8 +1169,9 @@ function mergeEmailMatches(...groups: EmailMatch[][]) {
   return Array.from(merged.values())
     .sort(
       (left, right) =>
+        right.score - left.score ||
         new Date(right.record.timestamp).getTime() -
-        new Date(left.record.timestamp).getTime()
+          new Date(left.record.timestamp).getTime()
     )
     .slice(0, EMAIL_PANEL_MAX_RESULTS);
 }
@@ -1078,7 +1192,14 @@ async function runKeywordEmailMatch(input: string) {
     limit: EMAIL_PANEL_KEYWORD_LIMIT
   });
 
-  return toKeywordEmailMatches(candidates).slice(0, EMAIL_PANEL_MAX_RESULTS);
+  return toKeywordEmailMatches(input, candidates)
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        new Date(right.record.timestamp).getTime() -
+          new Date(left.record.timestamp).getTime()
+    )
+    .slice(0, EMAIL_PANEL_MAX_RESULTS);
 }
 
 export async function insertJob(record: JobRecord) {
@@ -1319,12 +1440,10 @@ export async function matchEmailAgainstActiveRecords(emailText: string) {
   }
 
   if (inputKind === "query-like") {
-    const keywordMatches = await runKeywordEmailMatch(input);
-    if (keywordMatches.length >= EMAIL_PANEL_MAX_RESULTS) {
-      return keywordMatches;
-    }
-
-    const semanticMatches = await runSemanticEmailMatch(input);
+    const [keywordMatches, semanticMatches] = await Promise.all([
+      runKeywordEmailMatch(input),
+      runSemanticEmailMatch(input)
+    ]);
     return mergeEmailMatches(keywordMatches, semanticMatches);
   }
 

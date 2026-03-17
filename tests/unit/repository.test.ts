@@ -143,9 +143,9 @@ describe("repository", () => {
     expect(matches.length).toBeLessThanOrEqual(10);
     expect(matches.some((item) => item.record.id === target.id)).toBe(true);
     const targetMatch = matches.find((item) => item.record.id === target.id);
-    expect(
-      targetMatch?.reasons.includes("Matched title/company keywords")
-    ).toBe(true);
+    expect(targetMatch?.reasons.some((reason) => reason.includes("Matched"))).toBe(
+      true
+    );
   });
 
   it("returns hybrid Update by Email matches ordered by newest timestamp", async () => {
@@ -181,6 +181,49 @@ describe("repository", () => {
     expect(new Date(matches[0]?.record.timestamp ?? 0).getTime()).toBeGreaterThanOrEqual(
       new Date(matches[1]?.record.timestamp ?? 0).getTime()
     );
+  });
+
+  it("keeps an older exact title+company query match visible with many recent noisy records", async () => {
+    const now = Date.now();
+    const noisyRecords: JobRecord[] = Array.from({ length: 120 }, (_, index) => ({
+      id: `email-query-noise-${index}`,
+      roleTitle: "Senior Associate, Data Scientist",
+      company: `Noise Company ${index}`,
+      location: "United States",
+      link: "",
+      jobDescription: "Data science role with analytics and modeling scope.",
+      timestamp: new Date(now - index * 60_000).toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "confirmed"
+    }));
+    const target: JobRecord = {
+      id: "email-query-older-capital-one",
+      roleTitle: "Senior Associate, Data Scientist - Applied AI",
+      company: "Capital One",
+      location: "McLean, Virginia, United States",
+      link: "",
+      jobDescription: "Applied AI role for commercial credit risk modeling.",
+      timestamp: new Date(now - 45 * 24 * 60 * 60 * 1000).toISOString(),
+      pool: "active",
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "unknown",
+      sourceConfidence: "unknown",
+      extractionStatus: "confirmed"
+    };
+
+    await insertJobsWithoutGoalEffects([...noisyRecords, target]);
+
+    const matches = await matchEmailAgainstActiveRecords(
+      "Senior Associate, Data Scientist - Applied AI Capital One"
+    );
+
+    expect(matches.some((item) => item.record.id === target.id)).toBe(true);
+    expect(matches.length).toBeLessThanOrEqual(10);
   });
 
   it("keeps older exact company/role email targets in candidates despite recent noisy matches", async () => {
