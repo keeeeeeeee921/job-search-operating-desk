@@ -57,7 +57,7 @@ export function DuplicateModal({
                 {candidate.record.link}
               </a>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">No link saved</p>
+              <p className="mt-3 text-sm text-muted-foreground">Link not saved</p>
             )}
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {truncate(candidate.record.jobDescription, 180)}

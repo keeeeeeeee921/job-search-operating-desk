@@ -96,8 +96,8 @@ export function ListPageView({
         detailBasePath={detailBasePath}
         emptyDescription={
           searchable
-            ? "Try another company or role title. Search only scans Active records."
-            : "This list is empty right now."
+            ? "Try another company or role title in Active records."
+            : "No records in this list yet."
         }
         emptyTitle={searchable ? "No matching Active records" : "No records yet"}
         records={pageData.records}

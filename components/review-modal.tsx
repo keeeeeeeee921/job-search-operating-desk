@@ -121,7 +121,7 @@ export function ReviewModal({
                           <p className="text-xs text-muted-foreground">
                             {field === "link" && !isFieldRequiredForDraft(localDraft, field)
                               ? "Optional when saving pasted job text."
-                              : "Looks good."}
+                              : "Ready to save."}
                           </p>
                         )}
                       </div>

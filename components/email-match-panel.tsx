@@ -84,12 +84,12 @@ export function EmailMatchPanel({
           {matches.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-border px-4 py-8 text-center">
               <p className="text-base font-semibold text-foreground">
-                {emptyState ? "No Active records to match yet" : "No matches yet"}
+                {emptyState ? "No Active records to match yet" : "No likely matches yet"}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {emptyState
-                  ? "Save a few Active records first, then come back to archive rejections."
-                  : "Paste a rejection email or title/company query and press Enter to see likely candidates."}
+                  ? "Save a few Active records first, then return to archive rejections."
+                  : "Paste a rejection email or title/company query, then press Enter to see likely matches."}
               </p>
             </div>
           ) : (

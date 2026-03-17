@@ -83,7 +83,7 @@ export function JobDetailPanel({
             onClick={() => {
               if (
                 window.confirm(
-                  "Delete this record permanently? This action cannot be undone."
+                  "Delete this job record permanently? This cannot be undone."
                 )
               ) {
                 void onDelete();
@@ -98,7 +98,7 @@ export function JobDetailPanel({
           <Field label="Role Title" value={record.roleTitle} />
           <Field label="Company" value={record.company} />
           <Field label="Location" value={record.location} />
-          <Field label="Source" value={record.sourceType === "unknown" ? "Source unconfirmed" : record.sourceType} />
+          <Field label="Source" value={record.sourceType === "unknown" ? "Source not confirmed" : record.sourceType} />
           <Field label="Timestamp" value={formatDate(record.timestamp)} />
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
@@ -115,7 +115,7 @@ export function JobDetailPanel({
               </a>
             ) : (
               <p className="mt-2 text-sm text-muted-foreground">
-                No link saved for this record.
+                Link not saved for this record.
               </p>
             )}
           </div>
