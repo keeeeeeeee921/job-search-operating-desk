@@ -18,6 +18,15 @@ export type SourceType =
 export type SourceConfidence = "high" | "low" | "unknown";
 export type ExtractionStatus = "confirmed" | "needs_review";
 export type JobPool = "active" | "rejected";
+export const jobStages = [
+  "applied",
+  "hr_reach_out",
+  "oa",
+  "first_round",
+  "second_plus_round",
+  "offer"
+] as const;
+export type JobStage = (typeof jobStages)[number];
 export type ValidationIssueType = "missing" | "suspicious";
 export type FieldOrigin = "confirmed" | "derived" | "manual" | "missing";
 export type GoalKey = "apply" | "connect" | "follow";
@@ -31,6 +40,7 @@ export interface JobRecord {
   jobDescription: string;
   timestamp: string;
   pool: JobPool;
+  stage: JobStage;
   comments: string;
   applyCountedDateKey: string | null;
   sourceType: SourceType;
@@ -127,4 +137,18 @@ export interface EmailMatch {
   record: JobRecord;
   score: number;
   reasons: string[];
+}
+
+export interface ApplicationFlowSankeyLink {
+  sourceType: SourceType;
+  stage: JobStage;
+  pool: JobPool;
+  count: number;
+}
+
+export interface ApplicationFlowSankeyData {
+  totalRecords: number;
+  activeCount: number;
+  rejectedCount: number;
+  links: ApplicationFlowSankeyLink[];
 }

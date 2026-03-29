@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createJobFromLink, createJobFromText, saveReviewedJob } from "@/app/actions";
@@ -185,6 +186,14 @@ export function HomeWorkspace({
         </div>
         <div>
           <DailyGoalsWidget initialGoals={initialGoals} />
+          <div className="mt-3 flex justify-end pr-2">
+            <Link
+              className="text-xs text-muted-foreground transition hover:text-foreground"
+              href="/analytics"
+            >
+              Application flow
+            </Link>
+          </div>
         </div>
       </div>
 

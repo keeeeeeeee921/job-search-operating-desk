@@ -18,11 +18,13 @@ import {
   resetLocalStoreForTests,
   searchLocalActiveJobsPage,
   seedLocalStoreIfNeeded,
-  updateLocalJobRecord,
   updateLocalComments,
-  updateLocalDailyGoalState
+  updateLocalDailyGoalState,
+  updateLocalJobRecord,
+  updateLocalStage
 } from "@/lib/db/local-store";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { coerceJobStage } from "@/lib/job-stage";
 import {
   buildPaginatedJobListResult,
   JOB_DESCRIPTION_PREVIEW_LENGTH,
@@ -37,14 +39,18 @@ import {
   QUERY_CACHE_TTL_MS
 } from "@/lib/query-cache-config";
 import { getDefaultSeedState } from "@/lib/seed";
-import type {
-  DailyGoalsState,
-  EmailMatch,
-  GoalKey,
-  JobListItem,
-  JobPool,
-  JobRecord,
-  PaginatedJobListResult
+import {
+  jobStages,
+  type ApplicationFlowSankeyData,
+  type ApplicationFlowSankeyLink,
+  type DailyGoalsState,
+  type EmailMatch,
+  type GoalKey,
+  type JobListItem,
+  type JobPool,
+  type JobRecord,
+  type JobStage,
+  type PaginatedJobListResult
 } from "@/lib/types";
 import {
   getEasternDateKey,
@@ -70,6 +76,15 @@ const paginatedResultCache = new Map<
 >();
 const totalCountCache = new Map<string, CacheEntry<number>>();
 const recentActiveCache = new Map<string, CacheEntry<JobListItem[]>>();
+
+const sourceTypeOrder: Array<JobRecord["sourceType"]> = [
+  "linkedin",
+  "greenhouse",
+  "lever",
+  "workday",
+  "company",
+  "unknown"
+];
 
 function readCache<T>(
   cache: Map<string, CacheEntry<T>>,
@@ -173,6 +188,7 @@ function mapJobRow(row: typeof jobsTable.$inferSelect): JobRecord {
     jobDescription: row.jobDescription,
     timestamp: row.timestamp.toISOString(),
     pool: row.pool as JobPool,
+    stage: coerceJobStage(row.stage),
     comments: row.comments,
     applyCountedDateKey: row.applyCountedDateKey,
     sourceType: row.sourceType as JobRecord["sourceType"],
@@ -193,12 +209,14 @@ function withAutoApplyMarker(record: JobRecord) {
   if (record.pool !== "active") {
     return {
       ...record,
+      stage: coerceJobStage(record.stage),
       applyCountedDateKey: record.applyCountedDateKey ?? null
     };
   }
 
   return {
     ...record,
+    stage: coerceJobStage(record.stage),
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
 }
@@ -584,6 +602,7 @@ async function seedPostgresIfExplicitlyEnabled() {
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
+      stage: coerceJobStage(record.stage),
       searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp)
     }))
@@ -1215,6 +1234,7 @@ export async function insertJob(record: JobRecord) {
 
   await getDb().insert(jobsTable).values({
     ...nextRecord,
+    stage: coerceJobStage(nextRecord.stage),
     searchText: buildSearchText(nextRecord),
     timestamp: new Date(nextRecord.timestamp)
   });
@@ -1237,6 +1257,7 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
   await getDb().insert(jobsTable).values(
     records.map((record) => ({
       ...record,
+      stage: coerceJobStage(record.stage),
       searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
       timestamp: new Date(record.timestamp)
@@ -1265,6 +1286,7 @@ export async function updateJobRecord(record: JobRecord) {
       searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp),
       pool: record.pool,
+      stage: coerceJobStage(record.stage),
       comments: record.comments,
       applyCountedDateKey: record.applyCountedDateKey,
       sourceType: record.sourceType,
@@ -1288,6 +1310,21 @@ export async function updateComments(id: string, comments: string) {
   clearQueryCaches();
 }
 
+export async function updateStage(id: string, stage: JobStage) {
+  await ensureDatabaseReady();
+
+  const nextStage = coerceJobStage(stage);
+
+  if (shouldUseLocalFallback()) {
+    await updateLocalStage(id, nextStage);
+    clearQueryCaches();
+    return;
+  }
+
+  await getDb().update(jobsTable).set({ stage: nextStage }).where(eq(jobsTable.id, id));
+  clearQueryCaches();
+}
+
 export async function archiveJobRecord(id: string) {
   await ensureDatabaseReady();
 
@@ -1297,7 +1334,13 @@ export async function archiveJobRecord(id: string) {
     return;
   }
 
-  await getDb().update(jobsTable).set({ pool: "rejected" }).where(eq(jobsTable.id, id));
+  await getDb()
+    .update(jobsTable)
+    .set({
+      pool: "rejected",
+      stage: sql<string>`coalesce(${jobsTable.stage}, 'applied')`
+    })
+    .where(eq(jobsTable.id, id));
   clearQueryCaches();
 }
 
@@ -1455,6 +1498,84 @@ export async function matchEmailAgainstActiveRecords(emailText: string) {
   return mergeEmailMatches(keywordMatches, semanticMatches);
 }
 
+function compareSourceTypes(
+  left: ApplicationFlowSankeyLink["sourceType"],
+  right: ApplicationFlowSankeyLink["sourceType"]
+) {
+  return sourceTypeOrder.indexOf(left) - sourceTypeOrder.indexOf(right);
+}
+
+export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSankeyData> {
+  await ensureDatabaseReady();
+
+  let rows: ApplicationFlowSankeyLink[];
+
+  if (shouldUseLocalFallback()) {
+    const grouped = new Map<string, ApplicationFlowSankeyLink>();
+    const records = await getAllLocalRecords();
+
+    for (const record of records) {
+      const sourceType = record.sourceType;
+      const stage = coerceJobStage(record.stage);
+      const pool = record.pool;
+      const key = `${sourceType}:${stage}:${pool}`;
+      const current = grouped.get(key);
+      if (current) {
+        current.count += 1;
+      } else {
+        grouped.set(key, { sourceType, stage, pool, count: 1 });
+      }
+    }
+
+    rows = Array.from(grouped.values());
+  } else {
+    rows = (
+      await getDb()
+        .select({
+          sourceType: jobsTable.sourceType,
+          stage: jobsTable.stage,
+          pool: jobsTable.pool,
+          count: count()
+        })
+        .from(jobsTable)
+        .groupBy(jobsTable.sourceType, jobsTable.stage, jobsTable.pool)
+    ).map((row) => ({
+      sourceType: row.sourceType as JobRecord["sourceType"],
+      stage: coerceJobStage(row.stage),
+      pool: row.pool as JobPool,
+      count: row.count
+    }));
+  }
+
+  const normalizedRows = rows
+    .filter((row) => row.count > 0)
+    .sort((left, right) => {
+      const sourceOrder = compareSourceTypes(left.sourceType, right.sourceType);
+      if (sourceOrder !== 0) {
+        return sourceOrder;
+      }
+
+      const stageOrder =
+        jobStages.indexOf(left.stage) - jobStages.indexOf(right.stage);
+      if (stageOrder !== 0) {
+        return stageOrder;
+      }
+
+      return left.pool.localeCompare(right.pool);
+    });
+
+  return {
+    totalRecords: normalizedRows.reduce((sum, row) => sum + row.count, 0),
+    activeCount: normalizedRows
+      .filter((row) => row.pool === "active")
+      .reduce((sum, row) => sum + row.count, 0),
+    rejectedCount: normalizedRows
+      .filter((row) => row.pool === "rejected")
+      .reduce((sum, row) => sum + row.count, 0),
+    links: normalizedRows
+  };
+}
+
 export async function resetDatabaseForTests() {
   initialized = false;
   clearQueryCaches();
@@ -1500,6 +1621,7 @@ export async function resetCurrentEnvironmentToSeedState() {
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
+      stage: coerceJobStage(record.stage),
       searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
       timestamp: new Date(record.timestamp)

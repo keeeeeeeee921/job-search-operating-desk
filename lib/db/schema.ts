@@ -22,6 +22,7 @@ export const jobsTable = pgTable(
       mode: "date"
     }).notNull(),
     pool: varchar("pool", { length: 16 }).notNull(),
+    stage: varchar("stage", { length: 32 }).notNull().default("applied"),
     comments: text("comments").notNull(),
     applyCountedDateKey: varchar("apply_counted_date_key", { length: 32 }),
     sourceType: varchar("source_type", { length: 32 }).notNull(),

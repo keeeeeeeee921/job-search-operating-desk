@@ -43,6 +43,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
       jobDescription: "Validate the managed Postgres path end to end.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",

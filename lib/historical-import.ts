@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { inferStageFromComments } from "@/lib/job-stage";
 import { detectSource } from "@/lib/sourceDetection";
 import type {
   JobPool,
@@ -177,6 +178,7 @@ export function buildHistoricalRecord(
     jobDescription: draft.jobDescription,
     timestamp,
     pool: draft.pool,
+    stage: inferStageFromComments(draft.comments),
     comments: draft.comments,
     applyCountedDateKey: null,
     sourceType: source.sourceType,

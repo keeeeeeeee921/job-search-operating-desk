@@ -7,19 +7,23 @@ function revalidatePaths(paths: string[]) {
 }
 
 export function revalidateAfterActiveRecordSaved(_recordId: string) {
-  revalidatePaths(["/", "/active"]);
+  revalidatePaths(["/", "/active", "/analytics"]);
 }
 
 export function revalidateAfterActiveRecordArchived() {
-  revalidatePaths(["/", "/active", "/rejected"]);
+  revalidatePaths(["/", "/active", "/rejected", "/analytics"]);
 }
 
 export function revalidateAfterActiveRecordDeleted() {
-  revalidatePaths(["/", "/active"]);
+  revalidatePaths(["/", "/active", "/analytics"]);
 }
 
 export function revalidateAfterCommentsUpdated(recordId: string) {
   revalidatePaths([`/active/${recordId}`]);
+}
+
+export function revalidateAfterStageUpdated(recordId: string) {
+  revalidatePaths([`/active/${recordId}`, "/analytics"]);
 }
 
 export function revalidateAfterDailyGoalsUpdated() {

@@ -6,6 +6,7 @@ import {
   toJobListItem
 } from "@/lib/job-list";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { coerceJobStage } from "@/lib/job-stage";
 import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
@@ -13,6 +14,7 @@ import type {
   JobListItem,
   JobPool,
   JobRecord,
+  JobStage,
   PaginatedJobListResult
 } from "@/lib/types";
 import { getEasternDateKey, normalizeText } from "@/lib/utils";
@@ -86,12 +88,14 @@ function withAutoApplyMarker(record: JobRecord) {
   if (record.pool !== "active") {
     return {
       ...record,
+      stage: coerceJobStage(record.stage),
       applyCountedDateKey: record.applyCountedDateKey ?? null
     };
   }
 
   return {
     ...record,
+    stage: coerceJobStage(record.stage),
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
 }
@@ -151,6 +155,7 @@ async function readLocalStore(): Promise<LocalStore> {
     jobs: Array.isArray(parsed.jobs)
       ? parsed.jobs.map((job) => ({
           ...job,
+          stage: coerceJobStage((job as Partial<JobRecord>).stage),
           applyCountedDateKey: job.applyCountedDateKey ?? null
         }))
       : [],
@@ -300,6 +305,7 @@ export async function insertLocalJobsWithoutGoalEffects(records: JobRecord[]) {
     store.jobs.push(
       ...records.map((record) => ({
         ...record,
+        stage: coerceJobStage(record.stage),
         applyCountedDateKey: record.applyCountedDateKey ?? null
       }))
     );
@@ -320,6 +326,16 @@ export async function archiveLocalJob(id: string) {
     const target = store.jobs.find((job) => job.id === id);
     if (target) {
       target.pool = "rejected";
+      target.stage = coerceJobStage(target.stage);
+    }
+  });
+}
+
+export async function updateLocalStage(id: string, stage: JobStage) {
+  await mutateLocalStore(async (store) => {
+    const target = store.jobs.find((job) => job.id === id);
+    if (target) {
+      target.stage = coerceJobStage(stage);
     }
   });
 }
@@ -336,6 +352,7 @@ export async function updateLocalJobRecord(record: JobRecord) {
       job.id === record.id
         ? {
             ...record,
+            stage: coerceJobStage(record.stage),
             applyCountedDateKey: record.applyCountedDateKey ?? null
           }
         : job

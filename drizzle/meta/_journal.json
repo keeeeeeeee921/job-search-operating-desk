@@ -36,6 +36,13 @@
       "when": 1773171000000,
       "tag": "0004_jobs_search_text_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774800000000,
+      "tag": "0005_application_flow_stage",
+      "breakpoints": true
     }
   ]
 }

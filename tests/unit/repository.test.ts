@@ -4,6 +4,7 @@ import {
   deleteJobRecord,
   getActiveJobById,
   getActiveJobCount,
+  getApplicationFlowSankeyData,
   getDailyGoalsState,
   getEmailMatchCandidateRecords,
   getJobsPage,
@@ -19,6 +20,7 @@ import {
   resetDatabaseForTests,
   searchActiveJobsPage,
   updateComments,
+  updateStage,
   updateDailyGoalState
 } from "@/lib/db/repository";
 import type { JobRecord } from "@/lib/types";
@@ -126,6 +128,7 @@ describe("repository", () => {
         "Applied AI role supporting commercial credit modeling and experimentation.",
       timestamp: new Date(now - 60_000).toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -159,6 +162,7 @@ describe("repository", () => {
       jobDescription: "Data Analyst role supporting card risk analytics.",
       timestamp: new Date(now).toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -194,6 +198,7 @@ describe("repository", () => {
       jobDescription: "Data science role with analytics and modeling scope.",
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -209,6 +214,7 @@ describe("repository", () => {
       jobDescription: "Applied AI role for commercial credit risk modeling.",
       timestamp: new Date(now - 45 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -238,6 +244,7 @@ describe("repository", () => {
         "Thank you for your interest in this Data Analyst position. We reviewed your application and will pursue other applicants.",
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -255,6 +262,7 @@ describe("repository", () => {
         "Billing transformation analyst role for enterprise data and reporting.",
       timestamp: new Date(now - 300 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -288,6 +296,77 @@ describe("repository", () => {
 
     expect(afterArchive).toBeNull();
     expect(rejected.some((item) => item.id === target.id)).toBe(true);
+  });
+
+  it("updates stage explicitly and preserves it through archive", async () => {
+    const active = await getJobsByPool("active");
+    const target = active[0];
+
+    await updateStage(target.id, "oa");
+
+    const staged = await getActiveJobById(target.id);
+    expect(staged?.stage).toBe("oa");
+
+    await archiveJobRecord(target.id);
+
+    const rejected = await getJobsByPool("rejected");
+    const archived = rejected.find((item) => item.id === target.id);
+    expect(archived?.stage).toBe("oa");
+  });
+
+  it("aggregates application flow into source -> stage -> pool links", async () => {
+    await insertJobsWithoutGoalEffects([
+      {
+        id: "sankey-active-applied",
+        roleTitle: "Analytics Intern",
+        company: "Flow Co",
+        location: "Remote",
+        link: "",
+        jobDescription: "Entry-level analytics role.",
+        timestamp: "2026-03-01T12:00:00.000Z",
+        pool: "active",
+        stage: "applied",
+        comments: "",
+        applyCountedDateKey: null,
+        sourceType: "company",
+        sourceConfidence: "high",
+        extractionStatus: "confirmed"
+      },
+      {
+        id: "sankey-rejected-oa",
+        roleTitle: "Data Analyst",
+        company: "Flow Co",
+        location: "Remote",
+        link: "",
+        jobDescription: "Assessment-heavy analyst role.",
+        timestamp: "2026-03-02T12:00:00.000Z",
+        pool: "rejected",
+        stage: "oa",
+        comments: "Completed OA",
+        applyCountedDateKey: null,
+        sourceType: "linkedin",
+        sourceConfidence: "high",
+        extractionStatus: "confirmed"
+      }
+    ]);
+
+    const sankey = await getApplicationFlowSankeyData();
+    const appliedActive = sankey.links.find(
+      (entry) =>
+        entry.sourceType === "company" &&
+        entry.stage === "applied" &&
+        entry.pool === "active"
+    );
+    const oaRejected = sankey.links.find(
+      (entry) =>
+        entry.sourceType === "linkedin" &&
+        entry.stage === "oa" &&
+        entry.pool === "rejected"
+    );
+
+    expect(sankey.totalRecords).toBeGreaterThanOrEqual(2);
+    expect(appliedActive?.count).toBeGreaterThanOrEqual(1);
+    expect(oaRejected?.count).toBeGreaterThanOrEqual(1);
   });
 
   it("deletes records permanently", async () => {
@@ -359,6 +438,7 @@ describe("repository", () => {
       jobDescription: "Verify apply goals increment when Active records are added.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -383,6 +463,7 @@ describe("repository", () => {
       jobDescription: "Verify apply goals decrement when same-day records are deleted.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -408,6 +489,7 @@ describe("repository", () => {
       jobDescription: "Verify apply goals decrement when same-day records are archived.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "applied",
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -435,6 +517,7 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
+        stage: "applied",
         comments: "Historical import",
         applyCountedDateKey: null,
         sourceType: "unknown",
@@ -463,6 +546,7 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
+        stage: "applied",
         comments: "Historical import",
         applyCountedDateKey: null,
         sourceType: "unknown",
@@ -478,6 +562,7 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-11-01T12:00:00.000Z",
         pool: "rejected",
+        stage: "applied",
         comments: "",
         applyCountedDateKey: null,
         sourceType: "unknown",
