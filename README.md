@@ -110,8 +110,3 @@ Common issue diagnosis is documented in `docs/troubleshooting.md`.
 ## Daily goals
 
 `Apply` resets on `America/New_York` midnight boundaries. New Active records automatically increment `Apply`, while `Connect` and `Follow` are tracked as daily counts with manual updates.
-
-## Demo
-
-The live personal-use deployment stays private because it contains real job-search data.  
-This repository is shared as source code plus screenshots in README.

@@ -671,11 +671,7 @@ function parseGreenhouseCompanyFromUrl(parsedUrl: URL) {
 }
 
 function prioritizeCompanyCandidates(values: string[]) {
-  const deduped = uniqueValues(
-    values
-      .map((value) => cleanCompany(value))
-      .filter(isUsefulCompanyCandidate)
-  );
+  const deduped = uniqueValues(values);
   const publicFacing = deduped.filter(
     (value) => !looksLikeInternalCompanyCandidate(value)
   );
@@ -684,6 +680,69 @@ function prioritizeCompanyCandidates(values: string[]) {
   );
 
   return publicFacing.length > 0 ? [...publicFacing, ...internalOnly] : deduped;
+}
+
+type ParentBrandRule = {
+  parentBrand: string;
+  hostnameMatchers: RegExp[];
+  aliasMatchers: RegExp[];
+  evidenceMatchers: RegExp[];
+};
+
+const COMPANY_PARENT_BRAND_RULES: ParentBrandRule[] = [
+  {
+    parentBrand: "Tencent",
+    hostnameMatchers: [/^tencent\.wd1\.myworkdayjobs\.com$/i],
+    aliasMatchers: [
+      /^Tencent America$/i,
+      /^Proxima Beta(?: U\.S\.)?$/i,
+      /^Level Infinite$/i
+    ],
+    evidenceMatchers: [/\bTencent\b/i]
+  }
+];
+
+function normalizeKnownParentBrandCompanies(
+  values: string[],
+  input: { hostname: string; evidenceText: string }
+) {
+  const cleaned = uniqueValues(
+    values
+      .map((value) => cleanCompany(value))
+      .filter(isUsefulCompanyCandidate)
+  );
+
+  for (const rule of COMPANY_PARENT_BRAND_RULES) {
+    const hasAlias = cleaned.some((value) =>
+      rule.aliasMatchers.some((matcher) => matcher.test(value))
+    );
+
+    if (!hasAlias) {
+      continue;
+    }
+
+    const hasHostEvidence = rule.hostnameMatchers.some((matcher) =>
+      matcher.test(input.hostname)
+    );
+    const hasTextEvidence = rule.evidenceMatchers.some((matcher) =>
+      matcher.test(input.evidenceText)
+    );
+
+    if (!hasHostEvidence && !hasTextEvidence) {
+      continue;
+    }
+
+    return uniqueValues([
+      rule.parentBrand,
+      ...cleaned.map((value) =>
+        rule.aliasMatchers.some((matcher) => matcher.test(value))
+          ? rule.parentBrand
+          : value
+      )
+    ]);
+  }
+
+  return cleaned;
 }
 
 function extractLabeledValues(
@@ -1529,22 +1588,41 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
   ])
     .map((value) => cleanTitle(value))
     .filter(isUsefulTitleCandidate);
-  const companyCandidates = prioritizeCompanyCandidates([
+  const companyEvidence = [
     ...familyCandidates.company,
     greenhouseHints.company,
     greenhouseCompanyFromUrl,
     ...jsonLd.company,
     ...extractCompanyFromDescriptions(companyDescriptionSeeds),
     $('meta[property="og:site_name"]').attr("content") ?? "",
-    $('meta[name="author"]').attr("content") ?? "",
-    ...(
-      parsedUrl.hostname.includes("myworkdayjobs.com") ||
-      parsedUrl.hostname.includes("rec.pro.ukg.net") ||
-      parsedUrl.hostname.includes("greenhouse.io")
-        ? []
-        : [hostToCompany(parsedUrl.hostname)]
+    $('meta[name="author"]').attr("content") ?? ""
+  ];
+  const companyCandidates = prioritizeCompanyCandidates(
+    normalizeKnownParentBrandCompanies(
+      [
+        ...companyEvidence,
+        ...(
+          parsedUrl.hostname.includes("myworkdayjobs.com") ||
+          parsedUrl.hostname.includes("rec.pro.ukg.net") ||
+          parsedUrl.hostname.includes("greenhouse.io")
+            ? []
+            : [hostToCompany(parsedUrl.hostname)]
+        )
+      ],
+      {
+        hostname: parsedUrl.hostname.toLowerCase(),
+        evidenceText: normalizeWhitespace(
+          [
+            documentTitle,
+            ogTitle,
+            ogDescription,
+            ...companyEvidence,
+            ...companyDescriptionSeeds
+          ].join(" ")
+        )
+      }
     )
-  ]);
+  );
   if (companyCandidates.length === 0 && source.sourceType === "workday") {
     const hostCompany = cleanCompany(providerHostCompany(parsedUrl.hostname));
     if (hostCompany) {

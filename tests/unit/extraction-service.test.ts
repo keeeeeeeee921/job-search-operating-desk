@@ -68,6 +68,41 @@ describe("server extraction service", () => {
     expect((result.fields.jobDescription ?? "").length).toBeGreaterThan(1500);
   });
 
+  it("normalizes Tencent Workday legal entities back to the Tencent parent brand", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Data Science Intern | Tencent Careers</title>
+            <meta property="og:title" content="Data Science Intern" />
+            <meta property="og:description" content="Tencent builds products and services that improve quality of life around the world." />
+          </head>
+          <body>
+            <main>
+              <p>Who we are Tencent is a world-leading internet and technology company.</p>
+              <p>Level Infinite is Tencent's global gaming brand.</p>
+            </main>
+            <script type="application/ld+json">
+              {
+                "@type": "JobPosting",
+                "title": "Data Science Intern",
+                "hiringOrganization": {
+                  "name": "Proxima Beta U.S."
+                },
+                "description": "Tencent is a world-leading internet and technology company."
+              }
+            </script>
+          </body>
+        </html>
+      `,
+      "https://tencent.wd1.myworkdayjobs.com/en-US/Tencent_Careers/job/US-California-Palo-Alto/Data-Science-Intern_R107184"
+    );
+
+    expect(result.fields.company).toBe("Tencent");
+    expect(result.candidateValues.company?.[0]).toBe("Tencent");
+    expect(result.candidateValues.company).not.toContain("Proxima Beta U.S.");
+  });
+
   it("parses UKG inline job payloads before generic page scraping", () => {
     const result = extractCandidatesFromHtml(
       readFixture("inquirer-ukg.html"),

@@ -26,7 +26,7 @@ export function JobRecordRow({
           : "grid-cols-1 xl:grid-cols-[1.2fr_1.1fr_0.8fr_0.8fr_1.5fr]"
       )}
     >
-      <div className="xl:pr-2">
+      <div className="min-w-0 xl:pr-2">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Role Title
         </p>
@@ -42,16 +42,17 @@ export function JobRecordRow({
         )}
         <p className="mt-2 text-xs text-muted-foreground">{sourceLabel}</p>
       </div>
-      <div className="xl:border-l xl:border-border/70 xl:pl-4">
+      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Link
         </p>
         {record.link ? (
           <a
-            className="mt-2 block break-all text-sm text-accent transition hover:opacity-80"
+            className="mt-2 block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm text-accent transition hover:opacity-80"
             href={record.link}
             rel="noreferrer"
             target="_blank"
+            title={record.link}
           >
             {record.link}
           </a>
@@ -59,13 +60,13 @@ export function JobRecordRow({
           <p className="mt-2 text-sm text-muted-foreground">Link not saved</p>
         )}
       </div>
-      <div className="xl:border-l xl:border-border/70 xl:pl-4">
+      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Company
         </p>
         <p className="mt-2 text-sm text-foreground">{record.company}</p>
       </div>
-      <div className="xl:border-l xl:border-border/70 xl:pl-4">
+      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Location
         </p>
@@ -74,7 +75,7 @@ export function JobRecordRow({
           Saved {formatDate(record.timestamp)}
         </p>
       </div>
-      <div className="xl:border-l xl:border-border/70 xl:pl-4">
+      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
           Job Description
         </p>
