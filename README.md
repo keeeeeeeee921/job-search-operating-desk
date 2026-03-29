@@ -31,6 +31,10 @@ I built this after getting frustrated with how much time personal job tracking w
 
 ![Home screen](docs/images/home-intake.png)
 
+### Active
+
+![Active list](docs/images/active-list.png)
+
 ### Manual review for incomplete records
 
 ![Manual review flow](docs/images/manual-review-modal.png)
@@ -38,10 +42,6 @@ I built this after getting frustrated with how much time personal job tracking w
 ### Duplicate detection
 
 ![Duplicate detection](docs/images/duplicate-modal.png)
-
-### Active job detail
-
-![Active job detail](docs/images/active-detail.png)
 
 ## Key workflows
 
@@ -59,7 +59,7 @@ If required fields are missing or extraction confidence is low, the app pauses f
 
 ### Update from rejection email
 
-Paste rejection email text to find the most likely Active records and move the correct one into the Rejected archive.
+Paste rejection email text or a `job title + company` query to find the most likely Active records and move the correct one into the Rejected archive.
 
 ## Design principles
 
