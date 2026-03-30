@@ -41,6 +41,7 @@ import {
 import { getDefaultSeedState } from "@/lib/seed";
 import {
   jobStages,
+  type ApplicationFlowRecordPreview,
   type ApplicationFlowSankeyData,
   type ApplicationFlowSankeyLink,
   type DailyGoalsState,
@@ -56,6 +57,7 @@ import {
   getEasternDateKey,
   normalizeText,
   tokenOverlapScore,
+  truncate,
   tokenize,
   uniqueValues
 } from "@/lib/utils";
@@ -76,15 +78,6 @@ const paginatedResultCache = new Map<
 >();
 const totalCountCache = new Map<string, CacheEntry<number>>();
 const recentActiveCache = new Map<string, CacheEntry<JobListItem[]>>();
-
-const sourceTypeOrder: Array<JobRecord["sourceType"]> = [
-  "linkedin",
-  "greenhouse",
-  "lever",
-  "workday",
-  "company",
-  "unknown"
-];
 
 function readCache<T>(
   cache: Map<string, CacheEntry<T>>,
@@ -1498,65 +1491,27 @@ export async function matchEmailAgainstActiveRecords(emailText: string) {
   return mergeEmailMatches(keywordMatches, semanticMatches);
 }
 
-function compareSourceTypes(
-  left: ApplicationFlowSankeyLink["sourceType"],
-  right: ApplicationFlowSankeyLink["sourceType"]
-) {
-  return sourceTypeOrder.indexOf(left) - sourceTypeOrder.indexOf(right);
-}
-
 export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSankeyData> {
   await ensureDatabaseReady();
+  const records = await getAllRecords();
+  const grouped = new Map<string, ApplicationFlowSankeyLink>();
 
-  let rows: ApplicationFlowSankeyLink[];
-
-  if (shouldUseLocalFallback()) {
-    const grouped = new Map<string, ApplicationFlowSankeyLink>();
-    const records = await getAllLocalRecords();
-
-    for (const record of records) {
-      const sourceType = record.sourceType;
-      const stage = coerceJobStage(record.stage);
-      const pool = record.pool;
-      const key = `${sourceType}:${stage}:${pool}`;
-      const current = grouped.get(key);
-      if (current) {
-        current.count += 1;
-      } else {
-        grouped.set(key, { sourceType, stage, pool, count: 1 });
-      }
+  for (const record of records) {
+    const stage = coerceJobStage(record.stage);
+    const pool = record.pool;
+    const key = `${stage}:${pool}`;
+    const current = grouped.get(key);
+    if (current) {
+      current.count += 1;
+    } else {
+      grouped.set(key, { stage, pool, count: 1 });
     }
-
-    rows = Array.from(grouped.values());
-  } else {
-    rows = (
-      await getDb()
-        .select({
-          sourceType: jobsTable.sourceType,
-          stage: jobsTable.stage,
-          pool: jobsTable.pool,
-          count: count()
-        })
-        .from(jobsTable)
-        .groupBy(jobsTable.sourceType, jobsTable.stage, jobsTable.pool)
-    ).map((row) => ({
-      sourceType: row.sourceType as JobRecord["sourceType"],
-      stage: coerceJobStage(row.stage),
-      pool: row.pool as JobPool,
-      count: row.count
-    }));
   }
 
-  const normalizedRows = rows
+  const normalizedRows = Array.from(grouped.values())
     .filter((row) => row.count > 0)
     .sort((left, right) => {
-      const sourceOrder = compareSourceTypes(left.sourceType, right.sourceType);
-      if (sourceOrder !== 0) {
-        return sourceOrder;
-      }
-
-      const stageOrder =
-        jobStages.indexOf(left.stage) - jobStages.indexOf(right.stage);
+      const stageOrder = jobStages.indexOf(left.stage) - jobStages.indexOf(right.stage);
       if (stageOrder !== 0) {
         return stageOrder;
       }
@@ -1564,15 +1519,28 @@ export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSan
       return left.pool.localeCompare(right.pool);
     });
 
+  const recordPreviews: ApplicationFlowRecordPreview[] = records.map((record) => ({
+    id: record.id,
+    roleTitle: record.roleTitle,
+    company: record.company,
+    location: record.location,
+    timestamp: record.timestamp,
+    pool: record.pool,
+    stage: coerceJobStage(record.stage),
+    commentsPreview: truncate(record.comments.trim(), 180),
+    hasComments: record.comments.trim().length > 0
+  }));
+
   return {
-    totalRecords: normalizedRows.reduce((sum, row) => sum + row.count, 0),
+    totalRecords: records.length,
     activeCount: normalizedRows
       .filter((row) => row.pool === "active")
       .reduce((sum, row) => sum + row.count, 0),
     rejectedCount: normalizedRows
       .filter((row) => row.pool === "rejected")
       .reduce((sum, row) => sum + row.count, 0),
-    links: normalizedRows
+    links: normalizedRows,
+    records: recordPreviews
   };
 }
 

@@ -314,7 +314,7 @@ describe("repository", () => {
     expect(archived?.stage).toBe("oa");
   });
 
-  it("aggregates application flow into source -> stage -> pool links", async () => {
+  it("aggregates application flow into applied -> stage -> pool links", async () => {
     await insertJobsWithoutGoalEffects([
       {
         id: "sankey-active-applied",
@@ -353,20 +353,20 @@ describe("repository", () => {
     const sankey = await getApplicationFlowSankeyData();
     const appliedActive = sankey.links.find(
       (entry) =>
-        entry.sourceType === "company" &&
         entry.stage === "applied" &&
         entry.pool === "active"
     );
     const oaRejected = sankey.links.find(
       (entry) =>
-        entry.sourceType === "linkedin" &&
         entry.stage === "oa" &&
         entry.pool === "rejected"
     );
+    const preview = sankey.records.find((record) => record.id === "sankey-rejected-oa");
 
     expect(sankey.totalRecords).toBeGreaterThanOrEqual(2);
     expect(appliedActive?.count).toBeGreaterThanOrEqual(1);
     expect(oaRejected?.count).toBeGreaterThanOrEqual(1);
+    expect(preview?.commentsPreview).toContain("Completed OA");
   });
 
   it("deletes records permanently", async () => {

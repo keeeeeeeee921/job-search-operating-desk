@@ -11,6 +11,7 @@
     "build:extraction-corpus": "tsx scripts/build-extraction-corpus.ts",
     "repair:records": "tsx scripts/repair-records.ts",
     "repair:job-stage": "tsx scripts/repair-job-stage.ts",
+    "audit:job-stage-comments": "tsx scripts/audit-job-stage-comments.ts",
     "manual-fix:records": "tsx scripts/manual-fix-records.ts",
     "audit:active-records": "tsx scripts/audit-active-records.ts",
     "report:extraction-health": "tsx scripts/report-extraction-health.ts",
