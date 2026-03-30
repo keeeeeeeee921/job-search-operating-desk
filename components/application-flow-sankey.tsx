@@ -460,35 +460,14 @@ export function ApplicationFlowSankey({ data }: { data: ApplicationFlowSankeyDat
   return (
     <div className="space-y-6">
       <Surface className="p-6 lg:p-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Application Flow
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold text-foreground">Sankey overview</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              All applications are counted here. Direct flows from Applications to Active or
-              Rejected represent records still at the applied stage, while later-stage branches
-              show records that moved beyond applied and their current outcome.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
-            <span className="rounded-full border border-border bg-white/80 px-3 py-1">
-              All applications {data.totalRecords}
-            </span>
-            <span className="rounded-full border border-border bg-white/80 px-3 py-1">
-              Applied-only active {layout.appliedActiveCount}
-            </span>
-            <span className="rounded-full border border-border bg-white/80 px-3 py-1">
-              Applied-only rejected {layout.appliedRejectedCount}
-            </span>
-            <span className="rounded-full border border-border bg-white/80 px-3 py-1">
-              Beyond applied {layout.progressedCount}
-            </span>
-          </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            Application Flow
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-foreground">Sankey overview</h2>
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-[32px] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(249,247,250,0.97))] p-6">
+        <div className="mt-5 overflow-x-auto rounded-[32px] border border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.99),rgba(249,247,250,0.97))] p-6">
           <svg
             aria-label="Application flow sankey chart"
             className="h-auto min-w-[1180px] w-full"
