@@ -8,7 +8,6 @@ const data: ApplicationFlowSankeyData = {
   activeCount: 2,
   rejectedCount: 1,
   links: [
-    { stage: "applied", pool: "active", count: 1 },
     { stage: "oa", pool: "active", count: 1 },
     { stage: "oa", pool: "rejected", count: 1 }
   ],
@@ -52,6 +51,8 @@ const data: ApplicationFlowSankeyData = {
 describe("ApplicationFlowSankey", () => {
   it("shows branch-specific records in the details panel", () => {
     render(<ApplicationFlowSankey data={data} />);
+
+    expect(screen.queryByRole("button", { name: "Applied -> OA" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "OA -> Rejected" }));
 

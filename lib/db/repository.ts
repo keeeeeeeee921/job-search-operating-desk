@@ -1495,10 +1495,22 @@ export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSan
   await ensureDatabaseReady();
   const records = await getAllRecords();
   const grouped = new Map<string, ApplicationFlowSankeyLink>();
+  let activeCount = 0;
+  let rejectedCount = 0;
 
   for (const record of records) {
     const stage = coerceJobStage(record.stage);
     const pool = record.pool;
+    if (pool === "active") {
+      activeCount += 1;
+    } else {
+      rejectedCount += 1;
+    }
+
+    if (stage === "applied") {
+      continue;
+    }
+
     const key = `${stage}:${pool}`;
     const current = grouped.get(key);
     if (current) {
@@ -1533,12 +1545,8 @@ export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSan
 
   return {
     totalRecords: records.length,
-    activeCount: normalizedRows
-      .filter((row) => row.pool === "active")
-      .reduce((sum, row) => sum + row.count, 0),
-    rejectedCount: normalizedRows
-      .filter((row) => row.pool === "rejected")
-      .reduce((sum, row) => sum + row.count, 0),
+    activeCount,
+    rejectedCount,
     links: normalizedRows,
     records: recordPreviews
   };
