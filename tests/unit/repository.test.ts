@@ -314,7 +314,7 @@ describe("repository", () => {
     expect(archived?.stage).toBe("oa");
   });
 
-  it("aggregates only post-applied records into application flow links", async () => {
+  it("aggregates all application flow stages while keeping full totals", async () => {
     await insertJobsWithoutGoalEffects([
       {
         id: "sankey-active-applied",
@@ -366,7 +366,7 @@ describe("repository", () => {
     expect(sankey.totalRecords).toBeGreaterThanOrEqual(2);
     expect(sankey.activeCount).toBeGreaterThanOrEqual(1);
     expect(sankey.rejectedCount).toBeGreaterThanOrEqual(1);
-    expect(appliedActive).toBeUndefined();
+    expect(appliedActive?.count).toBeGreaterThanOrEqual(1);
     expect(oaRejected?.count).toBeGreaterThanOrEqual(1);
     expect(preview?.commentsPreview).toContain("Completed OA");
   });

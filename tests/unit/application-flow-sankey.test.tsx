@@ -8,6 +8,7 @@ const data: ApplicationFlowSankeyData = {
   activeCount: 2,
   rejectedCount: 1,
   links: [
+    { stage: "applied", pool: "active", count: 1 },
     { stage: "oa", pool: "active", count: 1 },
     { stage: "oa", pool: "rejected", count: 1 }
   ],
@@ -53,9 +54,12 @@ describe("ApplicationFlowSankey", () => {
     render(<ApplicationFlowSankey data={data} />);
 
     expect(screen.queryByRole("button", { name: "Applied -> OA" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Applied -> Active" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Branch Records")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "OA -> Rejected" }));
 
+    expect(screen.getByText("Branch Records")).toBeInTheDocument();
     expect(screen.getByText("OA -> Rejected")).toBeInTheDocument();
     expect(screen.getByText("Rejected After OA")).toBeInTheDocument();
     expect(screen.getByText("Gamma Co")).toBeInTheDocument();

@@ -1507,10 +1507,6 @@ export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSan
       rejectedCount += 1;
     }
 
-    if (stage === "applied") {
-      continue;
-    }
-
     const key = `${stage}:${pool}`;
     const current = grouped.get(key);
     if (current) {
