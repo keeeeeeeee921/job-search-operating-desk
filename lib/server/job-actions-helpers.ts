@@ -1,7 +1,6 @@
 export {
   archiveJobRecord,
   deleteJobRecord,
-  getApplicationFlowSankeyData,
   getDailyGoalsState,
   getEmailMatchCandidateRecords,
   getPotentialDuplicateCandidates,

@@ -40,10 +40,6 @@ import {
 } from "@/lib/query-cache-config";
 import { getDefaultSeedState } from "@/lib/seed";
 import {
-  jobStages,
-  type ApplicationFlowRecordPreview,
-  type ApplicationFlowSankeyData,
-  type ApplicationFlowSankeyLink,
   type DailyGoalsState,
   type EmailMatch,
   type GoalKey,
@@ -57,7 +53,6 @@ import {
   getEasternDateKey,
   normalizeText,
   tokenOverlapScore,
-  truncate,
   tokenize,
   uniqueValues
 } from "@/lib/utils";
@@ -1491,62 +1486,6 @@ export async function matchEmailAgainstActiveRecords(emailText: string) {
   return mergeEmailMatches(keywordMatches, semanticMatches);
 }
 
-export async function getApplicationFlowSankeyData(): Promise<ApplicationFlowSankeyData> {
-  await ensureDatabaseReady();
-  const records = await getAllRecords();
-  const grouped = new Map<string, ApplicationFlowSankeyLink>();
-  let activeCount = 0;
-  let rejectedCount = 0;
-
-  for (const record of records) {
-    const stage = coerceJobStage(record.stage);
-    const pool = record.pool;
-    if (pool === "active") {
-      activeCount += 1;
-    } else {
-      rejectedCount += 1;
-    }
-
-    const key = `${stage}:${pool}`;
-    const current = grouped.get(key);
-    if (current) {
-      current.count += 1;
-    } else {
-      grouped.set(key, { stage, pool, count: 1 });
-    }
-  }
-
-  const normalizedRows = Array.from(grouped.values())
-    .filter((row) => row.count > 0)
-    .sort((left, right) => {
-      const stageOrder = jobStages.indexOf(left.stage) - jobStages.indexOf(right.stage);
-      if (stageOrder !== 0) {
-        return stageOrder;
-      }
-
-      return left.pool.localeCompare(right.pool);
-    });
-
-  const recordPreviews: ApplicationFlowRecordPreview[] = records.map((record) => ({
-    id: record.id,
-    roleTitle: record.roleTitle,
-    company: record.company,
-    location: record.location,
-    timestamp: record.timestamp,
-    pool: record.pool,
-    stage: coerceJobStage(record.stage),
-    commentsPreview: truncate(record.comments.trim(), 180),
-    hasComments: record.comments.trim().length > 0
-  }));
-
-  return {
-    totalRecords: records.length,
-    activeCount,
-    rejectedCount,
-    links: normalizedRows,
-    records: recordPreviews
-  };
-}
 
 export async function resetDatabaseForTests() {
   initialized = false;

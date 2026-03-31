@@ -138,29 +138,3 @@ export interface EmailMatch {
   score: number;
   reasons: string[];
 }
-
-export interface ApplicationFlowSankeyLink {
-  stage: JobStage;
-  pool: JobPool;
-  count: number;
-}
-
-export interface ApplicationFlowRecordPreview {
-  id: string;
-  roleTitle: string;
-  company: string;
-  location: string;
-  timestamp: string;
-  pool: JobPool;
-  stage: JobStage;
-  commentsPreview: string;
-  hasComments: boolean;
-}
-
-export interface ApplicationFlowSankeyData {
-  totalRecords: number;
-  activeCount: number;
-  rejectedCount: number;
-  links: ApplicationFlowSankeyLink[];
-  records: ApplicationFlowRecordPreview[];
-}

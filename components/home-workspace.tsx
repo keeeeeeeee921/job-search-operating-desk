@@ -189,9 +189,9 @@ export function HomeWorkspace({
           <div className="mt-3 flex justify-end pr-2">
             <Link
               className="text-xs text-muted-foreground transition hover:text-foreground"
-              href="/analytics"
+              href="/search-log"
             >
-              Application flow
+              Search log
             </Link>
           </div>
         </div>

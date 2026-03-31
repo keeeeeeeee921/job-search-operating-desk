@@ -4,7 +4,6 @@ import {
   deleteJobRecord,
   getActiveJobById,
   getActiveJobCount,
-  getApplicationFlowSankeyData,
   getDailyGoalsState,
   getEmailMatchCandidateRecords,
   getJobsPage,
@@ -350,25 +349,6 @@ describe("repository", () => {
       }
     ]);
 
-    const sankey = await getApplicationFlowSankeyData();
-    const appliedActive = sankey.links.find(
-      (entry) =>
-        entry.stage === "applied" &&
-        entry.pool === "active"
-    );
-    const oaRejected = sankey.links.find(
-      (entry) =>
-        entry.stage === "oa" &&
-        entry.pool === "rejected"
-    );
-    const preview = sankey.records.find((record) => record.id === "sankey-rejected-oa");
-
-    expect(sankey.totalRecords).toBeGreaterThanOrEqual(2);
-    expect(sankey.activeCount).toBeGreaterThanOrEqual(1);
-    expect(sankey.rejectedCount).toBeGreaterThanOrEqual(1);
-    expect(appliedActive?.count).toBeGreaterThanOrEqual(1);
-    expect(oaRejected?.count).toBeGreaterThanOrEqual(1);
-    expect(preview?.commentsPreview).toContain("Completed OA");
   });
 
   it("deletes records permanently", async () => {
