@@ -12,6 +12,7 @@ Job Search Operating Desk is a real web app for turning messy job links, copied 
 - Handle LinkedIn Easy Apply style input realistically
 - Review incomplete records instead of inventing fields
 - Match rejection emails back to Active jobs
+- Capture each job hunt as a fixed search-log snapshot
 - Track daily Apply / Connect / Follow counts
 
 ## Why I built it
@@ -34,6 +35,10 @@ I built this after getting frustrated with how much time personal job tracking w
 ### Active
 
 ![Active list](docs/images/active-list.png)
+
+### Search log
+
+![Search log snapshot](docs/images/job-search-cycle-01.png)
 
 ### Manual review for incomplete records
 
@@ -60,6 +65,10 @@ If required fields are missing or extraction confidence is low, the app pauses f
 ### Update from rejection email
 
 Paste rejection email text or a `job title + company` query to find the most likely Active records and move the correct one into the Rejected archive.
+
+### Record a search cycle
+
+Use the Search Log page to store each job hunt as a fixed snapshot with a short note on goals, scope, and one attached summary image.
 
 ## Design principles
 

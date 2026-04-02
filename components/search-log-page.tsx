@@ -25,9 +25,8 @@ export function SearchLogPage() {
               Job search cycles, captured as fixed snapshots
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-              This replaces the old application flow page. Each search cycle can live
-              here as its own recorded run, with a short note on goals and one attached
-              summary image.
+              Each search cycle can live here as its own recorded run, with a short
+              note on goals and one attached summary image.
             </p>
           </div>
           <div className="rounded-3xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-muted-foreground shadow-soft">
