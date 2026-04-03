@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  formatFieldOriginLabel,
   isFieldRequiredForDraft,
   labelForField
 } from "@/lib/recordValidation";
@@ -66,10 +67,10 @@ export function ReviewModal({
   return (
     <Dialog
       className="h-[min(82dvh,860px)] sm:h-[min(86dvh,920px)]"
-      description="Some required fields are missing or low confidence. Confirm values before saving to Active."
+      description="A few fields need a quick check before this goes into Active."
       onOpenChange={onOpenChange}
       open={open}
-      title="Missing fields need review"
+      title="Review before saving"
     >
       <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]">
         <div className="flex shrink-0 items-center justify-end gap-3 border-b border-border/80 pb-4">
@@ -120,14 +121,14 @@ export function ReviewModal({
                         ) : (
                           <p className="text-xs text-muted-foreground">
                             {field === "link" && !isFieldRequiredForDraft(localDraft, field)
-                              ? "Optional when saving pasted job text."
-                              : "Ready to save."}
+                              ? "Optional for pasted job text."
+                              : "Looks good."}
                           </p>
                         )}
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {localDraft.fieldOrigins[field] ?? "missing"}
+                      {formatFieldOriginLabel(localDraft.fieldOrigins[field] ?? "missing")}
                     </p>
                   </div>
                   {confidenceScore !== undefined ? (

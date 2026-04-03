@@ -58,10 +58,10 @@ function deriveLinkedInHints(parsed: URL) {
       fieldOrigins: emptyFieldOrigins(),
       candidateValues: {},
       unsupportedReason: easyApply
-        ? "LinkedIn Easy Apply links do not expose enough public detail here. Paste the posting URL with the title slug if possible, or fill the missing fields manually."
+        ? "This LinkedIn Easy Apply link does not show enough public detail here. Paste the posting URL if you have it, or fill in the missing fields by hand."
         : slug && /^\d+$/.test(slug)
-          ? "This LinkedIn job link only exposes a numeric job ID, not a readable role/company slug. Manual review is required."
-          : "LinkedIn pages are restricted, so this link needs manual review.",
+          ? "This LinkedIn link only shows a numeric job ID, so it needs review."
+          : "LinkedIn does not expose enough public detail here, so this link needs review.",
       notes: [
         easyApply
           ? "LinkedIn Easy Apply links are restricted and often only expose a job ID."
@@ -102,8 +102,8 @@ function deriveLinkedInHints(parsed: URL) {
       company: company ? [company] : []
     },
     unsupportedReason: easyApply
-      ? "LinkedIn Easy Apply links are restricted. The URL slug provided a few hints, but manual review is still required."
-      : "LinkedIn pages are restricted, so this link still needs manual review.",
+      ? "This Easy Apply link only gave a few URL hints, so it still needs review."
+      : "This LinkedIn link only gave a few URL hints, so it still needs review.",
     notes: [
       easyApply
         ? "Only LinkedIn URL hints were available from an Easy Apply link."

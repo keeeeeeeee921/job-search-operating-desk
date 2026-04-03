@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import { formatJobStageLabel } from "@/lib/job-stage";
+import { formatSourceTypeLabel } from "@/lib/sourceDetection";
 import { jobStages, type JobRecord, type JobStage } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
@@ -92,7 +93,7 @@ export function JobDetailPanel({
             onClick={() => {
               if (
                 window.confirm(
-                  "Delete this job record permanently? This cannot be undone."
+                  "Delete this record permanently? This can't be undone."
                 )
               ) {
                 void onDelete();
@@ -107,11 +108,18 @@ export function JobDetailPanel({
           <Field label="Role Title" value={record.roleTitle} />
           <Field label="Company" value={record.company} />
           <Field label="Location" value={record.location} />
-          <Field label="Source" value={record.sourceType === "unknown" ? "Source not confirmed" : record.sourceType} />
+          <Field
+            label="Source"
+            value={
+              record.sourceType === "unknown"
+                ? "Source unclear"
+                : formatSourceTypeLabel(record.sourceType)
+            }
+          />
           <Field label="Timestamp" value={formatDate(record.timestamp)} />
           <Field
             label="Search Cycle"
-            value={record.searchCycleLabel ?? "Not assigned"}
+            value={record.searchCycleLabel ?? "Not set"}
           />
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
@@ -128,7 +136,7 @@ export function JobDetailPanel({
               </a>
             ) : (
               <p className="mt-2 text-sm text-muted-foreground">
-                Link not saved for this record.
+                No link saved for this record.
               </p>
             )}
           </div>
@@ -150,7 +158,7 @@ export function JobDetailPanel({
                 Comments
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Add progress notes here: interviews, OA, follow-up, or recruiter updates.
+                Keep interview notes, OA progress, follow-ups, or recruiter updates here.
               </p>
             </div>
             <label className="block text-sm text-foreground">
@@ -197,7 +205,7 @@ export function JobDetailPanel({
                 nextValue
               );
             }}
-            placeholder="Add a progress note..."
+            placeholder="Add a note..."
             value={comments}
           />
         </Surface>

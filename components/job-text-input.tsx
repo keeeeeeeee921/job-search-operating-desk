@@ -29,7 +29,7 @@ export function JobTextInput({
                 Paste job text
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Best for LinkedIn Easy Apply and copied listings. Link can be empty.
+                Best for Easy Apply text or copied listings. A link is optional.
               </p>
             </div>
             <div className="hidden rounded-full border border-border/80 bg-white/90 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:block">
@@ -50,7 +50,7 @@ export function JobTextInput({
             value={value}
           />
           <p className="mt-3 text-xs text-muted-foreground">
-            UI noise such as Save, Easy Apply, Resume Match, and profile blocks is filtered when possible.
+            Noise like Save, Easy Apply, Resume Match, and profile blocks is filtered when possible.
           </p>
         </div>
       </div>

@@ -26,7 +26,7 @@ export default async function ActivePage({
     <AppShell currentPath="/active">
       <ListPageView
         basePath="/active"
-        description="This is the active-only working pool. It stays focused on current applications, sorted by newest first."
+        description="Your current applications, sorted newest first."
         detailBasePath="/active"
         pageData={activeJobs}
         query={query}

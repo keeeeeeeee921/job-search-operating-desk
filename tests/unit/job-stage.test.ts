@@ -40,7 +40,7 @@ describe("job stage helpers", () => {
   });
 
   it("formats stage labels for UI display", () => {
-    expect(formatJobStageLabel("hr_reach_out")).toBe("HR reach-out");
-    expect(formatJobStageLabel("second_plus_round")).toBe("2nd round+ interview");
+    expect(formatJobStageLabel("hr_reach_out")).toBe("HR outreach");
+    expect(formatJobStageLabel("second_plus_round")).toBe("2nd+ round interview");
   });
 });

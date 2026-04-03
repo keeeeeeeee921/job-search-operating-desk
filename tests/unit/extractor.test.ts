@@ -15,7 +15,7 @@ describe("buildFallbackExtraction", () => {
       "Data Science Intern Summer 2026"
     );
     expect(result.candidateValues.company).toContain("FedEx");
-    expect(result.unsupportedReason).toContain("manual review");
+    expect(result.unsupportedReason).toContain("needs review");
   });
 
   it("shows a more specific message for LinkedIn Easy Apply links", () => {

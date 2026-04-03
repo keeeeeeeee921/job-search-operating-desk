@@ -31,7 +31,7 @@ export function DailyGoalsWidget({
           Daily Goals
         </p>
         <h2 className="mt-2 text-xl font-semibold text-foreground">
-          A quiet progress check-in
+          A small daily check-in
         </h2>
         <div className="mt-5 space-y-4">
           {goalOrder.map((goal) => {

@@ -58,7 +58,7 @@ export function HomeWorkspace({
   ) => {
     if (result.status === "review") {
       setReviewDraft(result.draft);
-      pushToast("Missing fields need review", "warning");
+      pushToast("Review needed", "warning");
       setProcessingStatus(null);
       return;
     }
@@ -66,7 +66,7 @@ export function HomeWorkspace({
     if (result.status === "duplicate") {
       setDuplicateDraft(result.draft);
       setDuplicateCandidates(result.candidates);
-      pushToast("Possible duplicate found", "warning");
+      pushToast("Possible duplicate", "warning");
       setProcessingStatus(null);
       return;
     }
@@ -74,7 +74,7 @@ export function HomeWorkspace({
     setRecentItems((current) =>
       [toJobListItem(result.record), ...current.filter((item) => item.id !== result.record.id)].slice(0, 4)
     );
-    pushToast("Added to Active", "success");
+    pushToast("Saved to Active", "success");
     setProcessingStatus(null);
     setLinkValue("");
     setTextValue("");
@@ -125,12 +125,12 @@ export function HomeWorkspace({
         <div className="space-y-6">
           <Surface className="p-6">
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Main Input
+              Start Here
             </p>
             <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
               <div className="max-w-[980px] flex-1">
                 <h1 className="text-4xl font-semibold tracking-tight text-foreground xl:text-[3.35rem] xl:leading-[1.02]">
-                  Paste a job link. Keep the working pool honest.
+                  Paste a job link. Keep the active list clear.
                 </h1>
               </div>
               <div className="flex justify-center lg:shrink-0 lg:justify-start">
@@ -145,7 +145,7 @@ export function HomeWorkspace({
               </div>
             </div>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              This desk separates input, extraction, and saved records. If required fields are missing or the source is restricted, the app stops and asks for review instead of pretending extraction succeeded.
+              This workspace keeps intake separate from saved records. If something is missing or a page is restricted, it pauses for review instead of saving a guess.
             </p>
             <div className="mt-6">
               <div className="mb-4 flex flex-wrap gap-2">
@@ -191,7 +191,7 @@ export function HomeWorkspace({
               className="text-xs text-muted-foreground transition hover:text-foreground"
               href="/search-log"
             >
-              Search log
+              Search Log
             </Link>
           </div>
         </div>

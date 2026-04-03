@@ -1,5 +1,22 @@
 import type { SourceConfidence, SourceType } from "@/lib/types";
 
+export function formatSourceTypeLabel(sourceType: SourceType) {
+  switch (sourceType) {
+    case "linkedin":
+      return "LinkedIn";
+    case "greenhouse":
+      return "Greenhouse";
+    case "lever":
+      return "Lever";
+    case "workday":
+      return "Workday";
+    case "company":
+      return "Company site";
+    case "unknown":
+      return "Source unclear";
+  }
+}
+
 export function detectSource(url: string): {
   sourceType: SourceType;
   sourceConfidence: SourceConfidence;

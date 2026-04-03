@@ -27,7 +27,7 @@ export function AppShell({
               Job Search Operating Desk
             </p>
             <p className="mt-1 text-lg font-semibold text-foreground">
-              Personal job search workspace
+              A personal job search workspace
             </p>
           </Link>
           <nav className="flex items-center gap-2 rounded-full border border-border bg-white/70 px-2 py-2 shadow-soft">

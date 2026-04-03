@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatSourceTypeLabel } from "@/lib/sourceDetection";
 import type { JobListItem } from "@/lib/types";
 import { cn, formatDate, truncate } from "@/lib/utils";
 
@@ -14,8 +15,10 @@ export function JobRecordRow({
   const roleLabel = record.roleTitle || "Role title not extracted";
   const sourceLabel =
     record.sourceType === "unknown"
-      ? "Source not confirmed"
-      : `${record.extractionStatus === "needs_review" ? "Reviewed manually" : "Confirmed"} · ${record.sourceType}`;
+      ? "Source unclear"
+      : record.extractionStatus === "needs_review"
+        ? `Reviewed · ${formatSourceTypeLabel(record.sourceType)}`
+        : formatSourceTypeLabel(record.sourceType);
 
   return (
     <div
@@ -57,7 +60,7 @@ export function JobRecordRow({
             {record.link}
           </a>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">Link not saved</p>
+          <p className="mt-2 text-sm text-muted-foreground">No link saved</p>
         )}
       </div>
       <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">

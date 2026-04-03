@@ -49,10 +49,10 @@ export function EmailMatchPanel({
           Rejection Email
         </p>
         <h1 className="mt-2 text-3xl font-semibold text-foreground">
-          Match a rejection email to the right Active record
+          Match an email to the right Active record
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Paste a rejection email or a job title + company query, then archive the correct Active record manually.
+          Paste a rejection email or a title + company search, then archive the right Active record.
         </p>
         <Textarea
           className="mt-6 min-h-[280px]"
@@ -73,7 +73,7 @@ export function EmailMatchPanel({
           value={value}
         />
         <p className="mt-4 text-xs text-muted-foreground">
-          Press Enter to find matches. Use Shift+Enter for a new line.
+          Press Enter to match. Use Shift+Enter for a new line.
         </p>
       </Surface>
       <Surface className="p-6">
@@ -84,12 +84,12 @@ export function EmailMatchPanel({
           {matches.length === 0 ? (
             <div className="rounded-[24px] border border-dashed border-border px-4 py-8 text-center">
               <p className="text-base font-semibold text-foreground">
-                {emptyState ? "No Active records to match yet" : "No likely matches yet"}
+                {emptyState ? "No Active records yet" : "No likely matches yet"}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {emptyState
-                  ? "Save a few Active records first, then return to archive rejections."
-                  : "Paste a rejection email or title/company query, then press Enter to see likely matches."}
+                  ? "Save a few records first, then come back here."
+                  : "Paste an email or a title + company search, then press Enter."}
               </p>
             </div>
           ) : (
@@ -123,7 +123,7 @@ export function EmailMatchPanel({
                       }).catch(() => null);
 
                       if (!response?.ok) {
-                        pushToast("Archive could not be completed", "error");
+                        pushToast("Couldn't move record to Rejected", "error");
                         return;
                       }
 

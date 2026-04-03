@@ -29,7 +29,7 @@ export function ActiveDetailPageClient({
             });
 
             if (!response.ok) {
-              pushToast("Delete failed", "error");
+              pushToast("Couldn't delete record", "error");
               return;
             }
 
@@ -53,7 +53,7 @@ export function ActiveDetailPageClient({
             });
 
             if (!response.ok) {
-              pushToast("Comments not saved", "error");
+              pushToast("Couldn't save comments", "error");
               return;
             }
 
@@ -68,8 +68,8 @@ export function ActiveDetailPageClient({
             try {
               await updateJobStage(currentRecord.id, stage);
             } catch {
-              pushToast("Stage not saved", "error");
-              throw new Error("Stage not saved");
+              pushToast("Couldn't save stage", "error");
+              throw new Error("Couldn't save stage");
             }
 
             setCurrentRecord({ ...currentRecord, stage });
@@ -83,7 +83,7 @@ export function ActiveDetailPageClient({
             Active record not found
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
-            This record may have been archived or deleted.
+            It may have been archived or deleted.
           </p>
           <div className="mt-5">
             <Link

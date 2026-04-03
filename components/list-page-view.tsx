@@ -23,7 +23,7 @@ function buildPageHref(basePath: string, page: number, query: string) {
 
 function formatRange(pageData: PaginatedJobListResult) {
   if (pageData.totalCount === 0) {
-    return "No records to show";
+    return "Nothing to show";
   }
 
   const start = (pageData.page - 1) * pageData.pageSize + 1;
@@ -37,7 +37,7 @@ export function ListPageView({
   pageData,
   basePath,
   searchable = false,
-  searchPlaceholder = "Search Active records by company or role",
+  searchPlaceholder = "Search Active by company or role",
   detailBasePath,
   query = ""
 }: {
@@ -96,10 +96,10 @@ export function ListPageView({
         detailBasePath={detailBasePath}
         emptyDescription={
           searchable
-            ? "Try another company or role title in Active records."
-            : "No records in this list yet."
+            ? "Try another company or role."
+            : "Nothing archived here yet."
         }
-        emptyTitle={searchable ? "No matching Active records" : "No records yet"}
+        emptyTitle={searchable ? "No matches in Active" : "No records yet"}
         records={pageData.records}
       />
 

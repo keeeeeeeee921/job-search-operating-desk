@@ -17,7 +17,7 @@ const mono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "Job Search Operating Desk",
-  description: "A desktop-first personal job search management workspace."
+  description: "A personal workspace for managing a job search."
 };
 
 export const dynamic = "force-dynamic";

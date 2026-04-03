@@ -18,17 +18,16 @@ export function SearchLogPage() {
               Search Log
             </p>
             <h1 className="mt-2 text-3xl font-semibold text-foreground">
-              Job search cycles, captured as fixed snapshots
+              Saved snapshots of each job search
             </h1>
             <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-              Each search cycle can live here as its own recorded run, with a short
-              note on goals and one attached summary image.
+              Each search lives here as a short note plus one summary image.
             </p>
           </div>
           <div className="rounded-3xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-muted-foreground shadow-soft">
-            One search cycle at a time.
+            One search at a time.
             <br />
-            Add the next one when a new job hunt begins.
+            Add the next one when a new search starts.
           </div>
         </div>
       </Surface>
@@ -57,7 +56,7 @@ export function SearchLogPage() {
 
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                Search stance
+                Approach
               </p>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 {searchCycle.note}
@@ -71,7 +70,7 @@ export function SearchLogPage() {
             Snapshot
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-foreground">
-            Search 01 summary image
+            Search 01 snapshot
           </h2>
           <div className="mt-5 overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-soft">
             <Image

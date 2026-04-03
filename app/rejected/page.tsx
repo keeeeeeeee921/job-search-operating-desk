@@ -20,7 +20,7 @@ export default async function RejectedPage({
     <AppShell currentPath="/rejected">
       <ListPageView
         basePath="/rejected"
-        description="Rejected records are archived here, outside your active queue."
+        description="Archived applications that are no longer active."
         pageData={rejectedJobs}
         title="Rejected"
       />

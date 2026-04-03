@@ -4,10 +4,10 @@ const validJobStages = new Set<JobStage>(jobStages);
 
 export const JOB_STAGE_LABELS: Record<JobStage, string> = {
   applied: "Applied",
-  hr_reach_out: "HR reach-out",
+  hr_reach_out: "HR outreach",
   oa: "OA",
   first_round: "1st round interview",
-  second_plus_round: "2nd round+ interview",
+  second_plus_round: "2nd+ round interview",
   offer: "Offer"
 };
 

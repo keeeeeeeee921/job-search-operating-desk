@@ -1,5 +1,6 @@
 import {
   requiredJobFields,
+  type FieldOrigin,
   type JobDraft,
   type JobField,
   type ValidationIssue
@@ -53,7 +54,7 @@ export function validateJobDraft(draft: JobDraft) {
       issues.push({
         field,
         type: "suspicious",
-        message: `${labelForField(field)} was inferred from the URL and should be reviewed.`
+        message: `${labelForField(field)} came from the link and should be checked.`
       });
     }
   });
@@ -62,7 +63,7 @@ export function validateJobDraft(draft: JobDraft) {
     issues.push({
       field: "roleTitle",
       type: "suspicious",
-      message: "Role title looks too generic to trust without manual review."
+      message: "Role title looks too generic to trust without review."
     });
   }
 
@@ -89,6 +90,19 @@ export function labelForField(field: JobField) {
       return "Link";
     case "jobDescription":
       return "Job Description";
+  }
+}
+
+export function formatFieldOriginLabel(origin: FieldOrigin) {
+  switch (origin) {
+    case "confirmed":
+      return "From page";
+    case "derived":
+      return "From link";
+    case "manual":
+      return "Edited by hand";
+    case "missing":
+      return "Missing";
   }
 }
 
