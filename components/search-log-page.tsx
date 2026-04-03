@@ -1,18 +1,14 @@
 import Image from "next/image";
 import { Surface } from "@/components/ui/surface";
-
-const searchCycle = {
-  label: "Search 01",
-  period: "Dec 2025 - Mar 2026",
-  title: "First full-time search after graduation",
-  goals: ["Find a job", "Keep some data analysis content in the role"],
-  note:
-    "Because this was the first post-graduation search, the scope stayed intentionally broad. The priority was to land a solid full-time role, ideally with some analytics content, without over-optimizing for a perfect match.",
-  imageSrc: "/job-search-cycle-01.png",
-  imageAlt: "First job search cycle summary from December 2025 to March 2026"
-} as const;
+import { searchLogCycles } from "@/lib/search-cycle";
 
 export function SearchLogPage() {
+  const searchCycle = searchLogCycles[0];
+
+  if (!searchCycle) {
+    return null;
+  }
+
   return (
     <div className="space-y-8">
       <Surface className="border-white/60 bg-white/75 p-6">

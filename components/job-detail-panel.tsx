@@ -109,6 +109,10 @@ export function JobDetailPanel({
           <Field label="Location" value={record.location} />
           <Field label="Source" value={record.sourceType === "unknown" ? "Source not confirmed" : record.sourceType} />
           <Field label="Timestamp" value={formatDate(record.timestamp)} />
+          <Field
+            label="Search Cycle"
+            value={record.searchCycleLabel ?? "Not assigned"}
+          />
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
               Link

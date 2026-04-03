@@ -25,6 +25,7 @@ import {
 } from "@/lib/db/local-store";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { coerceJobStage } from "@/lib/job-stage";
+import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import {
   buildPaginatedJobListResult,
   JOB_DESCRIPTION_PREVIEW_LENGTH,
@@ -177,6 +178,7 @@ function mapJobRow(row: typeof jobsTable.$inferSelect): JobRecord {
     timestamp: row.timestamp.toISOString(),
     pool: row.pool as JobPool,
     stage: coerceJobStage(row.stage),
+    searchCycleLabel: row.searchCycleLabel,
     comments: row.comments,
     applyCountedDateKey: row.applyCountedDateKey,
     sourceType: row.sourceType as JobRecord["sourceType"],
@@ -198,6 +200,10 @@ function withAutoApplyMarker(record: JobRecord) {
     return {
       ...record,
       stage: coerceJobStage(record.stage),
+      searchCycleLabel: normalizeSearchCycleLabel(
+        record.searchCycleLabel,
+        record.timestamp
+      ),
       applyCountedDateKey: record.applyCountedDateKey ?? null
     };
   }
@@ -205,6 +211,10 @@ function withAutoApplyMarker(record: JobRecord) {
   return {
     ...record,
     stage: coerceJobStage(record.stage),
+    searchCycleLabel: normalizeSearchCycleLabel(
+      record.searchCycleLabel,
+      record.timestamp
+    ),
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
 }
@@ -1223,6 +1233,10 @@ export async function insertJob(record: JobRecord) {
   await getDb().insert(jobsTable).values({
     ...nextRecord,
     stage: coerceJobStage(nextRecord.stage),
+    searchCycleLabel: normalizeSearchCycleLabel(
+      nextRecord.searchCycleLabel,
+      nextRecord.timestamp
+    ),
     searchText: buildSearchText(nextRecord),
     timestamp: new Date(nextRecord.timestamp)
   });
@@ -1246,6 +1260,10 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
     records.map((record) => ({
       ...record,
       stage: coerceJobStage(record.stage),
+      searchCycleLabel: normalizeSearchCycleLabel(
+        record.searchCycleLabel,
+        record.timestamp
+      ),
       searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
       timestamp: new Date(record.timestamp)
@@ -1275,6 +1293,10 @@ export async function updateJobRecord(record: JobRecord) {
       timestamp: new Date(record.timestamp),
       pool: record.pool,
       stage: coerceJobStage(record.stage),
+      searchCycleLabel: normalizeSearchCycleLabel(
+        record.searchCycleLabel,
+        record.timestamp
+      ),
       comments: record.comments,
       applyCountedDateKey: record.applyCountedDateKey,
       sourceType: record.sourceType,

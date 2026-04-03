@@ -128,6 +128,7 @@ describe("repository", () => {
       timestamp: new Date(now - 60_000).toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -162,6 +163,7 @@ describe("repository", () => {
       timestamp: new Date(now).toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -198,6 +200,7 @@ describe("repository", () => {
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -214,6 +217,7 @@ describe("repository", () => {
       timestamp: new Date(now - 45 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -244,6 +248,7 @@ describe("repository", () => {
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -262,6 +267,7 @@ describe("repository", () => {
       timestamp: new Date(now - 300 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -313,7 +319,7 @@ describe("repository", () => {
     expect(archived?.stage).toBe("oa");
   });
 
-  it("aggregates all application flow stages while keeping full totals", async () => {
+  it("assigns search cycle labels from timestamps during bulk inserts", async () => {
     await insertJobsWithoutGoalEffects([
       {
         id: "sankey-active-applied",
@@ -322,9 +328,10 @@ describe("repository", () => {
         location: "Remote",
         link: "",
         jobDescription: "Entry-level analytics role.",
-        timestamp: "2026-03-01T12:00:00.000Z",
+        timestamp: "2026-04-03T03:59:59.000Z",
         pool: "active",
         stage: "applied",
+        searchCycleLabel: null,
         comments: "",
         applyCountedDateKey: null,
         sourceType: "company",
@@ -338,9 +345,10 @@ describe("repository", () => {
         location: "Remote",
         link: "",
         jobDescription: "Assessment-heavy analyst role.",
-        timestamp: "2026-03-02T12:00:00.000Z",
+        timestamp: "2026-04-03T04:00:00.000Z",
         pool: "rejected",
         stage: "oa",
+        searchCycleLabel: null,
         comments: "Completed OA",
         applyCountedDateKey: null,
         sourceType: "linkedin",
@@ -348,7 +356,15 @@ describe("repository", () => {
         extractionStatus: "confirmed"
       }
     ]);
+    const active = await getJobsByPool("active");
+    const rejected = await getJobsByPool("rejected");
 
+    expect(
+      active.find((record) => record.id === "sankey-active-applied")?.searchCycleLabel
+    ).toBe("Search 01");
+    expect(
+      rejected.find((record) => record.id === "sankey-rejected-oa")?.searchCycleLabel
+    ).toBe("Search 02");
   });
 
   it("deletes records permanently", async () => {
@@ -421,6 +437,7 @@ describe("repository", () => {
       timestamp: new Date().toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -429,9 +446,11 @@ describe("repository", () => {
     };
 
     await insertJob(record);
+    const inserted = await getActiveJobById(record.id);
     const next = await getDailyGoalsState();
 
     expect(next.goals.apply.count).toBe(initial.goals.apply.count + 1);
+    expect(inserted?.searchCycleLabel).toBeTruthy();
   });
 
   it("rolls back Apply when a same-day auto-counted record is deleted", async () => {
@@ -446,6 +465,7 @@ describe("repository", () => {
       timestamp: new Date().toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -472,6 +492,7 @@ describe("repository", () => {
       timestamp: new Date().toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "unknown",
@@ -500,6 +521,7 @@ describe("repository", () => {
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
         stage: "applied",
+        searchCycleLabel: null,
         comments: "Historical import",
         applyCountedDateKey: null,
         sourceType: "unknown",
@@ -529,6 +551,7 @@ describe("repository", () => {
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
         stage: "applied",
+        searchCycleLabel: null,
         comments: "Historical import",
         applyCountedDateKey: null,
         sourceType: "unknown",
@@ -545,6 +568,7 @@ describe("repository", () => {
         timestamp: "2025-11-01T12:00:00.000Z",
         pool: "rejected",
         stage: "applied",
+        searchCycleLabel: null,
         comments: "",
         applyCountedDateKey: null,
         sourceType: "unknown",

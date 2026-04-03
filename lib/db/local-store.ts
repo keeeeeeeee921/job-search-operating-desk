@@ -7,6 +7,7 @@ import {
 } from "@/lib/job-list";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { coerceJobStage } from "@/lib/job-stage";
+import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
@@ -89,6 +90,10 @@ function withAutoApplyMarker(record: JobRecord) {
     return {
       ...record,
       stage: coerceJobStage(record.stage),
+      searchCycleLabel: normalizeSearchCycleLabel(
+        record.searchCycleLabel,
+        record.timestamp
+      ),
       applyCountedDateKey: record.applyCountedDateKey ?? null
     };
   }
@@ -96,6 +101,10 @@ function withAutoApplyMarker(record: JobRecord) {
   return {
     ...record,
     stage: coerceJobStage(record.stage),
+    searchCycleLabel: normalizeSearchCycleLabel(
+      record.searchCycleLabel,
+      record.timestamp
+    ),
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
 }
@@ -156,6 +165,10 @@ async function readLocalStore(): Promise<LocalStore> {
       ? parsed.jobs.map((job) => ({
           ...job,
           stage: coerceJobStage((job as Partial<JobRecord>).stage),
+          searchCycleLabel:
+            typeof job.searchCycleLabel === "string"
+              ? job.searchCycleLabel
+              : null,
           applyCountedDateKey: job.applyCountedDateKey ?? null
         }))
       : [],
@@ -306,6 +319,10 @@ export async function insertLocalJobsWithoutGoalEffects(records: JobRecord[]) {
       ...records.map((record) => ({
         ...record,
         stage: coerceJobStage(record.stage),
+        searchCycleLabel: normalizeSearchCycleLabel(
+          record.searchCycleLabel,
+          record.timestamp
+        ),
         applyCountedDateKey: record.applyCountedDateKey ?? null
       }))
     );
@@ -353,6 +370,10 @@ export async function updateLocalJobRecord(record: JobRecord) {
         ? {
             ...record,
             stage: coerceJobStage(record.stage),
+            searchCycleLabel: normalizeSearchCycleLabel(
+              record.searchCycleLabel,
+              record.timestamp
+            ),
             applyCountedDateKey: record.applyCountedDateKey ?? null
           }
         : job

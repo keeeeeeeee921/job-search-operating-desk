@@ -1,4 +1,5 @@
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { SEARCH_01_LABEL } from "@/lib/search-cycle";
 import type { DailyGoalsState, JobRecord } from "@/lib/types";
 import { getEasternDateKey } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 5),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "Applied. Waiting for recruiter response.",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -67,6 +69,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 12),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -84,6 +87,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 26),
       pool: "active",
       stage: "oa",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "OA expected next week.",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -101,6 +105,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 40),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "lever",
@@ -118,6 +123,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 55),
       pool: "active",
       stage: "first_round",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "First round interview scheduled.",
       applyCountedDateKey: null,
       sourceType: "greenhouse",
@@ -137,6 +143,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 72),
       pool: "rejected",
       stage: "applied",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -154,6 +161,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 96),
       pool: "rejected",
       stage: "applied",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",
@@ -171,6 +179,7 @@ const defaultSeedStateBase: SeedState = {
       timestamp: offsetTimestamp(defaultSeedAnchor, 130),
       pool: "rejected",
       stage: "applied",
+      searchCycleLabel: SEARCH_01_LABEL,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",

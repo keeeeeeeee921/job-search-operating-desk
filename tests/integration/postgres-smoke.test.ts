@@ -44,6 +44,7 @@ describe.skipIf(!postgresEnabled)("postgres smoke", () => {
       timestamp: new Date().toISOString(),
       pool: "active",
       stage: "applied",
+      searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
       sourceType: "company",

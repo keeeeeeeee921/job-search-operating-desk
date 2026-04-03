@@ -41,6 +41,7 @@ export interface JobRecord {
   timestamp: string;
   pool: JobPool;
   stage: JobStage;
+  searchCycleLabel: string | null;
   comments: string;
   applyCountedDateKey: string | null;
   sourceType: SourceType;

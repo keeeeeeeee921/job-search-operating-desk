@@ -22,6 +22,7 @@ import {
   revalidateAfterDailyGoalsUpdated,
   revalidateAfterStageUpdated
 } from "@/lib/server/revalidation";
+import { resolveSearchCycleLabel } from "@/lib/search-cycle";
 import type {
   DailyGoalsState,
   DuplicateCandidate,
@@ -37,6 +38,7 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
   const confirmedOrigins = Object.values(draft.fieldOrigins).every(
     (value) => value === "confirmed"
   );
+  const timestamp = new Date().toISOString();
 
   return {
     id: createId(),
@@ -45,9 +47,10 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
     location: normalizeLocationForStorage(draft.location),
     link: draft.link,
     jobDescription: draft.jobDescription,
-    timestamp: new Date().toISOString(),
+    timestamp,
     pool: "active",
     stage: "applied",
+    searchCycleLabel: resolveSearchCycleLabel(timestamp),
     comments: "",
     applyCountedDateKey: null,
     sourceType: draft.sourceType,
