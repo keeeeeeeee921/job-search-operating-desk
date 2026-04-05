@@ -143,23 +143,13 @@ export function JobDetailPanel({
           </p>
         </Surface>
         <Surface className="border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(248,247,251,0.88))] p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Comments
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Keep interview notes, OA progress, follow-ups, or recruiter updates here.
-              </p>
-            </div>
-            <div className="text-sm text-foreground">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                Progress
-              </p>
-              <p className="mt-2">
-                {comments.trim().length > 0 ? "Progress noted" : "No follow-up yet"}
-              </p>
-            </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+              Comments
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Keep interview notes, OA progress, follow-ups, or recruiter updates here.
+            </p>
           </div>
           <Textarea
             className="mt-4 min-h-48"

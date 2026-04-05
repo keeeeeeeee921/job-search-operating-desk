@@ -590,12 +590,6 @@ Notes:
    当前文本: `Add progress notes here: interviews, OA, follow-up, or recruiter updates.`  
    备注:
 
-17.  
-   页面/区域: Active detail  
-   位置: Progress label  
-   当前文本: `Progress`  
-   备注: 以 comments 是否为空判断有无后续进展。
-
 18.  
    页面/区域: Active detail  
    位置: Comments placeholder  
