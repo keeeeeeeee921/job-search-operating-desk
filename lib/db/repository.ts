@@ -20,11 +20,9 @@ import {
   seedLocalStoreIfNeeded,
   updateLocalComments,
   updateLocalDailyGoalState,
-  updateLocalJobRecord,
-  updateLocalStage
+  updateLocalJobRecord
 } from "@/lib/db/local-store";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
-import { coerceJobStage } from "@/lib/job-stage";
 import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import {
   buildPaginatedJobListResult,
@@ -47,7 +45,6 @@ import {
   type JobListItem,
   type JobPool,
   type JobRecord,
-  type JobStage,
   type PaginatedJobListResult
 } from "@/lib/types";
 import {
@@ -177,7 +174,6 @@ function mapJobRow(row: typeof jobsTable.$inferSelect): JobRecord {
     jobDescription: row.jobDescription,
     timestamp: row.timestamp.toISOString(),
     pool: row.pool as JobPool,
-    stage: coerceJobStage(row.stage),
     searchCycleLabel: row.searchCycleLabel,
     comments: row.comments,
     applyCountedDateKey: row.applyCountedDateKey,
@@ -199,7 +195,6 @@ function withAutoApplyMarker(record: JobRecord) {
   if (record.pool !== "active") {
     return {
       ...record,
-      stage: coerceJobStage(record.stage),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
         record.timestamp
@@ -210,7 +205,6 @@ function withAutoApplyMarker(record: JobRecord) {
 
   return {
     ...record,
-    stage: coerceJobStage(record.stage),
     searchCycleLabel: normalizeSearchCycleLabel(
       record.searchCycleLabel,
       record.timestamp
@@ -600,7 +594,6 @@ async function seedPostgresIfExplicitlyEnabled() {
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
-      stage: coerceJobStage(record.stage),
       searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp)
     }))
@@ -1232,7 +1225,6 @@ export async function insertJob(record: JobRecord) {
 
   await getDb().insert(jobsTable).values({
     ...nextRecord,
-    stage: coerceJobStage(nextRecord.stage),
     searchCycleLabel: normalizeSearchCycleLabel(
       nextRecord.searchCycleLabel,
       nextRecord.timestamp
@@ -1259,7 +1251,6 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
   await getDb().insert(jobsTable).values(
     records.map((record) => ({
       ...record,
-      stage: coerceJobStage(record.stage),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
         record.timestamp
@@ -1292,7 +1283,6 @@ export async function updateJobRecord(record: JobRecord) {
       searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp),
       pool: record.pool,
-      stage: coerceJobStage(record.stage),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
         record.timestamp
@@ -1320,21 +1310,6 @@ export async function updateComments(id: string, comments: string) {
   clearQueryCaches();
 }
 
-export async function updateStage(id: string, stage: JobStage) {
-  await ensureDatabaseReady();
-
-  const nextStage = coerceJobStage(stage);
-
-  if (shouldUseLocalFallback()) {
-    await updateLocalStage(id, nextStage);
-    clearQueryCaches();
-    return;
-  }
-
-  await getDb().update(jobsTable).set({ stage: nextStage }).where(eq(jobsTable.id, id));
-  clearQueryCaches();
-}
-
 export async function archiveJobRecord(id: string) {
   await ensureDatabaseReady();
 
@@ -1347,8 +1322,7 @@ export async function archiveJobRecord(id: string) {
   await getDb()
     .update(jobsTable)
     .set({
-      pool: "rejected",
-      stage: sql<string>`coalesce(${jobsTable.stage}, 'applied')`
+      pool: "rejected"
     })
     .where(eq(jobsTable.id, id));
   clearQueryCaches();
@@ -1554,7 +1528,6 @@ export async function resetCurrentEnvironmentToSeedState() {
   await db.insert(jobsTable).values(
     [...seedState.activeJobs, ...seedState.rejectedJobs].map((record) => ({
       ...record,
-      stage: coerceJobStage(record.stage),
       searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
       timestamp: new Date(record.timestamp)

@@ -19,9 +19,9 @@ import {
   resetDatabaseForTests,
   searchActiveJobsPage,
   updateComments,
-  updateStage,
   updateDailyGoalState
 } from "@/lib/db/repository";
+import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import type { JobRecord } from "@/lib/types";
 
 delete process.env.DATABASE_URL;
@@ -127,7 +127,6 @@ describe("repository", () => {
         "Applied AI role supporting commercial credit modeling and experimentation.",
       timestamp: new Date(now - 60_000).toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -162,7 +161,6 @@ describe("repository", () => {
       jobDescription: "Data Analyst role supporting card risk analytics.",
       timestamp: new Date(now).toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -199,7 +197,6 @@ describe("repository", () => {
       jobDescription: "Data science role with analytics and modeling scope.",
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -216,7 +213,6 @@ describe("repository", () => {
       jobDescription: "Applied AI role for commercial credit risk modeling.",
       timestamp: new Date(now - 45 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -247,7 +243,6 @@ describe("repository", () => {
         "Thank you for your interest in this Data Analyst position. We reviewed your application and will pursue other applicants.",
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -266,7 +261,6 @@ describe("repository", () => {
         "Billing transformation analyst role for enterprise data and reporting.",
       timestamp: new Date(now - 300 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -303,22 +297,6 @@ describe("repository", () => {
     expect(rejected.some((item) => item.id === target.id)).toBe(true);
   });
 
-  it("updates stage explicitly and preserves it through archive", async () => {
-    const active = await getJobsByPool("active");
-    const target = active[0];
-
-    await updateStage(target.id, "oa");
-
-    const staged = await getActiveJobById(target.id);
-    expect(staged?.stage).toBe("oa");
-
-    await archiveJobRecord(target.id);
-
-    const rejected = await getJobsByPool("rejected");
-    const archived = rejected.find((item) => item.id === target.id);
-    expect(archived?.stage).toBe("oa");
-  });
-
   it("assigns search cycle labels from timestamps during bulk inserts", async () => {
     await insertJobsWithoutGoalEffects([
       {
@@ -330,7 +308,6 @@ describe("repository", () => {
         jobDescription: "Entry-level analytics role.",
         timestamp: "2026-04-03T03:59:59.000Z",
         pool: "active",
-        stage: "applied",
         searchCycleLabel: null,
         comments: "",
         applyCountedDateKey: null,
@@ -347,7 +324,6 @@ describe("repository", () => {
         jobDescription: "Assessment-heavy analyst role.",
         timestamp: "2026-04-03T04:00:00.000Z",
         pool: "rejected",
-        stage: "oa",
         searchCycleLabel: null,
         comments: "Completed OA",
         applyCountedDateKey: null,
@@ -398,14 +374,14 @@ describe("repository", () => {
     expect(targeted.goals.follow.target).toBe(5);
   });
 
-  it("starts connect with a 0/10 daily baseline", async () => {
+  it("starts connect with the default daily baseline", async () => {
     const initial = await getDailyGoalsState();
 
     expect(initial.goals.connect.count).toBe(0);
-    expect(initial.goals.connect.target).toBe(10);
+    expect(initial.goals.connect.target).toBe(DAILY_GOALS_DEFAULTS.connect.target);
   });
 
-  it("can repair today's connect goal back to 0/10", async () => {
+  it("can repair today's connect goal back to the default baseline", async () => {
     await updateDailyGoalState({
       goal: "connect",
       kind: "increment"
@@ -418,11 +394,11 @@ describe("repository", () => {
 
     const repaired = await repairTodayConnectGoalBaseline({
       count: 0,
-      target: 10
+      target: DAILY_GOALS_DEFAULTS.connect.target
     });
 
     expect(repaired.goals.connect.count).toBe(0);
-    expect(repaired.goals.connect.target).toBe(10);
+    expect(repaired.goals.connect.target).toBe(DAILY_GOALS_DEFAULTS.connect.target);
   });
 
   it("increments apply automatically when a new Active record is inserted", async () => {
@@ -436,7 +412,6 @@ describe("repository", () => {
       jobDescription: "Verify apply goals increment when Active records are added.",
       timestamp: new Date().toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -464,7 +439,6 @@ describe("repository", () => {
       jobDescription: "Verify apply goals decrement when same-day records are deleted.",
       timestamp: new Date().toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -491,7 +465,6 @@ describe("repository", () => {
       jobDescription: "Verify apply goals decrement when same-day records are archived.",
       timestamp: new Date().toISOString(),
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -520,7 +493,6 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
-        stage: "applied",
         searchCycleLabel: null,
         comments: "Historical import",
         applyCountedDateKey: null,
@@ -550,7 +522,6 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
-        stage: "applied",
         searchCycleLabel: null,
         comments: "Historical import",
         applyCountedDateKey: null,
@@ -567,7 +538,6 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-11-01T12:00:00.000Z",
         pool: "rejected",
-        stage: "applied",
         searchCycleLabel: null,
         comments: "",
         applyCountedDateKey: null,
@@ -597,7 +567,9 @@ describe("repository", () => {
     const restoredGoals = await getDailyGoalsState();
 
     expect(restoredActive.some((job) => job.id === "seed-active-3")).toBe(true);
-    expect(restoredGoals.goals.apply.target).toBe(50);
-    expect(restoredGoals.goals.connect.target).toBe(10);
+    expect(restoredGoals.goals.apply.target).toBe(DAILY_GOALS_DEFAULTS.apply.target);
+    expect(restoredGoals.goals.connect.target).toBe(
+      DAILY_GOALS_DEFAULTS.connect.target
+    );
   });
 });

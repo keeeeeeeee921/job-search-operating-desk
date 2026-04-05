@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
-import { formatJobStageLabel } from "@/lib/job-stage";
 import { formatSourceTypeLabel } from "@/lib/sourceDetection";
-import { jobStages, type JobRecord, type JobStage } from "@/lib/types";
+import type { JobRecord } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 function getDraftStorageKey(id: string) {
@@ -16,27 +15,19 @@ function getDraftStorageKey(id: string) {
 export function JobDetailPanel({
   record,
   onDelete,
-  onSaveComments,
-  onSaveStage
+  onSaveComments
 }: {
   record: JobRecord;
   onDelete: () => Promise<void>;
   onSaveComments: (comments: string) => Promise<void>;
-  onSaveStage: (stage: JobStage) => Promise<void>;
 }) {
   const [comments, setComments] = useState(record.comments);
-  const [stageDraft, setStageDraft] = useState(record.stage);
-  const [isSavingStage, setIsSavingStage] = useState(false);
   const latestCommentsRef = useRef(record.comments);
 
   useEffect(() => {
     setComments(record.comments);
     latestCommentsRef.current = record.comments;
   }, [record.comments]);
-
-  useEffect(() => {
-    setStageDraft(record.stage);
-  }, [record.stage]);
 
   useEffect(() => {
     const savedDraft = window.sessionStorage.getItem(getDraftStorageKey(record.id));
@@ -161,36 +152,14 @@ export function JobDetailPanel({
                 Keep interview notes, OA progress, follow-ups, or recruiter updates here.
               </p>
             </div>
-            <label className="block text-sm text-foreground">
-              <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                Stage
-              </span>
-              <select
-                className="mt-2 h-11 min-w-[220px] rounded-2xl border border-border bg-white/90 px-4 text-sm text-foreground outline-none transition focus:border-accent/30 focus:ring-2 focus:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isSavingStage}
-                onChange={async (event) => {
-                  const nextStage = event.target.value as JobStage;
-                  const previousStage = stageDraft;
-
-                  setStageDraft(nextStage);
-                  setIsSavingStage(true);
-                  try {
-                    await onSaveStage(nextStage);
-                  } catch {
-                    setStageDraft(previousStage);
-                  } finally {
-                    setIsSavingStage(false);
-                  }
-                }}
-                value={stageDraft}
-              >
-                {jobStages.map((stage) => (
-                  <option key={stage} value={stage}>
-                    {formatJobStageLabel(stage)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="text-sm text-foreground">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                Progress
+              </p>
+              <p className="mt-2">
+                {comments.trim().length > 0 ? "Progress noted" : "No follow-up yet"}
+              </p>
+            </div>
           </div>
           <Textarea
             className="mt-4 min-h-48"

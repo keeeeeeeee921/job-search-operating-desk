@@ -14,6 +14,7 @@ Job Search Operating Desk is a real web app for turning messy job links, copied 
 - Match rejection emails back to Active jobs
 - Capture each job hunt as a fixed search-log snapshot
 - Track daily Apply / Connect / Follow counts
+- Mark follow-up progress through per-record comments
 
 ## Why I built it
 

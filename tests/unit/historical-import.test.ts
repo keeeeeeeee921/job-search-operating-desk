@@ -95,7 +95,6 @@ describe("historical import helpers", () => {
       jobDescription: "Support reporting",
       timestamp: "2026-01-01T00:00:00.000Z",
       pool: "active",
-      stage: "applied",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -145,7 +144,6 @@ describe("historical import helpers", () => {
     expect(record.extractionStatus).toBe("confirmed");
     expect(record.sourceConfidence).toBe("high");
     expect(record.sourceType).toBe("unknown");
-    expect(record.stage).toBe("applied");
     expect(record.searchCycleLabel).toBe("Search 01");
     expect(record.comments).toBe("Rejected\nKeep for future");
   });

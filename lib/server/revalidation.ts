@@ -22,10 +22,6 @@ export function revalidateAfterCommentsUpdated(recordId: string) {
   revalidatePaths([`/active/${recordId}`]);
 }
 
-export function revalidateAfterStageUpdated(recordId: string) {
-  revalidatePaths([`/active/${recordId}`]);
-}
-
 export function revalidateAfterDailyGoalsUpdated() {
   revalidatePath("/");
 }

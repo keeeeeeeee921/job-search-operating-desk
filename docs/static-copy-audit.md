@@ -592,9 +592,9 @@ Notes:
 
 17.  
    页面/区域: Active detail  
-   位置: Stage label  
-   当前文本: `Stage`  
-   备注:
+   位置: Progress label  
+   当前文本: `Progress`  
+   备注: 以 comments 是否为空判断有无后续进展。
 
 18.  
    页面/区域: Active detail  
@@ -628,29 +628,17 @@ Notes:
 
 23.  
    页面/区域: Active detail  
-   位置: Toast  
-   当前文本: `Stage not saved`  
-   备注:
-
-24.  
-   页面/区域: Active detail  
-   位置: Toast  
-   当前文本: `Stage saved`  
-   备注:
-
-25.  
-   页面/区域: Active detail  
    位置: Not-found state / title  
    当前文本: `Active record not found`  
    备注:
 
-26.  
+24.  
    页面/区域: Active detail  
    位置: Not-found state / description  
    当前文本: `This record may have been archived or deleted.`  
    备注:
 
-27.  
+25.  
    页面/区域: Active detail  
    位置: Not-found state / action  
    当前文本: `Back to Active`  
@@ -1031,48 +1019,12 @@ Notes:
    备注: 小写显示，且偏实现术语。
 
 26.  
-   页面/区域: Shared / stage dropdown  
-   位置: Option label  
-   当前文本: `Applied`  
-   备注:
-
-27.  
-   页面/区域: Shared / stage dropdown  
-   位置: Option label  
-   当前文本: `HR reach-out`  
-   备注:
-
-28.  
-   页面/区域: Shared / stage dropdown  
-   位置: Option label  
-   当前文本: `OA`  
-   备注:
-
-29.  
-   页面/区域: Shared / stage dropdown  
-   位置: Option label  
-   当前文本: `1st round interview`  
-   备注:
-
-30.  
-   页面/区域: Shared / stage dropdown  
-   位置: Option label  
-   当前文本: `2nd round+ interview`  
-   备注:
-
-31.  
-   页面/区域: Shared / stage dropdown  
-   位置: Option label  
-   当前文本: `Offer`  
-   备注:
-
-32.  
    页面/区域: Shared / search cycle labels  
    位置: Label  
    当前文本: `Search 01`  
    备注: Search log / detail field 可能出现。
 
-33.  
+27.  
    页面/区域: Shared / search cycle labels  
    位置: Label  
    当前文本: `Search 02`  

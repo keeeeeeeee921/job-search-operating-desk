@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { updateJobStage } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { JobDetailPanel } from "@/components/job-detail-panel";
 import { Surface } from "@/components/ui/surface";
@@ -59,21 +58,6 @@ export function ActiveDetailPageClient({
 
             setCurrentRecord({ ...currentRecord, comments });
             pushToast("Comments saved", "success");
-          }}
-          onSaveStage={async (stage) => {
-            if (stage === currentRecord.stage) {
-              return;
-            }
-
-            try {
-              await updateJobStage(currentRecord.id, stage);
-            } catch {
-              pushToast("Couldn't save stage", "error");
-              throw new Error("Couldn't save stage");
-            }
-
-            setCurrentRecord({ ...currentRecord, stage });
-            pushToast("Stage saved", "success");
           }}
           record={currentRecord}
         />

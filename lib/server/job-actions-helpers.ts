@@ -7,6 +7,5 @@ export {
   insertJob,
   matchEmailAgainstActiveRecords,
   updateComments,
-  updateStage,
   updateDailyGoalState
 } from "@/lib/db/repository";
