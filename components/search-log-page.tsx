@@ -11,9 +11,9 @@ export function SearchLogPage() {
 
   return (
     <div className="space-y-8">
-      <Surface className="border-white/60 bg-white/75 p-6">
-        <div className="flex flex-col gap-4">
-          <div className="max-w-3xl">
+      <Surface className="border-white/60 bg-white/75 p-5 lg:p-6">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <div>
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               Search Log
             </p>
@@ -23,28 +23,21 @@ export function SearchLogPage() {
             <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
               Each search lives here as a short note plus one summary image.
             </p>
-          </div>
-          <div className="w-fit rounded-3xl border border-white/70 bg-white/80 px-4 py-3 text-sm text-muted-foreground shadow-soft">
-            One search at a time.
-            <br />
-            Add the next one when a new search starts.
-          </div>
-        </div>
-      </Surface>
 
-      <Surface className="border-white/60 bg-white/75 p-5 lg:p-6">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              {searchCycle.label}
-            </p>
-            <h2 className="mt-2 max-w-xl text-2xl font-semibold text-foreground">
-              {searchCycle.title}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">{searchCycle.period}</p>
+            <div className="mt-8">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                {searchCycle.label}
+              </p>
+              <h2 className="mt-2 max-w-xl text-2xl font-semibold text-foreground">
+                {searchCycle.title}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {searchCycle.period}
+              </p>
+            </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
                 Main goals
@@ -71,11 +64,11 @@ export function SearchLogPage() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
             Companies I Interviewed With
           </p>
-          <ul className="mt-3 flex flex-wrap gap-2 text-sm leading-6 text-foreground">
+          <ul className="mt-3 flex flex-wrap gap-2.5 text-sm leading-6 text-foreground">
             {searchCycle.interviewedCompanies.map((company) => (
               <li
                 key={company}
-                className="rounded-full border border-white/70 bg-white/90 px-3 py-1 shadow-soft"
+                className="rounded-2xl border border-black/5 bg-black/[0.025] px-2.5 py-0.5 text-[13px] text-foreground/78"
               >
                 {company}
               </li>
