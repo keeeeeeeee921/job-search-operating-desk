@@ -16,12 +16,12 @@ export const mockJobs: MockJobDefinition[] = [
       "Analyze growth funnels, build recurring KPI reporting, and turn ambiguous product questions into measurable decision support."
   },
   {
-    slug: "tiktok-data-analyst-duplicate",
-    title: "Data Analyst",
-    company: "TikTok",
-    location: "San Jose, CA",
+    slug: "ibm-canada-associate-business-analyst-duplicate",
+    title: "Associate Business Analyst - Entry Level",
+    company: "IBM Canada",
+    location: "Toronto, ON",
     description:
-      "Build dashboards, investigate funnel shifts, and partner with product managers on growth analytics."
+      "Support reporting, clarify requirements, and translate business questions into datasets and dashboards."
   },
   {
     slug: "zuru-business-analyst",

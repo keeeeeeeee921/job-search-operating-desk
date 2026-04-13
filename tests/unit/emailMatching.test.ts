@@ -6,12 +6,12 @@ import type { JobRecord } from "@/lib/types";
 describe("findEmailMatches", () => {
   it("returns likely Active matches for a rejection email", () => {
     const matches = findEmailMatches(
-      "Thank you for applying to the Logistics Planning Engineer role at Tesla Shanghai. We will not move forward.",
+      "Thank you for applying to the Associate Business Analyst - Entry Level role at IBM Canada. We will not move forward.",
       seedActiveJobs
     );
 
     expect(matches.length).toBeGreaterThan(0);
-    expect(matches[0]?.record.company).toBe("Tesla");
+    expect(matches[0]?.record.company).toBe("IBM Canada");
   });
 
   it("does not bias score by recency when semantic overlap is identical", () => {

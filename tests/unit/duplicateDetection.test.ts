@@ -7,12 +7,12 @@ describe("findDuplicateCandidates", () => {
   it("finds likely duplicates from company, role, and description overlap", () => {
     const draft: JobDraft = {
       inputMode: "link",
-      roleTitle: "Data Analyst",
-      company: "TikTok",
-      location: "San Jose, CA",
-      link: "https://example.com/jobs/data-analyst",
+      roleTitle: "Associate Business Analyst - Entry Level",
+      company: "IBM Canada",
+      location: "Toronto, ON",
+      link: "https://example.com/jobs/ibm-canada-associate-business-analyst",
       jobDescription:
-        "Build dashboards, investigate funnel shifts, and partner with product managers on growth analytics.",
+        "Support reporting, clarify requirements, and translate business questions into datasets and dashboards.",
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review",
@@ -29,6 +29,6 @@ describe("findDuplicateCandidates", () => {
 
     const results = findDuplicateCandidates(draft, seedActiveJobs);
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0]?.record.company).toBe("TikTok");
+    expect(results[0]?.record.company).toBe("IBM Canada");
   });
 });

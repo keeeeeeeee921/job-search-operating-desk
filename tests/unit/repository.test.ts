@@ -71,13 +71,15 @@ describe("repository", () => {
 
   it("searches Active records in the repository layer and paginates results", async () => {
     const page = await searchActiveJobsPage({
-      query: "TikTok Data Analyst",
+      query: "IBM Canada Associate Business Analyst",
       page: 1,
       pageSize: 5
     });
 
     expect(page.records.length).toBeGreaterThan(0);
-    expect(page.records.every((record) => record.company.includes("TikTok"))).toBe(true);
+    expect(page.records.every((record) => record.company.includes("IBM Canada"))).toBe(
+      true
+    );
     expect(page.records.every((record) => "jobDescription" in record === false)).toBe(true);
   });
 
@@ -91,8 +93,8 @@ describe("repository", () => {
 
   it("prefilters duplicate candidates before full similarity scoring", async () => {
     const candidates = await getPotentialDuplicateCandidates({
-      company: "TikTok",
-      roleTitle: "Data Analyst",
+      company: "IBM Canada",
+      roleTitle: "Associate Business Analyst - Entry Level",
       limit: 2,
       sinceDays: 365
     });
@@ -105,7 +107,7 @@ describe("repository", () => {
   it("prefilters email matching candidates from active records only", async () => {
     const candidates = await getEmailMatchCandidateRecords({
       emailText:
-        "Thank you for applying to TikTok for the Data Analyst position. We will not move forward.",
+        "Thank you for applying to IBM Canada for the Associate Business Analyst - Entry Level position. We will not move forward.",
       limit: 5,
       sinceDays: 365
     });

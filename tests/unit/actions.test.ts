@@ -43,7 +43,7 @@ describe("server actions", () => {
   it("returns duplicate candidates when the record matches an existing seed", async () => {
     const { createJobFromLink } = await import("@/app/actions");
     const result = await createJobFromLink(
-      "http://localhost:3000/mock-jobs/tiktok-data-analyst-duplicate"
+      "http://localhost:3000/mock-jobs/ibm-canada-associate-business-analyst-duplicate"
     );
 
     expect(result.status).toBe("duplicate");

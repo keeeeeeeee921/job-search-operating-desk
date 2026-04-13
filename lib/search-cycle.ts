@@ -10,6 +10,7 @@ export type SearchLogCycle = {
   title: string;
   goals: readonly string[];
   note: string;
+  interviewedCompanies: readonly string[];
   imageSrc: string;
   imageAlt: string;
 };
@@ -46,6 +47,19 @@ export const searchLogCycles: readonly SearchLogCycle[] = [
     goals: ["Find a job", "Keep some data analysis content in the role"],
     note:
       "This was my first full-time search after graduation, so the scope stayed broad. The goal was to land a solid role with at least some analytics work, without over-optimizing for a perfect match.",
+    interviewedCompanies: [
+      "FedEx",
+      "Corsair",
+      "Valon",
+      "Jerry.ai",
+      "L'Oréal",
+      "CarMax",
+      "Axon",
+      "Nomura",
+      "ZURU Toys",
+      "IBM Canada",
+      "NYC Tourism + Conventions"
+    ],
     imageSrc: "/job-search-cycle-01.png",
     imageAlt: "First job search cycle summary through April 2, 2026"
   }

@@ -62,6 +62,22 @@ export function SearchLogPage() {
                 {searchCycle.note}
               </p>
             </div>
+
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                Companies I Interviewed With
+              </p>
+              <ul className="mt-3 flex flex-wrap gap-2 text-sm leading-6 text-foreground">
+                {searchCycle.interviewedCompanies.map((company) => (
+                  <li
+                    key={company}
+                    className="rounded-full border border-white/70 bg-white/90 px-3 py-1 shadow-soft"
+                  >
+                    {company}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </Surface>
 
