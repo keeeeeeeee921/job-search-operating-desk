@@ -79,7 +79,7 @@ export function SearchLogPage() {
           <h3 className="mt-2 text-2xl font-semibold text-foreground">
             Search 01 snapshot
           </h3>
-          <div className="mt-5 overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-soft">
+          <div className="relative mt-5 overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-soft">
             <Image
               alt={searchCycle.imageAlt}
               className="h-auto w-full"
@@ -88,6 +88,9 @@ export function SearchLogPage() {
               src={searchCycle.imageSrc}
               width={2000}
             />
+            <p className="absolute bottom-4 right-4 rounded-full bg-white/88 px-3 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur-sm">
+              Updated Apr 2, 2026
+            </p>
           </div>
         </div>
       </Surface>
