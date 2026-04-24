@@ -42,7 +42,7 @@ export function normalizeSearchCycleLabel(
 export const searchLogCycles: readonly SearchLogCycle[] = [
   {
     label: SEARCH_01_LABEL,
-    period: "Through Apr 2, 2026",
+    period: "Sep 6, 2025 ~ April 2, 2026",
     title: "First full-time search after graduation",
     goals: ["Find a job", "Keep some data analysis content in the role"],
     note:
@@ -61,6 +61,6 @@ export const searchLogCycles: readonly SearchLogCycle[] = [
       "NYC Tourism + Conventions"
     ],
     imageSrc: "/job-search-cycle-01.png",
-    imageAlt: "First job search cycle summary through April 2, 2026"
+    imageAlt: "First job search cycle summary from September 6, 2025 through April 2, 2026"
   }
 ] as const;

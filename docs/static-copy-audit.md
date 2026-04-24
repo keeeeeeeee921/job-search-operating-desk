@@ -809,7 +809,7 @@ Notes:
 7.  
    页面/区域: Search log  
    位置: Cycle period  
-   当前文本: `Through Apr 2, 2026`  
+   当前文本: `Sep 6, 2025 ~ April 2, 2026`  
    备注: 已和 search cycle cutoff 对齐。
 
 8.  
@@ -857,7 +857,7 @@ Notes:
 15.  
    页面/区域: Search log  
    位置: Snapshot image alt  
-   当前文本: `First job search cycle summary through April 2, 2026`  
+   当前文本: `First job search cycle summary from September 6, 2025 through April 2, 2026`  
    备注:
 
 ## Shared UI Copy
