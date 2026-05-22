@@ -89,7 +89,7 @@ export function SearchLogPage() {
               width={2000}
             />
             <p className="absolute bottom-4 right-4 rounded-full bg-white/88 px-3 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur-sm">
-              Updated Apr 2, 2026
+              Updated May 21, 2026
             </p>
           </div>
         </div>
