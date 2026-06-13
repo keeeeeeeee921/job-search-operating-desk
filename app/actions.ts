@@ -11,14 +11,16 @@ import {
   insertJob,
   matchEmailAgainstActiveRecords,
   updateComments,
-  updateDailyGoalState
+  updateDailyGoalState,
+  updateJobStage
 } from "@/lib/server/job-actions-helpers";
 import {
   revalidateAfterActiveRecordArchived,
   revalidateAfterActiveRecordDeleted,
   revalidateAfterActiveRecordSaved,
   revalidateAfterCommentsUpdated,
-  revalidateAfterDailyGoalsUpdated
+  revalidateAfterDailyGoalsUpdated,
+  revalidateAfterStageUpdated
 } from "@/lib/server/revalidation";
 import { resolveSearchCycleLabel } from "@/lib/search-cycle";
 import type {
@@ -27,6 +29,7 @@ import type {
   EmailMatch,
   GoalKey,
   JobDraft,
+  JobStage,
   JobRecord
 } from "@/lib/types";
 import { createId, normalizeLocationForStorage } from "@/lib/utils";
@@ -46,6 +49,7 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
     jobDescription: draft.jobDescription,
     timestamp,
     pool: "active",
+    stage: "no_response",
     searchCycleLabel: resolveSearchCycleLabel(timestamp),
     comments: "",
     applyCountedDateKey: null,
@@ -141,6 +145,11 @@ export async function saveReviewedJob(
 export async function updateJobComments(id: string, comments: string) {
   await updateComments(id, comments);
   revalidateAfterCommentsUpdated(id);
+}
+
+export async function updateActiveJobStage(id: string, stage: JobStage) {
+  await updateJobStage(id, stage);
+  revalidateAfterStageUpdated(id);
 }
 
 export async function archiveJobToRejected(id: string) {

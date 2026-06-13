@@ -1,8 +1,14 @@
 import Image from "next/image";
+import { SearchLogSankey } from "@/components/search-log-sankey";
 import { Surface } from "@/components/ui/surface";
 import { searchLogCycles } from "@/lib/search-cycle";
+import type { SearchLogAnalytics } from "@/lib/types";
 
-export function SearchLogPage() {
+export function SearchLogPage({
+  analytics
+}: {
+  analytics: SearchLogAnalytics;
+}) {
   const searchCycle = searchLogCycles[0];
 
   if (!searchCycle) {
@@ -22,6 +28,23 @@ export function SearchLogPage() {
           <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
             Each search lives here as a short note plus one summary image.
           </p>
+        </div>
+      </Surface>
+
+      <Surface className="border-white/60 bg-white/75 p-5 lg:p-6">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            Live Sankey
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-foreground">
+            Application flow by search cycle
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            This chart is generated from saved records, grouped by Search Cycle and current stage.
+          </p>
+        </div>
+        <div className="mt-6">
+          <SearchLogSankey analytics={analytics} />
         </div>
       </Surface>
 

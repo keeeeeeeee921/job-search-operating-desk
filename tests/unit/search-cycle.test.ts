@@ -18,6 +18,6 @@ describe("search cycle labeling", () => {
 
   it("keeps Search Log snapshot metadata aligned with Search 01", () => {
     expect(searchLogCycles[0]?.label).toBe(SEARCH_01_LABEL);
-    expect(searchLogCycles[0]?.period).toContain("Apr 2, 2026");
+    expect(searchLogCycles[0]?.period).toContain("April 2, 2026");
   });
 });

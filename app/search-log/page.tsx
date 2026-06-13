@@ -1,10 +1,13 @@
 import { AppShell } from "@/components/app-shell";
 import { SearchLogPage } from "@/components/search-log-page";
+import { getSearchLogAnalytics } from "@/lib/db/repository";
 
-export default function JobSearchLogPage() {
+export default async function JobSearchLogPage() {
+  const analytics = await getSearchLogAnalytics(9);
+
   return (
     <AppShell currentPath="/search-log">
-      <SearchLogPage />
+      <SearchLogPage analytics={analytics} />
     </AppShell>
   );
 }

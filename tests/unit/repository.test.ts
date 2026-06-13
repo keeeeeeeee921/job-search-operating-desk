@@ -8,6 +8,7 @@ import {
   getEmailMatchCandidateRecords,
   getJobsPage,
   getJobsByPool,
+  getSearchLogAnalytics,
   matchEmailAgainstActiveRecords,
   getPotentialDuplicateCandidates,
   getRecentActiveJobs,
@@ -19,7 +20,8 @@ import {
   resetDatabaseForTests,
   searchActiveJobsPage,
   updateComments,
-  updateDailyGoalState
+  updateDailyGoalState,
+  updateJobStage
 } from "@/lib/db/repository";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import type { JobRecord } from "@/lib/types";
@@ -129,6 +131,7 @@ describe("repository", () => {
         "Applied AI role supporting commercial credit modeling and experimentation.",
       timestamp: new Date(now - 60_000).toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -163,6 +166,7 @@ describe("repository", () => {
       jobDescription: "Data Analyst role supporting card risk analytics.",
       timestamp: new Date(now).toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -199,6 +203,7 @@ describe("repository", () => {
       jobDescription: "Data science role with analytics and modeling scope.",
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -215,6 +220,7 @@ describe("repository", () => {
       jobDescription: "Applied AI role for commercial credit risk modeling.",
       timestamp: new Date(now - 45 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -245,6 +251,7 @@ describe("repository", () => {
         "Thank you for your interest in this Data Analyst position. We reviewed your application and will pursue other applicants.",
       timestamp: new Date(now - index * 60_000).toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -263,6 +270,7 @@ describe("repository", () => {
         "Billing transformation analyst role for enterprise data and reporting.",
       timestamp: new Date(now - 300 * 24 * 60 * 60 * 1000).toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -296,7 +304,24 @@ describe("repository", () => {
     const rejected = await getJobsByPool("rejected");
 
     expect(afterArchive).toBeNull();
-    expect(rejected.some((item) => item.id === target.id)).toBe(true);
+    expect(rejected.find((item) => item.id === target.id)?.stage).toBe(
+      "rejected"
+    );
+  });
+
+  it("updates active stages and preserves advanced stage when archived", async () => {
+    const active = await getJobsByPool("active");
+    const target = active[0];
+
+    await updateJobStage(target.id, "round_2");
+    const updated = await getActiveJobById(target.id);
+    expect(updated?.stage).toBe("round_2");
+
+    await archiveJobRecord(target.id);
+    const rejected = await getJobsByPool("rejected");
+    expect(rejected.find((item) => item.id === target.id)?.stage).toBe(
+      "round_2"
+    );
   });
 
   it("assigns search cycle labels from timestamps during bulk inserts", async () => {
@@ -310,6 +335,7 @@ describe("repository", () => {
         jobDescription: "Entry-level analytics role.",
         timestamp: "2026-04-03T03:59:59.000Z",
         pool: "active",
+        stage: "no_response",
         searchCycleLabel: null,
         comments: "",
         applyCountedDateKey: null,
@@ -326,6 +352,7 @@ describe("repository", () => {
         jobDescription: "Assessment-heavy analyst role.",
         timestamp: "2026-04-03T04:00:00.000Z",
         pool: "rejected",
+        stage: "screening_oa",
         searchCycleLabel: null,
         comments: "Completed OA",
         applyCountedDateKey: null,
@@ -343,6 +370,21 @@ describe("repository", () => {
     expect(
       rejected.find((record) => record.id === "sankey-rejected-oa")?.searchCycleLabel
     ).toBe("Search 02");
+
+    const analytics = await getSearchLogAnalytics(9);
+    const searchOne = analytics.cycles.find((cycle) => cycle.label === "Search 01");
+    const searchTwo = analytics.cycles.find((cycle) => cycle.label === "Search 02");
+
+    expect(
+      searchOne?.buckets.some(
+        (bucket) => bucket.pool === "active" && bucket.stage === "no_response"
+      )
+    ).toBe(true);
+    expect(
+      searchTwo?.buckets.some(
+        (bucket) => bucket.pool === "rejected" && bucket.stage === "screening_oa"
+      )
+    ).toBe(true);
   });
 
   it("deletes records permanently", async () => {
@@ -414,6 +456,7 @@ describe("repository", () => {
       jobDescription: "Verify apply goals increment when Active records are added.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -441,6 +484,7 @@ describe("repository", () => {
       jobDescription: "Verify apply goals decrement when same-day records are deleted.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -467,6 +511,7 @@ describe("repository", () => {
       jobDescription: "Verify apply goals decrement when same-day records are archived.",
       timestamp: new Date().toISOString(),
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,
@@ -495,6 +540,7 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
+        stage: "no_response",
         searchCycleLabel: null,
         comments: "Historical import",
         applyCountedDateKey: null,
@@ -524,6 +570,7 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-10-01T12:00:00.000Z",
         pool: "active",
+        stage: "no_response",
         searchCycleLabel: null,
         comments: "Historical import",
         applyCountedDateKey: null,
@@ -540,6 +587,7 @@ describe("repository", () => {
         jobDescription: "Imported from curated workbook data.",
         timestamp: "2025-11-01T12:00:00.000Z",
         pool: "rejected",
+        stage: "rejected",
         searchCycleLabel: null,
         comments: "",
         applyCountedDateKey: null,

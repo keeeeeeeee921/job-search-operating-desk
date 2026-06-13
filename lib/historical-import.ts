@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { resolveSearchCycleLabel } from "@/lib/search-cycle";
 import { detectSource } from "@/lib/sourceDetection";
+import { defaultStageForPool } from "@/lib/job-stage";
 import type {
   JobPool,
   JobRecord,
@@ -178,6 +179,7 @@ export function buildHistoricalRecord(
     jobDescription: draft.jobDescription,
     timestamp,
     pool: draft.pool,
+    stage: defaultStageForPool(draft.pool),
     searchCycleLabel: resolveSearchCycleLabel(timestamp),
     comments: draft.comments,
     applyCountedDateKey: null,

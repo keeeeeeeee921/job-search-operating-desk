@@ -170,7 +170,9 @@ describe("server extraction service", () => {
     expect(result.fields.location).toBe("United States (Remote)");
     expect(result.fields.company).not.toBe("every step of their hair journey.");
     expect(
-      result.candidateValues.location.some((value) => /locate me/i.test(value))
+      (result.candidateValues.location ?? []).some((value) =>
+        /locate me/i.test(value)
+      )
     ).toBe(false);
     expect(result.fields.jobDescription).toContain("Keep Growing with Nutrafol.");
     expect(result.fields.jobDescription).not.toContain("Create a Job Alert");
@@ -248,7 +250,9 @@ describe("server extraction service", () => {
     const result = await extractJobOnServer("http://127.0.0.1/internal-job-page");
 
     expect(result.supported).toBe(false);
-    expect(result.unsupportedReason).toContain("blocked");
+    expect(
+      "unsupportedReason" in result ? result.unsupportedReason : ""
+    ).toContain("blocked");
     expect(result.extractionStatus).toBe("needs_review");
   });
 });

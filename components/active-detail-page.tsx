@@ -3,11 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { updateActiveJobStage } from "@/app/actions";
 import { AppShell } from "@/components/app-shell";
 import { JobDetailPanel } from "@/components/job-detail-panel";
 import { Surface } from "@/components/ui/surface";
 import { useJobDeskStore } from "@/lib/store";
-import type { JobRecord } from "@/lib/types";
+import type { JobRecord, JobStage } from "@/lib/types";
 
 export function ActiveDetailPageClient({
   record
@@ -58,6 +59,19 @@ export function ActiveDetailPageClient({
 
             setCurrentRecord({ ...currentRecord, comments });
             pushToast("Comments saved", "success");
+          }}
+          onSaveStage={async (stage: JobStage) => {
+            if (stage === currentRecord.stage) {
+              return;
+            }
+
+            try {
+              await updateActiveJobStage(currentRecord.id, stage);
+              setCurrentRecord({ ...currentRecord, stage });
+              pushToast("Stage updated", "success");
+            } catch {
+              pushToast("Couldn't update stage", "error");
+            }
           }}
           record={currentRecord}
         />

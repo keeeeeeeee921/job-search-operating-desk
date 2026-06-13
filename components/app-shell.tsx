@@ -18,7 +18,7 @@ export function AppShell({
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-white/70 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-[1400px] flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
           <Link
             className="rounded-2xl px-2 py-1 transition hover:bg-white/70"
             href="/"
@@ -30,7 +30,7 @@ export function AppShell({
               A personal job search workspace
             </p>
           </Link>
-          <nav className="flex items-center gap-2 rounded-full border border-border bg-white/70 px-2 py-2 shadow-soft">
+          <nav className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-[24px] border border-border bg-white/70 px-2 py-2 shadow-soft lg:rounded-full">
             {navigation.map((item) => {
               const active = currentPath === item.href;
               return (

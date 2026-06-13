@@ -6,6 +6,7 @@ import {
   toJobListItem
 } from "@/lib/job-list";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { normalizeJobStage, stageAfterArchive } from "@/lib/job-stage";
 import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import { getDefaultSeedState } from "@/lib/seed";
 import type {
@@ -14,6 +15,7 @@ import type {
   JobListItem,
   JobPool,
   JobRecord,
+  JobStage,
   PaginatedJobListResult
 } from "@/lib/types";
 import { getEasternDateKey, normalizeText } from "@/lib/utils";
@@ -164,6 +166,7 @@ async function readLocalStore(): Promise<LocalStore> {
             typeof job.searchCycleLabel === "string"
               ? job.searchCycleLabel
               : null,
+          stage: normalizeJobStage(job.stage, job.pool),
           applyCountedDateKey: job.applyCountedDateKey ?? null
         }))
       : [],
@@ -300,7 +303,10 @@ export async function getLocalActiveJobCount() {
 export async function insertLocalJob(record: JobRecord) {
   await mutateLocalStore(async (store) => {
     const nextRecord = withAutoApplyMarker(record);
-    store.jobs.push(nextRecord);
+    store.jobs.push({
+      ...nextRecord,
+      stage: normalizeJobStage(nextRecord.stage, nextRecord.pool)
+    });
   });
 }
 
@@ -313,6 +319,7 @@ export async function insertLocalJobsWithoutGoalEffects(records: JobRecord[]) {
     store.jobs.push(
       ...records.map((record) => ({
         ...record,
+        stage: normalizeJobStage(record.stage, record.pool),
         searchCycleLabel: normalizeSearchCycleLabel(
           record.searchCycleLabel,
           record.timestamp
@@ -336,6 +343,7 @@ export async function archiveLocalJob(id: string) {
   await mutateLocalStore(async (store) => {
     const target = store.jobs.find((job) => job.id === id);
     if (target) {
+      target.stage = stageAfterArchive(normalizeJobStage(target.stage, target.pool));
       target.pool = "rejected";
     }
   });
@@ -353,6 +361,7 @@ export async function updateLocalJobRecord(record: JobRecord) {
       job.id === record.id
         ? {
             ...record,
+            stage: normalizeJobStage(record.stage, record.pool),
             searchCycleLabel: normalizeSearchCycleLabel(
               record.searchCycleLabel,
               record.timestamp
@@ -361,6 +370,15 @@ export async function updateLocalJobRecord(record: JobRecord) {
           }
         : job
     );
+  });
+}
+
+export async function updateLocalJobStage(id: string, stage: JobStage) {
+  await mutateLocalStore(async (store) => {
+    const target = store.jobs.find((job) => job.pool === "active" && job.id === id);
+    if (target) {
+      target.stage = normalizeJobStage(stage, target.pool);
+    }
   });
 }
 

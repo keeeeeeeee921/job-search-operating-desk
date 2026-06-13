@@ -10,6 +10,7 @@ const record: JobListItem = {
   location: "United States (Remote)",
   link: "https://tencent.wd1.myworkdayjobs.com/en-US/Tencent_Careers/job/US-California-Los-Angeles/AI-Business-Analyst-Intern_R107098?locations=b3d4dad114e4100177c032bef7130000",
   timestamp: "2026-03-29T01:31:39.062Z",
+  stage: "no_response",
   sourceType: "workday",
   sourceConfidence: "high",
   extractionStatus: "confirmed",
@@ -27,5 +28,6 @@ describe("JobRecordRow", () => {
     expect(link.className).toContain("whitespace-nowrap");
     expect(link.className).toContain("text-ellipsis");
     expect(link.className).toContain("overflow-hidden");
+    expect(screen.getByText("No Response")).toBeInTheDocument();
   });
 });

@@ -20,9 +20,11 @@ import {
   seedLocalStoreIfNeeded,
   updateLocalComments,
   updateLocalDailyGoalState,
+  updateLocalJobStage,
   updateLocalJobRecord
 } from "@/lib/db/local-store";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { normalizeJobStage } from "@/lib/job-stage";
 import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import {
   buildPaginatedJobListResult,
@@ -38,6 +40,7 @@ import {
   QUERY_CACHE_TTL_MS
 } from "@/lib/query-cache-config";
 import { getDefaultSeedState } from "@/lib/seed";
+import { buildSearchLogAnalyticsFromRows } from "@/lib/search-log-analytics";
 import {
   type DailyGoalsState,
   type EmailMatch,
@@ -45,7 +48,9 @@ import {
   type JobListItem,
   type JobPool,
   type JobRecord,
-  type PaginatedJobListResult
+  type JobStage,
+  type PaginatedJobListResult,
+  type SearchLogAnalytics
 } from "@/lib/types";
 import {
   getEasternDateKey,
@@ -174,6 +179,7 @@ function mapJobRow(row: typeof jobsTable.$inferSelect): JobRecord {
     jobDescription: row.jobDescription,
     timestamp: row.timestamp.toISOString(),
     pool: row.pool as JobPool,
+    stage: normalizeJobStage(row.stage, row.pool as JobPool),
     searchCycleLabel: row.searchCycleLabel,
     comments: row.comments,
     applyCountedDateKey: row.applyCountedDateKey,
@@ -195,6 +201,7 @@ function withAutoApplyMarker(record: JobRecord) {
   if (record.pool !== "active") {
     return {
       ...record,
+      stage: normalizeJobStage(record.stage, record.pool),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
         record.timestamp
@@ -205,6 +212,7 @@ function withAutoApplyMarker(record: JobRecord) {
 
   return {
     ...record,
+    stage: normalizeJobStage(record.stage, record.pool),
     searchCycleLabel: normalizeSearchCycleLabel(
       record.searchCycleLabel,
       record.timestamp
@@ -221,6 +229,7 @@ function getJobListPreviewSelection() {
     location: jobsTable.location,
     link: jobsTable.link,
     timestamp: jobsTable.timestamp,
+    stage: jobsTable.stage,
     sourceType: jobsTable.sourceType,
     sourceConfidence: jobsTable.sourceConfidence,
     extractionStatus: jobsTable.extractionStatus,
@@ -235,6 +244,7 @@ function mapJobListRow(row: {
   location: string;
   link: string;
   timestamp: Date;
+  stage: string;
   sourceType: string;
   sourceConfidence: string;
   extractionStatus: string;
@@ -247,6 +257,7 @@ function mapJobListRow(row: {
     location: row.location,
     link: row.link,
     timestamp: row.timestamp.toISOString(),
+    stage: normalizeJobStage(row.stage, "active"),
     sourceType: row.sourceType as JobRecord["sourceType"],
     sourceConfidence: row.sourceConfidence as JobRecord["sourceConfidence"],
     extractionStatus: row.extractionStatus as JobRecord["extractionStatus"],
@@ -657,6 +668,41 @@ export async function getJobsByPool(pool: JobPool) {
     .orderBy(desc(jobsTable.timestamp));
 
   return rows.map(mapJobRow);
+}
+
+export async function getSearchLogAnalytics(
+  sunkenMonths = 9
+): Promise<SearchLogAnalytics> {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    const rows = (await getAllLocalRecords()).map((record) => ({
+      timestamp: record.timestamp,
+      pool: record.pool,
+      stage: normalizeJobStage(record.stage, record.pool),
+      searchCycleLabel: record.searchCycleLabel
+    }));
+    return buildSearchLogAnalyticsFromRows(rows, sunkenMonths);
+  }
+
+  const rows = await getDb()
+    .select({
+      timestamp: jobsTable.timestamp,
+      pool: jobsTable.pool,
+      stage: jobsTable.stage,
+      searchCycleLabel: jobsTable.searchCycleLabel
+    })
+    .from(jobsTable);
+
+  return buildSearchLogAnalyticsFromRows(
+    rows.map((row) => ({
+      timestamp: row.timestamp.toISOString(),
+      pool: row.pool as JobPool,
+      stage: normalizeJobStage(row.stage, row.pool as JobPool),
+      searchCycleLabel: row.searchCycleLabel
+    })),
+    sunkenMonths
+  );
 }
 
 export async function getRecentActiveJobs(limit = 4) {
@@ -1251,6 +1297,7 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
   await getDb().insert(jobsTable).values(
     records.map((record) => ({
       ...record,
+      stage: normalizeJobStage(record.stage, record.pool),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
         record.timestamp
@@ -1283,6 +1330,7 @@ export async function updateJobRecord(record: JobRecord) {
       searchText: buildSearchText(record),
       timestamp: new Date(record.timestamp),
       pool: record.pool,
+      stage: normalizeJobStage(record.stage, record.pool),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
         record.timestamp
@@ -1310,6 +1358,22 @@ export async function updateComments(id: string, comments: string) {
   clearQueryCaches();
 }
 
+export async function updateJobStage(id: string, stage: JobStage) {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    await updateLocalJobStage(id, stage);
+    clearQueryCaches();
+    return;
+  }
+
+  await getDb()
+    .update(jobsTable)
+    .set({ stage: normalizeJobStage(stage, "active") })
+    .where(and(eq(jobsTable.id, id), eq(jobsTable.pool, "active")));
+  clearQueryCaches();
+}
+
 export async function archiveJobRecord(id: string) {
   await ensureDatabaseReady();
 
@@ -1322,7 +1386,8 @@ export async function archiveJobRecord(id: string) {
   await getDb()
     .update(jobsTable)
     .set({
-      pool: "rejected"
+      pool: "rejected",
+      stage: sql<string>`case when ${jobsTable.stage} = 'no_response' then 'rejected' else ${jobsTable.stage} end`
     })
     .where(eq(jobsTable.id, id));
   clearQueryCaches();

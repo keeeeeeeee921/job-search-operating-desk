@@ -95,6 +95,7 @@ describe("historical import helpers", () => {
       jobDescription: "Support reporting",
       timestamp: "2026-01-01T00:00:00.000Z",
       pool: "active",
+      stage: "no_response",
       searchCycleLabel: null,
       comments: "",
       applyCountedDateKey: null,

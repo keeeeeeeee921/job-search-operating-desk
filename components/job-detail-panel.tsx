@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
+import { jobStageLabels, selectableJobStages } from "@/lib/job-stage";
 import { formatSourceTypeLabel } from "@/lib/sourceDetection";
-import type { JobRecord } from "@/lib/types";
+import type { JobRecord, JobStage } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
 function getDraftStorageKey(id: string) {
@@ -15,19 +16,23 @@ function getDraftStorageKey(id: string) {
 export function JobDetailPanel({
   record,
   onDelete,
-  onSaveComments
+  onSaveComments,
+  onSaveStage
 }: {
   record: JobRecord;
   onDelete: () => Promise<void>;
   onSaveComments: (comments: string) => Promise<void>;
+  onSaveStage: (stage: JobStage) => Promise<void>;
 }) {
   const [comments, setComments] = useState(record.comments);
+  const [stage, setStage] = useState(record.stage);
   const latestCommentsRef = useRef(record.comments);
 
   useEffect(() => {
     setComments(record.comments);
+    setStage(record.stage);
     latestCommentsRef.current = record.comments;
-  }, [record.comments]);
+  }, [record.comments, record.stage]);
 
   useEffect(() => {
     const savedDraft = window.sessionStorage.getItem(getDraftStorageKey(record.id));
@@ -112,6 +117,26 @@ export function JobDetailPanel({
             label="Search Cycle"
             value={record.searchCycleLabel ?? "Not set"}
           />
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              Stage
+            </p>
+            <select
+              className="mt-2 w-full rounded-2xl border border-border bg-white/80 px-3 py-2 text-sm text-foreground outline-none transition focus:border-accent"
+              onChange={(event) => {
+                const nextStage = event.target.value as JobStage;
+                setStage(nextStage);
+                void onSaveStage(nextStage);
+              }}
+              value={stage}
+            >
+              {selectableJobStages.map((option) => (
+                <option key={option} value={option}>
+                  {jobStageLabels[option]}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
               Link

@@ -18,6 +18,17 @@ export type SourceType =
 export type SourceConfidence = "high" | "low" | "unknown";
 export type ExtractionStatus = "confirmed" | "needs_review";
 export type JobPool = "active" | "rejected";
+export type JobStage =
+  | "no_response"
+  | "rejected"
+  | "screening_oa"
+  | "unpaid"
+  | "round_1"
+  | "round_2"
+  | "round_3"
+  | "round_4"
+  | "round_5"
+  | "offer";
 export type ValidationIssueType = "missing" | "suspicious";
 export type FieldOrigin = "confirmed" | "derived" | "manual" | "missing";
 export type GoalKey = "apply" | "connect" | "follow";
@@ -31,6 +42,7 @@ export interface JobRecord {
   jobDescription: string;
   timestamp: string;
   pool: JobPool;
+  stage: JobStage;
   searchCycleLabel: string | null;
   comments: string;
   applyCountedDateKey: string | null;
@@ -46,6 +58,7 @@ export interface JobListItem {
   location: string;
   link: string;
   timestamp: string;
+  stage: JobStage;
   sourceType: SourceType;
   sourceConfidence: SourceConfidence;
   extractionStatus: ExtractionStatus;
@@ -128,4 +141,24 @@ export interface EmailMatch {
   record: JobRecord;
   score: number;
   reasons: string[];
+}
+
+export interface SearchLogStageBucket {
+  searchCycleLabel: string;
+  pool: JobPool;
+  stage: JobStage;
+  count: number;
+}
+
+export interface SearchLogCycleAnalytics {
+  label: string;
+  total: number;
+  buckets: SearchLogStageBucket[];
+}
+
+export interface SearchLogAnalytics {
+  cycles: SearchLogCycleAnalytics[];
+  sunkenActiveCount: number;
+  sunkenThresholdDate: string;
+  sunkenMonths: number;
 }

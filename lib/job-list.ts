@@ -17,6 +17,7 @@ export function toJobListItem(
     | "location"
     | "link"
     | "timestamp"
+    | "stage"
     | "sourceType"
     | "sourceConfidence"
     | "extractionStatus"
@@ -30,6 +31,7 @@ export function toJobListItem(
     location: record.location,
     link: record.link,
     timestamp: record.timestamp,
+    stage: record.stage,
     sourceType: record.sourceType,
     sourceConfidence: record.sourceConfidence,
     extractionStatus: record.extractionStatus,

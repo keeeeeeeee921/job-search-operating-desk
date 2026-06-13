@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { jobStageLabels } from "@/lib/job-stage";
 import { formatSourceTypeLabel } from "@/lib/sourceDetection";
 import type { JobListItem } from "@/lib/types";
 import { cn, formatDate, truncate } from "@/lib/utils";
@@ -44,6 +45,9 @@ export function JobRecordRow({
           <p className="mt-2 text-sm font-semibold text-foreground">{roleLabel}</p>
         )}
         <p className="mt-2 text-xs text-muted-foreground">{sourceLabel}</p>
+        <p className="mt-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          {jobStageLabels[record.stage]}
+        </p>
       </div>
       <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
         <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
