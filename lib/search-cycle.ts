@@ -58,6 +58,7 @@ export const searchLogCycles: readonly SearchLogCycle[] = [
       "Nomura",
       "ZURU Toys",
       "IBM Canada",
+      "Tencent",
       "NYC Tourism + Conventions"
     ],
     imageSrc: "/job-search-cycle-01.png",
