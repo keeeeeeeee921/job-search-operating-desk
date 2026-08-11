@@ -21,10 +21,10 @@ export function AppShell({
       <header className="border-b border-border bg-surface">
         <div className="mx-auto grid max-w-[1400px] gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <Link
-            className="group flex min-w-0 items-center gap-3 rounded-2xl py-1 focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="group flex w-fit max-w-full min-w-0 origin-left items-center gap-3 rounded-2xl py-1 outline-none transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.985] active:duration-100 motion-reduce:transform-none motion-reduce:transition-none"
             href="/"
           >
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-sm font-semibold text-background transition group-hover:bg-accent">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-foreground text-sm font-semibold text-background transition-[transform,background-color,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:-translate-y-0.5 group-hover:bg-accent group-hover:shadow-[0_10px_22px_-14px_hsl(var(--accent)/0.75)] group-focus-visible:ring-2 group-focus-visible:ring-accent/50 group-focus-visible:ring-offset-2 group-focus-visible:ring-offset-surface group-active:translate-y-0 group-active:scale-[0.94] group-active:duration-100 motion-reduce:transform-none motion-reduce:transition-none">
               JD
             </span>
             <span className="min-w-0">
