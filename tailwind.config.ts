@@ -25,8 +25,8 @@ const config: Config = {
         mono: ["var(--font-mono)", "monospace"]
       },
       boxShadow: {
-        soft: "0 18px 38px -28px rgba(31, 29, 35, 0.35)",
-        lift: "0 20px 50px -30px rgba(33, 31, 43, 0.4)"
+        soft: "0 12px 30px -24px rgba(31, 29, 35, 0.28)",
+        lift: "0 18px 44px -28px rgba(33, 31, 43, 0.34)"
       },
       borderRadius: {
         xl: "1rem",

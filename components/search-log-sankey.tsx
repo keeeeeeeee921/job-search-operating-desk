@@ -216,45 +216,17 @@ export function SearchLogSankey({
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-border bg-white/80 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Selected Cycle
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">
-            {selectedCycle?.label ?? "No data"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-white/80 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Applications
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">
-            {selectedCycle?.total ?? 0}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-white/80 px-4 py-3">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Sunken Active
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">
-            {analytics.sunkenActiveCount}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Active before {formatDate(analytics.sunkenThresholdDate)}
-          </p>
-        </div>
-      </div>
-
       {analytics.cycles.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-foreground">Search cycle</p>
+          <div className="flex flex-wrap gap-2">
           {analytics.cycles.map((cycle) => (
             <button
               className={cn(
                 "rounded-full border px-3 py-1.5 text-sm transition",
                 cycle.label === selectedCycle?.label
-                  ? "border-accent bg-accent text-accent-foreground"
-                  : "border-border bg-white/75 text-muted-foreground hover:text-foreground"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-surface text-muted-foreground hover:text-foreground"
               )}
               key={cycle.label}
               onClick={() => setSelectedLabel(cycle.label)}
@@ -263,10 +235,38 @@ export function SearchLogSankey({
               {cycle.label}
             </button>
           ))}
+          </div>
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-[24px] border border-border bg-white">
+      <div className="grid gap-5 border-y border-border py-5 sm:grid-cols-2">
+        <div>
+          <p className="text-sm text-muted-foreground">Applications in cycle</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{selectedCycle?.total ?? 0}</p>
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">Legacy active records</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{analytics.sunkenActiveCount}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Saved before {formatDate(analytics.sunkenThresholdDate)}</p>
+        </div>
+      </div>
+
+      <div className="sm:hidden">
+        {graph.nodes.length > 0 ? (
+          <div className="divide-y divide-border border-y border-border">
+            {graph.nodes
+              .filter((node) => node.name !== rootLabel)
+              .map((node) => (
+                <div className="flex items-center justify-between gap-4 py-3" key={node.name}>
+                  <span className="text-sm text-muted-foreground">{node.name}</span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{node.value ?? 0}</span>
+                </div>
+              ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface sm:block">
         {graph.links.length > 0 ? (
           <svg
             aria-label={`${selectedCycle?.label ?? "Search cycle"} Sankey flow`}

@@ -52,14 +52,13 @@ export function ListPageView({
 }) {
   return (
     <div className="space-y-6">
-      <Surface className="p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-5 px-1 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              {searchable ? "Search" : "Records"}
+            <p className="text-sm font-semibold text-accent">
+              {searchable ? "Working set" : "Archive"}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-foreground">{title}</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
               {description}
             </p>
           </div>
@@ -67,9 +66,10 @@ export function ListPageView({
         </div>
 
         {searchable ? (
-          <form action={basePath} className="mt-5 flex max-w-2xl flex-col gap-3 sm:flex-row">
+          <Surface className="p-4 sm:p-5">
+          <form action={basePath} className="flex max-w-2xl flex-col gap-3 sm:flex-row">
             <Input
-              autoFocus
+              aria-label={searchPlaceholder}
               defaultValue={query}
               name="q"
               placeholder={searchPlaceholder}
@@ -89,8 +89,8 @@ export function ListPageView({
               ) : null}
             </div>
           </form>
+          </Surface>
         ) : null}
-      </Surface>
 
       <JobRecordTable
         detailBasePath={detailBasePath}

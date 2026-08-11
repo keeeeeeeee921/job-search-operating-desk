@@ -1,6 +1,7 @@
 "use client";
 
 import { FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 interface JobTextInputProps {
@@ -17,28 +18,17 @@ export function JobTextInput({
   disabled
 }: JobTextInputProps) {
   return (
-    <div className="overflow-hidden rounded-[32px] border border-border/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,243,250,0.86))] px-5 py-5 shadow-lift">
-      <div className="flex items-start gap-4">
-        <div className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-          <FileText className="size-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                Paste job text
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Best for Easy Apply text or copied listings. A link is optional.
-              </p>
-            </div>
-            <div className="hidden rounded-full border border-border/80 bg-white/90 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:block">
-              Press Enter
-            </div>
-          </div>
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <FileText aria-hidden="true" className="size-4 text-accent" />
+        <label className="text-sm font-semibold text-foreground" htmlFor="job-text-input">
+          Copied job description
+        </label>
+      </div>
           <Textarea
-            className="min-h-56 rounded-[26px] border border-border/80 bg-white/90 px-5 py-4 text-[15px] leading-7 shadow-soft focus:border-accent/35 focus:ring-4 focus:ring-accent/10"
+            className="min-h-56 px-5 py-4 leading-7"
             disabled={disabled}
+            id="job-text-input"
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -49,10 +39,13 @@ export function JobTextInput({
             placeholder="Paste copied job text. Press Enter to process, or Shift+Enter for a new line."
             value={value}
           />
-          <p className="mt-3 text-xs text-muted-foreground">
-            Noise like Save, Easy Apply, Resume Match, and profile blocks is filtered when possible.
-          </p>
-        </div>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs leading-5 text-muted-foreground">
+          Best for Easy Apply or copied listings. Press Enter to review, Shift+Enter for a new line.
+        </p>
+        <Button disabled={disabled || !value.trim()} onClick={onSubmit} type="button">
+          Review job
+        </Button>
       </div>
     </div>
   );

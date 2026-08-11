@@ -72,12 +72,7 @@ export function ReviewModal({
       open={open}
       title="Review before saving"
     >
-      <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto]">
-        <div className="flex shrink-0 items-center justify-end gap-3 border-b border-border/80 pb-4">
-          <Button onClick={onCancel} tone="ghost">
-            Cancel
-          </Button>
-        </div>
+      <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto]">
         <div className="min-h-0 overflow-y-auto overscroll-contain py-4 pr-2">
           <div className="space-y-4 pb-10">
             {localDraft.unsupportedReason ? (
@@ -158,6 +153,7 @@ export function ReviewModal({
                     </div>
                   ) : null}
                   <FieldComponent
+                    aria-label={labelForField(field)}
                     className="mt-3"
                     onChange={(event) =>
                       setLocalDraft(
@@ -171,7 +167,7 @@ export function ReviewModal({
             })}
           </div>
         </div>
-        <div className="flex shrink-0 justify-end gap-3 border-t border-border/80 bg-white pt-4">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-border/80 bg-surface pt-4">
           <Button onClick={onCancel} tone="ghost">
             Cancel
           </Button>

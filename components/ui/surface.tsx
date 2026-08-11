@@ -8,7 +8,7 @@ export function Surface({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-border bg-surface/90 shadow-soft backdrop-blur",
+        "rounded-3xl border border-border bg-surface shadow-soft",
         className
       )}
       {...props}

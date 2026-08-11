@@ -30,7 +30,7 @@ export function Dialog({
             <DialogPrimitive.Overlay asChild forceMount>
               <motion.div
                 animate={{ opacity: 1 }}
-                className="fixed inset-0 z-40 bg-slate-950/20 backdrop-blur-sm"
+                className="fixed inset-0 z-40 bg-slate-950/25 backdrop-blur-sm"
                 exit={{ opacity: 0 }}
                 initial={{ opacity: 0 }}
               />
@@ -40,7 +40,7 @@ export function Dialog({
                   <motion.div
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     className={cn(
-                      "relative grid h-[min(92dvh,960px)] w-full max-w-[720px] min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-border bg-white p-6 shadow-lift outline-none sm:h-[min(88dvh,920px)]",
+                      "relative grid h-[min(92dvh,960px)] w-full max-w-[720px] min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-[28px] border border-border bg-surface p-6 shadow-lift outline-none sm:h-[min(88dvh,920px)]",
                       className
                     )}
                     exit={{ opacity: 0, y: 12, scale: 0.98 }}

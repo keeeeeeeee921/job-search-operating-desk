@@ -17,25 +17,18 @@ export function SearchLogPage({
 
   return (
     <div className="space-y-8">
-      <Surface className="border-white/60 bg-white/75 p-5 lg:p-6">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            Search Log
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold text-foreground">
+      <div className="px-1">
+          <p className="text-sm font-semibold text-accent">Search Log</p>
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
             Saved snapshots of each job search
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
             Each search lives here as a short note plus one summary image.
           </p>
-        </div>
-      </Surface>
+      </div>
 
-      <Surface className="border-white/60 bg-white/75 p-5 lg:p-6">
+      <Surface className="p-5 lg:p-6">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            Live Sankey
-          </p>
           <h2 className="mt-2 text-2xl font-semibold text-foreground">
             Application flow by search cycle
           </h2>
@@ -48,20 +41,20 @@ export function SearchLogPage({
         </div>
       </Surface>
 
-      <Surface className="border-white/60 bg-white/75 p-5 lg:p-6">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          {searchCycle.label}
-        </p>
-        <h2 className="mt-2 max-w-3xl text-2xl font-semibold text-foreground">
-          {searchCycle.title}
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">{searchCycle.period}</p>
+      <Surface className="p-5 lg:p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-accent">{searchCycle.label}</p>
+            <h2 className="mt-2 max-w-3xl text-2xl font-semibold text-foreground">
+              {searchCycle.title}
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground">{searchCycle.period.replace(" ~ ", " to ")}</p>
+        </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Main goals
-            </p>
+            <p className="text-sm font-semibold text-foreground">Main goals</p>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-foreground">
               {searchCycle.goals.map((goal) => (
                 <li key={goal}>- {goal}</li>
@@ -70,9 +63,7 @@ export function SearchLogPage({
           </div>
 
           <div>
-            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              Approach
-            </p>
+            <p className="text-sm font-semibold text-foreground">Approach</p>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               {searchCycle.note}
             </p>
@@ -80,15 +71,10 @@ export function SearchLogPage({
         </div>
 
         <div className="mt-6 border-t border-white/60 pt-5">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            Companies I Interviewed With
-          </p>
-          <ul className="mt-3 flex flex-wrap gap-2.5 text-sm leading-6 text-foreground">
+          <p className="text-sm font-semibold text-foreground">Companies I interviewed with</p>
+          <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm leading-6 text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
             {searchCycle.interviewedCompanies.map((company) => (
-              <li
-                key={company}
-                className="rounded-2xl border border-black/5 bg-black/[0.025] px-2.5 py-0.5 text-[13px] text-foreground/78"
-              >
+              <li className="border-b border-border pb-2" key={company}>
                 {company}
               </li>
             ))}
@@ -96,13 +82,8 @@ export function SearchLogPage({
         </div>
 
         <div className="mt-6 border-t border-white/60 pt-5">
-          <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-            Snapshot
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold text-foreground">
-            Search 01 snapshot
-          </h3>
-          <div className="relative mt-5 overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-soft">
+          <h3 className="text-xl font-semibold text-foreground">Search 01 snapshot</h3>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-surface">
             <Image
               alt={searchCycle.imageAlt}
               className="h-auto w-full"
@@ -111,10 +92,8 @@ export function SearchLogPage({
               src={searchCycle.imageSrc}
               width={2000}
             />
-            <p className="absolute bottom-4 right-4 rounded-full bg-white/88 px-3 py-1 text-[11px] text-muted-foreground shadow-sm backdrop-blur-sm">
-              Updated May 21, 2026
-            </p>
           </div>
+          <p className="mt-3 text-xs text-muted-foreground">Updated May 21, 2026</p>
         </div>
       </Surface>
     </div>

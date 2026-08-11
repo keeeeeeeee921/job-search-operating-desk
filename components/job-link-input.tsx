@@ -1,6 +1,7 @@
 "use client";
 
 import { Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface JobLinkInputProps {
@@ -17,14 +18,17 @@ export function JobLinkInput({
   disabled
 }: JobLinkInputProps) {
   return (
-    <div className="rounded-[30px] border border-border bg-white px-4 py-4 shadow-lift">
-      <div className="flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
-          <Link2 className="size-5" />
-        </div>
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-foreground" htmlFor="job-link-input">
+        Job posting URL
+      </label>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-border bg-muted/60 px-4 transition focus-within:border-accent/50 focus-within:bg-surface focus-within:ring-4 focus-within:ring-accent/10">
+          <Link2 aria-hidden="true" className="size-5 shrink-0 text-accent" />
         <Input
-          className="border-none bg-transparent px-0 py-2 text-base shadow-none focus:ring-0"
+          className="border-none bg-transparent px-0 py-3 shadow-none focus:bg-transparent focus:ring-0"
           disabled={disabled}
+          id="job-link-input"
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -35,6 +39,10 @@ export function JobLinkInput({
           placeholder="Paste a job link and press Enter"
           value={value}
         />
+        </div>
+        <Button disabled={disabled || !value.trim()} onClick={onSubmit} type="button">
+          Review job
+        </Button>
       </div>
     </div>
   );
