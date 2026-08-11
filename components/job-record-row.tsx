@@ -17,7 +17,7 @@ export function JobRecordRow({
     .join(" · ");
 
   return (
-    <div className="grid gap-3 border-b border-border py-4 last:border-b-0 lg:grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(90px,0.6fr)_auto] lg:items-center lg:gap-5">
+    <div className="grid gap-3 border-b border-border py-4 last:border-b-0 lg:grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(90px,0.6fr)_76px] lg:items-center lg:gap-5">
       <div className="min-w-0">
         {href ? (
           <Link
