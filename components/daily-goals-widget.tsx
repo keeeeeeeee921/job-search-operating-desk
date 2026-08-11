@@ -3,8 +3,6 @@
 import { startTransition, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { updateDailyGoal } from "@/app/actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Surface } from "@/components/ui/surface";
 import type { DailyGoalsState, GoalKey } from "@/lib/types";
 
@@ -16,86 +14,54 @@ export function DailyGoalsWidget({
   initialGoals: DailyGoalsState;
 }) {
   const [dailyGoals, setDailyGoals] = useState(initialGoals);
-  const [targetDrafts, setTargetDrafts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setDailyGoals(initialGoals);
-    setTargetDrafts({});
   }, [initialGoals]);
 
   return (
     <Surface className="p-5">
-        <h2 className="text-xl font-semibold text-foreground">Daily check-in</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Small targets, one clear action each.
-        </p>
-        <div className="mt-4 divide-y divide-border">
-          {goalOrder.map((goal) => {
-            const item = dailyGoals.goals[goal];
-            return (
-              <div
-                className="py-4 first:pt-2 last:pb-0"
-                key={goal}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                  <p className="text-sm tabular-nums text-muted-foreground">
-                    {item.count} / {item.target}
-                  </p>
-                </div>
-                <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2">
-                  <Button
-                    aria-label={`Add one ${item.label.toLowerCase()}`}
-                    className="h-10 px-3"
-                    onClick={() =>
-                      startTransition(async () => {
-                        setDailyGoals(
-                          await updateDailyGoal({
-                            goal,
-                            kind: "increment"
-                          })
-                        );
-                      })
-                    }
-                    tone="secondary"
-                  >
-                    <Plus aria-hidden="true" className="size-4" />
-                    Add one
-                  </Button>
-                  <label className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-xs text-muted-foreground">
-                    Target
-                    <Input
-                      aria-label={`${item.label} target`}
-                      className="h-10 text-center"
-                      inputMode="numeric"
-                      onBlur={(event) => {
-                        const value = Number(event.target.value);
-                        if (!Number.isNaN(value) && value > 0) {
-                          startTransition(async () => {
-                            setDailyGoals(
-                              await updateDailyGoal({
-                                goal,
-                                kind: "target",
-                                value
-                              })
-                            );
-                          });
-                        }
-                      }}
-                      onChange={(event) =>
-                        setTargetDrafts((current) => ({
-                          ...current,
-                          [goal]: event.target.value
-                        }))
-                      }
-                      value={targetDrafts[goal] ?? String(item.target)}
-                    />
-                  </label>
-                </div>
+      <h2 className="text-xl font-semibold text-foreground">Daily check-in</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        Small targets, one clear action each.
+      </p>
+      <div className="mt-4 divide-y divide-border">
+        {goalOrder.map((goal) => {
+          const item = dailyGoals.goals[goal];
+          return (
+            <div
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3 first:pt-1 last:pb-0"
+              key={goal}
+            >
+              <div className="flex min-w-0 items-baseline justify-between gap-3">
+                <p className="truncate text-sm font-medium text-foreground">
+                  {item.label}
+                </p>
+                <p className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                  {item.count} / {item.target}
+                </p>
               </div>
-            );
-          })}
-        </div>
+              <button
+                aria-label={`Add one ${item.label.toLowerCase()}`}
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:translate-y-px"
+                onClick={() =>
+                  startTransition(async () => {
+                    setDailyGoals(
+                      await updateDailyGoal({
+                        goal,
+                        kind: "increment"
+                      })
+                    );
+                  })
+                }
+                type="button"
+              >
+                <Plus aria-hidden="true" className="size-4" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </Surface>
   );
 }
