@@ -28,6 +28,10 @@ describe("JobRecordRow", () => {
     expect(link).toHaveAttribute("href", record.link);
     expect(link).toHaveAttribute("target", "_blank");
     expect(screen.queryByText(record.link)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(`${record.company} · ${record.location}`)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Workday")).not.toBeInTheDocument();
     expect(screen.getByText("No Response")).toBeInTheDocument();
   });
 });
