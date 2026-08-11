@@ -73,17 +73,17 @@ const stageProgression: Record<JobStage, string[]> = {
 };
 
 const nodeColors: Record<string, string> = {
-  [rootLabel]: "#b9b0aa",
-  [jobStageLabels.rejected]: "#4f7ead",
-  [jobStageLabels.no_response]: "#f28c28",
-  [jobStageLabels.screening_oa]: "#f05d5e",
-  [jobStageLabels.unpaid]: "#72b7b2",
-  [jobStageLabels.round_1]: "#78b878",
-  [jobStageLabels.round_2]: "#7fc97f",
-  [jobStageLabels.round_3]: "#8dd187",
-  [jobStageLabels.round_4]: "#a6d98e",
-  [jobStageLabels.round_5]: "#e3c95b",
-  [jobStageLabels.offer]: "#e6b14a"
+  [rootLabel]: "#aaa7ae",
+  [jobStageLabels.rejected]: "#6b6474",
+  [jobStageLabels.no_response]: "#b39b6b",
+  [jobStageLabels.screening_oa]: "#8579a8",
+  [jobStageLabels.unpaid]: "#9f8a70",
+  [jobStageLabels.round_1]: "#786b9b",
+  [jobStageLabels.round_2]: "#6e6191",
+  [jobStageLabels.round_3]: "#645788",
+  [jobStageLabels.round_4]: "#5a4f7e",
+  [jobStageLabels.round_5]: "#504674",
+  [jobStageLabels.offer]: "#4f8063"
 };
 
 function pathForBucket(input: {
@@ -222,8 +222,9 @@ export function SearchLogSankey({
           <div className="flex flex-wrap gap-2">
           {analytics.cycles.map((cycle) => (
             <button
+              aria-pressed={cycle.label === selectedCycle?.label}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-sm transition",
+                "min-h-11 rounded-full border px-4 py-2 text-sm transition-[background-color,border-color,color,transform] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:scale-[0.98]",
                 cycle.label === selectedCycle?.label
                   ? "border-foreground bg-foreground text-background"
                   : "border-border bg-surface text-muted-foreground hover:text-foreground"

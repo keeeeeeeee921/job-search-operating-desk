@@ -29,11 +29,12 @@ export function SearchLogPage({
 
       <Surface className="p-5 lg:p-6">
         <div>
+          <p className="text-sm font-semibold text-accent">Flow overview</p>
           <h2 className="mt-2 text-2xl font-semibold text-foreground">
             Application flow by search cycle
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            This chart is generated from saved records, grouped by Search Cycle and current stage.
+            Choose a cycle to see how saved applications moved through each stage.
           </p>
         </div>
         <div className="mt-6">
@@ -44,9 +45,9 @@ export function SearchLogPage({
       <Surface className="p-5 lg:p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-accent">{searchCycle.label}</p>
+            <p className="text-sm font-semibold text-accent">Saved story</p>
             <h2 className="mt-2 max-w-3xl text-2xl font-semibold text-foreground">
-              {searchCycle.title}
+              {searchCycle.label}: {searchCycle.title}
             </h2>
           </div>
           <p className="text-sm text-muted-foreground">{searchCycle.period.replace(" ~ ", " to ")}</p>
@@ -55,9 +56,9 @@ export function SearchLogPage({
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div>
             <p className="text-sm font-semibold text-foreground">Main goals</p>
-            <ul className="mt-3 space-y-2 text-sm leading-6 text-foreground">
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-foreground marker:text-accent">
               {searchCycle.goals.map((goal) => (
-                <li key={goal}>- {goal}</li>
+                <li key={goal}>{goal}</li>
               ))}
             </ul>
           </div>
@@ -70,25 +71,25 @@ export function SearchLogPage({
           </div>
         </div>
 
-        <div className="mt-6 border-t border-white/60 pt-5">
+        <div className="mt-6 border-t border-border pt-5">
           <p className="text-sm font-semibold text-foreground">Companies I interviewed with</p>
           <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm leading-6 text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
             {searchCycle.interviewedCompanies.map((company) => (
-              <li className="border-b border-border pb-2" key={company}>
+              <li key={company}>
                 {company}
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="mt-6 border-t border-white/60 pt-5">
-          <h3 className="text-xl font-semibold text-foreground">Search 01 snapshot</h3>
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="text-xl font-semibold text-foreground">{searchCycle.label} snapshot</h3>
           <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-surface">
             <Image
               alt={searchCycle.imageAlt}
               className="h-auto w-full"
               height={1000}
-              priority
+              sizes="(min-width: 1400px) 1320px, (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)"
               src={searchCycle.imageSrc}
               width={2000}
             />

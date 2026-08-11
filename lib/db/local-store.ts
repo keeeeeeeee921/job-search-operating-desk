@@ -271,12 +271,13 @@ export async function getLocalJobsPage(input: {
   return buildPaginatedJobListResult(items, safePage, input.pageSize, totalCount);
 }
 
-export async function searchLocalActiveJobsPage(input: {
+export async function searchLocalJobsPage(input: {
+  pool: JobPool;
   query: string;
   page: number;
   pageSize: number;
 }): Promise<PaginatedJobListResult> {
-  const records = await getLocalJobsByPool("active");
+  const records = await getLocalJobsByPool(input.pool);
   const normalizedQuery = normalizeText(input.query);
   const filtered = normalizedQuery
     ? records.filter((record) =>
@@ -293,6 +294,17 @@ export async function searchLocalActiveJobsPage(input: {
   const items = filtered.slice(start, start + input.pageSize).map(toJobListItem);
 
   return buildPaginatedJobListResult(items, safePage, input.pageSize, totalCount);
+}
+
+export async function searchLocalActiveJobsPage(input: {
+  query: string;
+  page: number;
+  pageSize: number;
+}): Promise<PaginatedJobListResult> {
+  return searchLocalJobsPage({
+    ...input,
+    pool: "active"
+  });
 }
 
 export async function getLocalActiveJobCount() {

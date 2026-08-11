@@ -22,8 +22,8 @@ export function JobRecordTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-surface px-5 shadow-soft">
-      <div aria-hidden="true" className="hidden grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(90px,0.6fr)_76px] gap-5 border-b border-border py-3 text-xs font-medium text-muted-foreground lg:grid">
+    <div className="relative rounded-3xl border border-border bg-surface px-5">
+      <div aria-hidden="true" className="sticky top-0 z-10 -mx-2 hidden grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(90px,0.6fr)_76px] gap-5 rounded-t-[22px] border-b border-border bg-surface px-2 py-3 text-xs font-medium text-muted-foreground lg:grid">
         <span>Role</span>
         <span>Stage</span>
         <span>Saved</span>

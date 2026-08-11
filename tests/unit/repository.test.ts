@@ -19,6 +19,7 @@ import {
   resetCurrentEnvironmentToSeedState,
   resetDatabaseForTests,
   searchActiveJobsPage,
+  searchJobsPage,
   updateComments,
   updateDailyGoalState,
   updateJobStage
@@ -82,6 +83,22 @@ describe("repository", () => {
     expect(page.records.every((record) => record.company.includes("IBM Canada"))).toBe(
       true
     );
+    expect(page.records.every((record) => "jobDescription" in record === false)).toBe(true);
+  });
+
+  it("searches Rejected records without loading full descriptions", async () => {
+    const rejected = await getJobsByPool("rejected");
+    const target = rejected[0];
+    expect(target).toBeDefined();
+
+    const page = await searchJobsPage({
+      pool: "rejected",
+      query: `${target?.company} ${target?.roleTitle}`,
+      page: 1,
+      pageSize: 5
+    });
+
+    expect(page.records.some((record) => record.id === target?.id)).toBe(true);
     expect(page.records.every((record) => "jobDescription" in record === false)).toBe(true);
   });
 

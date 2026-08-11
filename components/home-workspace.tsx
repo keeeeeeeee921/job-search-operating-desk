@@ -144,7 +144,7 @@ export function HomeWorkspace({
             </div>
           </div>
 
-          <Surface className="p-5 sm:p-6">
+          <Surface className="p-5 sm:p-6" elevated>
             <h2 className="text-xl font-semibold text-foreground">Add a job</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Incomplete extraction pauses for review before anything is saved.

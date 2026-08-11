@@ -16,7 +16,7 @@ import {
   repairLocalTodayConnectGoalBaseline,
   resetLocalStoreToSeedState,
   resetLocalStoreForTests,
-  searchLocalActiveJobsPage,
+  searchLocalJobsPage,
   seedLocalStoreIfNeeded,
   updateLocalComments,
   updateLocalDailyGoalState,
@@ -265,7 +265,7 @@ function mapJobListRow(row: {
   };
 }
 
-function buildActiveSearchCondition(query: string) {
+function buildSearchCondition(query: string) {
   const normalizedQuery = normalizeText(query);
   if (!normalizedQuery) {
     return undefined;
@@ -802,14 +802,27 @@ export async function searchActiveJobsPage(input: {
   page?: number;
   pageSize?: number;
 }): Promise<PaginatedJobListResult> {
+  return searchJobsPage({
+    ...input,
+    pool: "active"
+  });
+}
+
+export async function searchJobsPage(input: {
+  pool: JobPool;
+  query: string;
+  page?: number;
+  pageSize?: number;
+}): Promise<PaginatedJobListResult> {
   await ensureDatabaseReady();
 
   const pageSize = input.pageSize ?? JOB_LIST_PAGE_SIZE;
   const page = normalizePageNumber(input.page);
-  const searchCondition = buildActiveSearchCondition(input.query);
+  const searchCondition = buildSearchCondition(input.query);
 
   if (shouldUseLocalFallback()) {
-    return searchLocalActiveJobsPage({
+    return searchLocalJobsPage({
+      pool: input.pool,
       query: input.query,
       page,
       pageSize
@@ -817,17 +830,17 @@ export async function searchActiveJobsPage(input: {
   }
 
   const normalizedQuery = normalizeText(input.query);
-  const cacheKey = `search-page:${normalizedQuery}:${page}:${pageSize}`;
+  const cacheKey = `search-page:${input.pool}:${normalizedQuery}:${page}:${pageSize}`;
   const cachedPage = readCache(paginatedResultCache, cacheKey);
   if (cachedPage) {
     return cachedPage;
   }
 
   const whereClause = searchCondition
-    ? and(eq(jobsTable.pool, "active"), searchCondition)
-    : eq(jobsTable.pool, "active");
+    ? and(eq(jobsTable.pool, input.pool), searchCondition)
+    : eq(jobsTable.pool, input.pool);
   const totalCount = await getCachedCount(
-    `search-count:${normalizedQuery}`,
+    `search-count:${input.pool}:${normalizedQuery}`,
     async () => {
       const [{ value }] = await getDb()
         .select({ value: count() })
@@ -1065,7 +1078,7 @@ export async function searchActiveEmailPanelCandidates(input: {
   const query = input.query.trim();
   const limit = input.limit ?? EMAIL_PANEL_KEYWORD_LIMIT;
   const tokens = toSearchTokens(query);
-  const searchCondition = buildActiveSearchCondition(query);
+  const searchCondition = buildSearchCondition(query);
   const tokenConditions = buildTokenSearchConditions(tokens);
   const phraseConditions = buildPhraseSearchConditions(tokens);
 

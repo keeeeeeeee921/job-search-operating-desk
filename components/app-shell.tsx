@@ -19,7 +19,7 @@ export function AppShell({
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto grid max-w-[1400px] gap-4 px-4 py-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="mx-auto grid max-w-[1400px] gap-4 px-4 py-3 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <Link
             className="group flex w-fit max-w-full min-w-0 origin-left items-center gap-3 rounded-2xl py-1 outline-none transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.985] active:duration-100 motion-reduce:transform-none motion-reduce:transition-none"
             href="/"
@@ -42,7 +42,7 @@ export function AppShell({
               return (
                 <Link
                   className={cn(
-                    "rounded-xl px-3 py-2 text-center text-sm font-medium transition sm:rounded-full",
+                    "rounded-xl px-3 py-2 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:rounded-full",
                     active
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:bg-surface hover:text-foreground"

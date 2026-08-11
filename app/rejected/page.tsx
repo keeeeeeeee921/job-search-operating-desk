@@ -1,4 +1,4 @@
-import { getJobsPage } from "@/lib/db/repository";
+import { getJobsPage, searchJobsPage } from "@/lib/db/repository";
 import { AppShell } from "@/components/app-shell";
 import { ListPageView } from "@/components/list-page-view";
 import { normalizePageNumber } from "@/lib/job-list";
@@ -13,15 +13,22 @@ export default async function RejectedPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = searchParams ? await searchParams : {};
+  const query = readStringParam(params.q).trim();
   const page = normalizePageNumber(Number(readStringParam(params.page)));
-  const rejectedJobs = await getJobsPage({ pool: "rejected", page });
+  const rejectedJobs = query
+    ? await searchJobsPage({ pool: "rejected", query, page })
+    : await getJobsPage({ pool: "rejected", page });
 
   return (
     <AppShell currentPath="/rejected">
       <ListPageView
         basePath="/rejected"
         description="Archived applications that are no longer active."
+        eyebrow="Archive"
         pageData={rejectedJobs}
+        query={query}
+        searchable
+        searchPlaceholder="Search Rejected by company or role"
         title="Rejected"
       />
     </AppShell>

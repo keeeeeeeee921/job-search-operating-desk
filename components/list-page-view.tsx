@@ -38,6 +38,7 @@ export function ListPageView({
   basePath,
   searchable = false,
   searchPlaceholder = "Search Active by company or role",
+  eyebrow,
   detailBasePath,
   query = ""
 }: {
@@ -47,6 +48,7 @@ export function ListPageView({
   basePath: string;
   searchable?: boolean;
   searchPlaceholder?: string;
+  eyebrow?: string;
   detailBasePath?: string;
   query?: string;
 }) {
@@ -55,7 +57,7 @@ export function ListPageView({
         <div className="flex flex-col gap-5 px-1 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-accent">
-              {searchable ? "Working set" : "Archive"}
+              {eyebrow ?? (searchable ? "Working set" : "Archive")}
             </p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
             <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
@@ -96,10 +98,10 @@ export function ListPageView({
         detailBasePath={detailBasePath}
         emptyDescription={
           searchable
-            ? "Try another company or role."
+            ? `Try another company or role in ${title}.`
             : "Nothing archived here yet."
         }
-        emptyTitle={searchable ? "No matches in Active" : "No records yet"}
+        emptyTitle={searchable ? `No matches in ${title}` : "No records yet"}
         records={pageData.records}
       />
 
