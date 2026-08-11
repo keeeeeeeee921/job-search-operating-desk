@@ -1,94 +1,70 @@
 import Link from "next/link";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import { jobStageLabels } from "@/lib/job-stage";
-import { formatSourceTypeLabel } from "@/lib/sourceDetection";
 import type { JobListItem } from "@/lib/types";
-import { cn, formatDate, truncate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 
 export function JobRecordRow({
   record,
-  href,
-  compact = false
+  href
 }: {
   record: JobListItem;
   href?: string;
-  compact?: boolean;
 }) {
   const roleLabel = record.roleTitle || "Role title not extracted";
-  const sourceLabel =
-    record.sourceType === "unknown"
-      ? "Source unclear"
-      : record.extractionStatus === "needs_review"
-        ? `Reviewed · ${formatSourceTypeLabel(record.sourceType)}`
-        : formatSourceTypeLabel(record.sourceType);
+  const roleMeta = [record.company, record.location]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <div
-      className={cn(
-        "grid gap-4 rounded-[26px] border border-border/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(250,248,252,0.84))] px-5 py-4 shadow-soft transition hover:-translate-y-0.5 hover:border-accent/20 hover:bg-white hover:shadow-lift",
-        compact
-          ? "grid-cols-1"
-          : "grid-cols-1 xl:grid-cols-[1.2fr_1.1fr_0.8fr_0.8fr_1.5fr]"
-      )}
-    >
-      <div className="min-w-0 xl:pr-2">
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          Role Title
-        </p>
+    <div className="grid gap-3 border-b border-border py-4 last:border-b-0 lg:grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(90px,0.6fr)_76px] lg:items-center lg:gap-5">
+      <div className="min-w-0">
         {href ? (
           <Link
-            className="mt-2 inline-block text-sm font-semibold text-foreground transition hover:text-accent"
+            className="font-semibold text-foreground transition hover:text-accent"
             href={href}
           >
             {roleLabel}
           </Link>
         ) : (
-          <p className="mt-2 text-sm font-semibold text-foreground">{roleLabel}</p>
+          <p className="font-semibold text-foreground">{roleLabel}</p>
         )}
-        <p className="mt-2 text-xs text-muted-foreground">{sourceLabel}</p>
-        <p className="mt-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-          {jobStageLabels[record.stage]}
+        <p className="mt-1 text-sm text-muted-foreground">
+          {roleMeta}
         </p>
       </div>
-      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          Link
-        </p>
+
+      <div>
+        <span className="inline-flex rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+          {jobStageLabels[record.stage]}
+        </span>
+      </div>
+
+      <p className="text-sm text-muted-foreground">
+        {formatDate(record.timestamp)}
+      </p>
+
+      <div className="flex items-center gap-1 lg:justify-end">
         {record.link ? (
           <a
-            className="mt-2 block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm text-accent transition hover:opacity-80"
+            aria-label={`Open posting for ${roleLabel}`}
+            className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
             href={record.link}
             rel="noreferrer"
             target="_blank"
-            title={record.link}
           >
-            {record.link}
+            <ExternalLink aria-hidden="true" className="size-4" />
           </a>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">No link saved</p>
-        )}
-      </div>
-      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          Company
-        </p>
-        <p className="mt-2 text-sm text-foreground">{record.company}</p>
-      </div>
-      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          Location
-        </p>
-        <p className="mt-2 text-sm text-foreground">{record.location}</p>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Saved {formatDate(record.timestamp)}
-        </p>
-      </div>
-      <div className="min-w-0 xl:border-l xl:border-border/70 xl:pl-4">
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-          Job Description
-        </p>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          {truncate(record.jobDescriptionPreview, compact ? 200 : 180)}
-        </p>
+        ) : null}
+        {href ? (
+          <Link
+            aria-label={`Open ${roleLabel}`}
+            className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+            href={href}
+          >
+            <ChevronRight aria-hidden="true" className="size-4" />
+          </Link>
+        ) : null}
       </div>
     </div>
   );

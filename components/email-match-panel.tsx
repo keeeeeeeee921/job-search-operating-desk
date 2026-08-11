@@ -2,6 +2,7 @@
 
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MailSearch } from "lucide-react";
 import { matchRejectionEmail } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
@@ -44,18 +45,24 @@ export function EmailMatchPanel({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-      <Surface className="p-6">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          Rejection Email
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold text-foreground">
+      <div className="xl:col-span-2 px-1">
+        <p className="text-sm font-semibold text-accent">Email Match</p>
+        <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-foreground">
           Match an email to the right Active record
         </h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Paste a rejection email or a title + company search, then archive the right Active record.
+        <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+          Paste a rejection email or a title and company search, then archive the right record.
         </p>
+      </div>
+
+      <Surface className="p-5 sm:p-6">
+        <h2 className="text-xl font-semibold text-foreground">Rejection email</h2>
+        <label className="mt-5 block text-sm font-semibold text-foreground" htmlFor="rejection-email-input">
+          Email text or job title and company
+        </label>
         <Textarea
-          className="mt-6 min-h-[280px]"
+          className="mt-2 min-h-[260px]"
+          id="rejection-email-input"
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {
             if (event.nativeEvent.isComposing) {
@@ -72,17 +79,32 @@ export function EmailMatchPanel({
           placeholder="Paste a rejection email or job title + company..."
           value={value}
         />
-        <p className="mt-4 text-xs text-muted-foreground">
-          Press Enter to match. Use Shift+Enter for a new line.
-        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs leading-5 text-muted-foreground">
+            Press Enter to match. Use Shift+Enter for a new line.
+          </p>
+          <Button
+            disabled={!value.trim() || emptyState || isMatching}
+            onClick={() => {
+              startTransition(() => {
+                void runMatch();
+              });
+            }}
+          >
+            <MailSearch aria-hidden="true" className="mr-2 size-4" />
+            {isMatching ? "Finding matches" : "Find matches"}
+          </Button>
+        </div>
       </Surface>
-      <Surface className="p-6">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          Likely Matches
-        </p>
-        <div className="mt-5 space-y-3">
+      <Surface className="p-5 sm:p-6">
+        <h2 className="text-xl font-semibold text-foreground">Likely matches</h2>
+        <div className="mt-4 space-y-3">
           {matches.length === 0 ? (
-            <div className="rounded-[24px] border border-dashed border-border px-4 py-8 text-center">
+            <div className="grid min-h-[260px] place-items-center rounded-2xl bg-muted/50 px-5 py-8 text-center">
+              <div>
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                <MailSearch aria-hidden="true" className="size-5" />
+              </div>
               <p className="text-base font-semibold text-foreground">
                 {emptyState ? "No Active records yet" : "No likely matches yet"}
               </p>
@@ -91,11 +113,12 @@ export function EmailMatchPanel({
                   ? "Save a few records first, then come back here."
                   : "Paste an email or a title + company search, then press Enter."}
               </p>
+              </div>
             </div>
           ) : (
             matches.map((match) => (
               <div
-                className="rounded-[24px] border border-border bg-white/85 px-4 py-4"
+                className="border-t border-border py-4 first:border-t-0 first:pt-0"
                 key={match.record.id}
               >
                 <div className="flex items-start justify-between gap-4">
@@ -111,7 +134,7 @@ export function EmailMatchPanel({
                     Saved {formatDate(match.record.timestamp)}
                   </p>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">
+                <p className="mt-3 text-sm font-medium text-accent">
                   {match.reasons.join(" · ")}
                 </p>
                 <div className="mt-4 flex justify-end">

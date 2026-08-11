@@ -22,14 +22,22 @@ export function JobRecordTable({
   }
 
   return (
-    <div className="space-y-3">
-      {records.map((record) => (
-        <JobRecordRow
-          href={detailBasePath ? `${detailBasePath}/${record.id}` : undefined}
-          key={record.id}
-          record={record}
-        />
-      ))}
+    <div className="overflow-hidden rounded-3xl border border-border bg-surface px-5 shadow-soft">
+      <div aria-hidden="true" className="hidden grid-cols-[minmax(0,2fr)_minmax(120px,0.8fr)_minmax(90px,0.6fr)_76px] gap-5 border-b border-border py-3 text-xs font-medium text-muted-foreground lg:grid">
+        <span>Role</span>
+        <span>Stage</span>
+        <span>Saved</span>
+        <span>Actions</span>
+      </div>
+      <div>
+        {records.map((record) => (
+          <JobRecordRow
+            href={detailBasePath ? `${detailBasePath}/${record.id}` : undefined}
+            key={record.id}
+            record={record}
+          />
+        ))}
+      </div>
     </div>
   );
 }

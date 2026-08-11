@@ -19,15 +19,19 @@ const record: JobListItem = {
 };
 
 describe("JobRecordRow", () => {
-  it("keeps long links on a single truncated line while preserving the full href", () => {
+  it("uses a concise accessible action while preserving the full posting href", () => {
     render(<JobRecordRow record={record} />);
 
-    const link = screen.getByRole("link", { name: record.link });
+    const link = screen.getByRole("link", {
+      name: `Open posting for ${record.roleTitle}`
+    });
     expect(link).toHaveAttribute("href", record.link);
-    expect(link).toHaveAttribute("title", record.link);
-    expect(link.className).toContain("whitespace-nowrap");
-    expect(link.className).toContain("text-ellipsis");
-    expect(link.className).toContain("overflow-hidden");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(screen.queryByText(record.link)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(`${record.company} · ${record.location}`)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Workday")).not.toBeInTheDocument();
     expect(screen.getByText("No Response")).toBeInTheDocument();
   });
 });

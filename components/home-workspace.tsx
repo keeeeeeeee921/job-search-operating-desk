@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createJobFromLink, createJobFromText, saveReviewedJob } from "@/app/actions";
@@ -123,42 +122,47 @@ export function HomeWorkspace({
     <>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
-          <Surface className="p-6">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-              Start Here
-            </p>
-            <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
-              <div className="max-w-[980px] flex-1">
-                <h1 className="text-4xl font-semibold tracking-tight text-foreground xl:text-[3.35rem] xl:leading-[1.02]">
-                  Paste a job link. Keep the active list clear.
-                </h1>
-              </div>
-              <div className="flex justify-center lg:shrink-0 lg:justify-start">
+          <div className="flex flex-col gap-4 px-1 pb-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-accent">Today</p>
+              <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-foreground lg:text-5xl">
+                Keep the working set honest.
+              </h1>
+              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+                Capture a role, review uncertain fields, and move on without cluttering the active list.
+              </p>
+            </div>
+            <div className="flex justify-center sm:shrink-0 sm:justify-start">
                 <Image
-                  alt="A bear sitting in an office chair surrounded by paper stacks."
-                  className="h-auto w-20 object-contain sm:w-24 lg:w-28"
+                  alt="Animated line drawing of a small office character sitting among papers."
+                  className="h-auto w-24 object-contain sm:w-28"
                   height={128}
                   src="/pool-honest-bear.gif"
                   unoptimized
                   width={128}
                 />
-              </div>
             </div>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              This workspace keeps intake separate from saved records. If something is missing or a page is restricted, it pauses for review instead of saving a guess.
+          </div>
+
+          <Surface className="p-5 sm:p-6">
+            <h2 className="text-xl font-semibold text-foreground">Add a job</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Incomplete extraction pauses for review before anything is saved.
             </p>
             <div className="mt-6">
-              <div className="mb-4 flex flex-wrap gap-2">
+              <div className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1">
                 <Button
+                  className="rounded-lg"
                   onClick={() => setInputMode("link")}
-                  tone={inputMode === "link" ? "default" : "ghost"}
+                  tone={inputMode === "link" ? "secondary" : "ghost"}
                   type="button"
                 >
                   Paste link
                 </Button>
                 <Button
+                  className="rounded-lg"
                   onClick={() => setInputMode("text")}
-                  tone={inputMode === "text" ? "default" : "ghost"}
+                  tone={inputMode === "text" ? "secondary" : "ghost"}
                   type="button"
                 >
                   Paste job text
@@ -186,14 +190,6 @@ export function HomeWorkspace({
         </div>
         <div>
           <DailyGoalsWidget initialGoals={initialGoals} />
-          <div className="mt-3 flex justify-end pr-2">
-            <Link
-              className="text-xs text-muted-foreground transition hover:text-foreground"
-              href="/search-log"
-            >
-              Search Log
-            </Link>
-          </div>
         </div>
       </div>
 

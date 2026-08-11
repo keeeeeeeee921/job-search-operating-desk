@@ -49,26 +49,26 @@ export function DuplicateModal({
             </div>
             {candidate.record.link ? (
               <a
-                className="mt-3 block break-all text-sm text-accent"
+                className="mt-3 inline-flex rounded-full border border-border px-3 py-1.5 text-sm font-semibold text-accent transition hover:bg-muted"
                 href={candidate.record.link}
                 rel="noreferrer"
                 target="_blank"
               >
-                {candidate.record.link}
+                Open existing posting
               </a>
             ) : (
               <p className="mt-3 text-sm text-muted-foreground">No link saved</p>
             )}
+            <p className="mt-3 text-sm font-medium text-accent">
+              {candidate.reasons.join(" · ")}
+            </p>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               {truncate(candidate.record.jobDescription, 180)}
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {candidate.reasons.join(" · ")}
             </p>
           </div>
         ))}
       </div>
-      <div className="mt-5 flex justify-end gap-3 border-t border-border/80 bg-white pt-4">
+      <div className="mt-5 flex justify-end gap-3 border-t border-border/80 bg-surface pt-4">
         <Button onClick={onCancel} tone="ghost">
           Cancel
         </Button>
