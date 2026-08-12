@@ -16,7 +16,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold transition duration-200 focus:outline-none focus:ring-2 focus:ring-accent/45 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex items-center justify-center whitespace-nowrap rounded-full border px-4 py-2 text-sm font-semibold transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:ring-offset-1 focus-visible:ring-offset-surface active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50",
         tone === "default" &&
           "border-accent bg-accent text-accent-foreground hover:bg-accent/90",
         tone === "secondary" &&

@@ -152,7 +152,7 @@ export function HomeWorkspace({
             <div className="mt-6">
               <div className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1">
                 <Button
-                  className="rounded-lg"
+                  className="rounded-lg focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   onClick={() => setInputMode("link")}
                   tone={inputMode === "link" ? "secondary" : "ghost"}
                   type="button"
@@ -160,7 +160,7 @@ export function HomeWorkspace({
                   Paste link
                 </Button>
                 <Button
-                  className="rounded-lg"
+                  className="rounded-lg focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                   onClick={() => setInputMode("text")}
                   tone={inputMode === "text" ? "secondary" : "ghost"}
                   type="button"
