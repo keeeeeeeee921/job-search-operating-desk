@@ -246,6 +246,65 @@ describe("server extraction service", () => {
     );
   });
 
+  it("does not trust Amazon Jobs generic shell words as company or location", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Environmental Digital Engineer, AWS Environmental | Amazon Jobs</title>
+            <meta property="og:title" content="Environmental Digital Engineer, AWS Environmental" />
+            <meta property="og:description" content="Explore corporate jobs and career programs at Amazon, from full-time roles to internships." />
+            <meta property="og:site_name" content="Amazon.jobs" />
+          </head>
+          <body>
+            <main>
+              <h1>Environmental Digital Engineer, AWS Environmental</h1>
+              <p>What's next for your career?</p>
+              <span class="location-icon">s</span>
+            </main>
+          </body>
+        </html>
+      `,
+      "https://www.amazon.jobs/en/jobs/10392751/environmental-digital-engineer-aws-environmental"
+    );
+
+    expect(result.fields.company).toBe("Amazon");
+    expect(result.fields.company).not.toBe("What");
+    expect(result.fields.location).toBe("");
+    expect(result.candidateValues.location).not.toContain("s");
+    expect(result.extractionStatus).toBe("needs_review");
+    expect(result.issues.some((issue) => issue.field === "location")).toBe(true);
+  });
+
+  it("extracts plural location labels and normalizes Amazon site metadata", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Business Intelligence Engineer, Studio Data Operations | Amazon Jobs</title>
+            <meta property="og:site_name" content="Amazon.jobs" />
+          </head>
+          <body>
+            <main>
+              <h1>Business Intelligence Engineer, Studio Data Operations</h1>
+              <p>Job ID: 3166352 | Amazon Studios LLC</p>
+              <p>Locations: USA, CA, Culver City</p>
+              <section>
+                Description Amazon Studios Data Operations connects the dots across fragmented data
+                and works with partner teams to build reliable reporting for business decisions.
+              </section>
+            </main>
+          </body>
+        </html>
+      `,
+      "https://www.amazon.jobs/en/jobs/3166352/business-intelligence-engineer-studio-data-operations"
+    );
+
+    expect(result.fields.company).toBe("Amazon");
+    expect(result.fields.location).toBe("United States, CA, Culver City");
+    expect(result.extractionStatus).toBe("confirmed");
+  });
+
   it("blocks private-network targets with a safe fallback response", async () => {
     const result = await extractJobOnServer("http://127.0.0.1/internal-job-page");
 

@@ -418,6 +418,7 @@ function cleanCompany(value: string) {
     normalizeCountryName(
       value
         .replace(/[®™]/g, "")
+        .replace(/^Amazon\.jobs$/i, "Amazon")
         .replace(/^\d+\s+/, "")
         .replace(/\blogo\b/gi, "")
         .replace(/\bcareer's?\s+page\b/gi, "")
@@ -437,8 +438,8 @@ function cleanLocation(value: string) {
   return normalizeCountryName(
     value
       .replace(/^remote\s*\((.+)\)$/i, "$1 (Remote)")
-      .replace(/^location\s*:?\s*/i, "")
-      .replace(/^location\s*\(city\)\*?/i, "")
+      .replace(/^locations?\s*:?\s*/i, "")
+      .replace(/^locations?\s*\(city\)\*?/i, "")
       .replace(/\*?\s*locate me\b/gi, "")
       .replace(/\bworkplace type\s*:?\s*/gi, "")
       .replace(/\bremote:\s*/gi, "")
@@ -482,6 +483,7 @@ function isUsefulCompanyCandidate(value: string) {
 
   return (
     value.length >= 3 &&
+    !/^(what|this|that|there|here|where|when|why|how)$/i.test(value) &&
     !/(the location for this job|every step of their hair journey|apply for this job|create a job alert|autofill with mygreenhouse|submit application|profile photo|logo)/i.test(
       value
     )
@@ -490,6 +492,10 @@ function isUsefulCompanyCandidate(value: string) {
 
 function isUsefulLocationCandidate(value: string) {
   if (!value || value.length > 100) {
+    return false;
+  }
+
+  if (/^[a-z]$/i.test(value.trim())) {
     return false;
   }
 
@@ -749,7 +755,7 @@ function extractLabeledValues(
   $: ReturnType<typeof load>,
   label: string
 ) {
-  const matcher = new RegExp(`^${label}\\s*:?\\s*`, "i");
+  const matcher = new RegExp(`^${label}s?\\b\\s*:?\\s*`, "i");
 
   return uniqueValues(
     $("p, li, div, span")

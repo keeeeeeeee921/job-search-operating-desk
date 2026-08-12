@@ -57,4 +57,17 @@ describe("validateJobDraft", () => {
 
     expect(issues.some((issue) => issue.field === "link")).toBe(false);
   });
+
+  it("flags one-character locations as suspicious", () => {
+    const issues = validateJobDraft({
+      ...baseDraft,
+      location: "s"
+    });
+
+    expect(
+      issues.some(
+        (issue) => issue.field === "location" && issue.type === "suspicious"
+      )
+    ).toBe(true);
+  });
 });

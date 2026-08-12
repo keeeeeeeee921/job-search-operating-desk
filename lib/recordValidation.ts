@@ -24,6 +24,10 @@ function isWeakRoleTitle(value: string) {
   return !normalized || weakRoleWords.has(normalized);
 }
 
+function isWeakLocation(value: string) {
+  return /^[a-z]$/i.test(value.trim());
+}
+
 export function isFieldRequiredForDraft(draft: JobDraft, field: JobField) {
   if (field === "link" && draft.inputMode === "text") {
     return false;
@@ -72,6 +76,14 @@ export function validateJobDraft(draft: JobDraft) {
       field: "link",
       type: "suspicious",
       message: "Link is not a valid URL."
+    });
+  }
+
+  if (draft.location && isWeakLocation(draft.location)) {
+    issues.push({
+      field: "location",
+      type: "suspicious",
+      message: "Location looks too short to trust without review."
     });
   }
 
