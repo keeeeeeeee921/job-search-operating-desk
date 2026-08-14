@@ -4,17 +4,19 @@
 
 ## Overview
 
-Job Search Operating Desk is a real web app for turning messy job links, copied job text, uncertain extraction results, and rejection emails into a focused personal workflow. It is built for one user: the job seeker.
+Job Search Operating Desk turns messy job links, copied job text, uncertain extraction results, follow-up notes, and rejection emails into one focused personal workflow. It is built for one user: the job seeker.
 
 ## Highlights
 
 - Paste a job link or copied job text
-- Handle LinkedIn Easy Apply style input realistically
+- Handle LinkedIn-style input realistically
 - Review incomplete records instead of inventing fields
+- Search the current Active working set and keep Rejected records separate
+- Track stage and follow-up notes on each application
 - Match rejection emails back to Active jobs
-- Capture each job hunt as a fixed search-log snapshot
+- Compare application outcomes by search cycle with a Sankey flow
+- Preserve each completed search as a note plus a fixed summary image
 - Track daily Apply / Connect / Follow counts
-- Mark follow-up progress through per-record comments
 
 ## Why I built it
 
@@ -37,9 +39,21 @@ I built this after getting frustrated with how much time personal job tracking w
 
 ![Active list](docs/images/active-list.png)
 
-### Search log
+### Application detail and follow-up
 
-![Search log snapshot](docs/images/job-search-cycle-01.png)
+![Application detail](docs/images/active-detail.png)
+
+### Search Log
+
+![Search Log analytics and saved story](docs/images/search-log.png)
+
+### Email Match
+
+![Rejection email matching](docs/images/email-match.png)
+
+### Rejected archive
+
+![Rejected archive](docs/images/rejected-list.png)
 
 ### Manual review for incomplete records
 
@@ -48,6 +62,8 @@ I built this after getting frustrated with how much time personal job tracking w
 ### Duplicate detection
 
 ![Duplicate detection](docs/images/duplicate-modal.png)
+
+All repository screenshots are generated from the app's local seed data. They do not contain a real user's application records.
 
 ## Key workflows
 
@@ -63,13 +79,17 @@ Paste copied job text and press Enter. This path is useful for LinkedIn Easy App
 
 If required fields are missing or extraction confidence is low, the app pauses for manual review instead of pretending extraction succeeded.
 
+### Manage the working set
+
+Active records are searchable by company or role. Each record keeps its source, search cycle, current stage, job description, and follow-up notes together. Rejected applications live in a separate archive.
+
 ### Update from rejection email
 
 Paste rejection email text or a `job title + company` query to find the most likely Active records and move the correct one into the Rejected archive.
 
 ### Record a search cycle
 
-Use the Search Log page to store each job hunt as a fixed snapshot with a short note on goals, scope, and one attached summary image.
+Use the Search Log page to compare saved outcomes by search cycle, then preserve the context behind each completed search with its goals, approach, interviewed companies, and one fixed summary image.
 
 ## Design principles
 
@@ -82,6 +102,7 @@ Use the Search Log page to store each job hunt as a fixed snapshot with a short 
 - Extraction is conservative and falls back to manual review when fields are missing or low-confidence
 - LinkedIn-style intake is supported through pasted job text rather than pretending unrestricted scraping
 - Rejection email matching is part of the actual workflow, not a demo-only screen
+- Search Log analytics are calculated from saved records while the narrative snapshot remains fixed
 - The app is tested with Vitest and Playwright
 
 ## Tech stack
@@ -90,6 +111,7 @@ Use the Search Log page to store each job hunt as a fixed snapshot with a short 
 - TypeScript
 - Tailwind CSS
 - Framer Motion
+- Server Actions
 - Drizzle migrations
 - Postgres-ready persistence
 - Local fallback store for offline development and isolated testing

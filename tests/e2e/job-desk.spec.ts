@@ -2,14 +2,14 @@ import { expect, test } from "@playwright/test";
 
 test("saves a fully extracted job into Active", async ({ page, baseURL }) => {
   await page.goto("/");
-  await expect(page.getByText("0 / 50").first()).toBeVisible();
+  await expect(page.getByText("0 / 10").first()).toBeVisible();
   await page.getByPlaceholder("Paste a job link and press Enter").fill(
     `${baseURL}/mock-jobs/aurora-data-analyst`
   );
   await page.keyboard.press("Enter");
 
   await expect(page.getByText("Saved to Active").first()).toBeVisible();
-  await expect(page.getByText("1 / 50").first()).toBeVisible();
+  await expect(page.getByText("1 / 10").first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Data Analyst" }).first()).toBeVisible();
   await page.goto("/active");
   await expect(page.getByText("Aurora Labs")).toBeVisible();
@@ -48,13 +48,17 @@ As a FedEx Intern, you will be working on projects gaining valuable, real-world 
   await expect(
     page.getByRole("link", { name: "Data Science Intern (Summer 2026)" }).first()
   ).toBeVisible();
-  await expect(page.getByText("No link saved").first()).toBeVisible();
+  await expect(
+    page.getByRole("img", {
+      name: "No saved posting link for Data Science Intern (Summer 2026)"
+    })
+  ).toBeVisible();
 });
 
 test("shows duplicate modal and respects cancel or continue", async ({ page, baseURL }) => {
   await page.goto("/");
   await page.getByPlaceholder("Paste a job link and press Enter").fill(
-    `${baseURL}/mock-jobs/tiktok-data-analyst-duplicate`
+    `${baseURL}/mock-jobs/ibm-canada-associate-business-analyst-duplicate`
   );
   await page.keyboard.press("Enter");
 
@@ -63,7 +67,7 @@ test("shows duplicate modal and respects cancel or continue", async ({ page, bas
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await page.goto("/active");
-  await expect(page.getByText("TikTok").first()).toBeVisible();
+  await expect(page.getByText("IBM Canada").first()).toBeVisible();
 });
 
 test("search scans only active records", async ({ page }) => {
@@ -81,7 +85,7 @@ test("legacy /search links redirect to /active with query params", async ({ page
 
 test("comments persist after blur", async ({ page }) => {
   await page.goto("/active");
-  await page.getByRole("link", { name: "Logistics Planning Engineer" }).click();
+  await page.getByRole("link", { name: "Business Analyst", exact: true }).click();
   const textarea = page.getByPlaceholder("Add a note...");
   await textarea.fill("Second round interview");
   await textarea.evaluate((element) => {
@@ -95,7 +99,7 @@ test("comments persist after blur", async ({ page }) => {
 
 test("update by email archives manually", async ({ page }) => {
   await page.goto("/update-by-email");
-  const rejectionText = `Hello,\n\nWe appreciate your interest in the Logistics Planning Engineer role with Tesla Shanghai. After reviewing your background, we have chosen to move forward with other candidates.\n\nThank you again for applying.\n\nTesla Recruiting`;
+  const rejectionText = `Hello,\n\nWe appreciate your interest in the Associate Business Analyst - Entry Level role with IBM Canada. After reviewing your background, we have chosen to move forward with other candidates.\n\nThank you again for applying.\n\nIBM Canada Recruiting`;
   const emailInput = page.getByPlaceholder(
     "Paste a rejection email or job title + company..."
   );
@@ -108,16 +112,16 @@ test("update by email archives manually", async ({ page }) => {
   await page.getByRole("button", { name: "Archive to Rejected" }).first().click();
   await expect(page.getByText("Moved to Rejected").first()).toBeVisible();
   await page.goto("/rejected");
-  await expect(page.getByText("Tesla").first()).toBeVisible();
+  await expect(page.getByText("IBM Canada").first()).toBeVisible();
 });
 
 test("active records can be deleted from the detail page", async ({ page }) => {
   await page.goto("/active");
-  await page.getByRole("link", { name: "Business Operations Analyst" }).click();
+  await page.getByRole("link", { name: "Ops Research Scientist I", exact: true }).click();
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete record" }).click();
   await page.waitForURL("**/active");
   await expect(
-    page.getByRole("link", { name: "Business Operations Analyst" })
+    page.getByRole("link", { name: "Ops Research Scientist I", exact: true })
   ).toHaveCount(0);
 });
