@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./tests/e2e",
+  testDir: "../tests/e2e",
   timeout: 90000,
   expect: {
     timeout: 15000
@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "PATH=\"/Users/keshi/Documents/投递记录/.tooling/node/bin:/Users/keshi/Documents/投递记录/.tooling/pnpm/bin:$PATH\" DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true pnpm start",
+      "DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true pnpm start",
     port: 3000,
     reuseExistingServer: !process.env.CI
   },
