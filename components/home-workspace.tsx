@@ -157,9 +157,9 @@ export function HomeWorkspace({
               >
                 <Button
                   aria-pressed={inputMode === "link"}
-                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
                     inputMode === "link"
-                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)]"
+                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
                       : "shadow-none"
                   }`}
                   onClick={() => setInputMode("link")}
@@ -170,9 +170,9 @@ export function HomeWorkspace({
                 </Button>
                 <Button
                   aria-pressed={inputMode === "text"}
-                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
                     inputMode === "text"
-                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)]"
+                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
                       : "shadow-none"
                   }`}
                   onClick={() => setInputMode("text")}
