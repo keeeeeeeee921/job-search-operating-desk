@@ -150,9 +150,18 @@ export function HomeWorkspace({
               Incomplete extraction pauses for review before anything is saved.
             </p>
             <div className="mt-6">
-              <div className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1">
+              <div
+                aria-label="Job input mode"
+                className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1"
+                role="group"
+              >
                 <Button
-                  className="rounded-lg focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  aria-pressed={inputMode === "link"}
+                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                    inputMode === "link"
+                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)]"
+                      : "shadow-none"
+                  }`}
                   onClick={() => setInputMode("link")}
                   tone={inputMode === "link" ? "secondary" : "ghost"}
                   type="button"
@@ -160,7 +169,12 @@ export function HomeWorkspace({
                   Paste link
                 </Button>
                 <Button
-                  className="rounded-lg focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                  aria-pressed={inputMode === "text"}
+                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                    inputMode === "text"
+                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)]"
+                      : "shadow-none"
+                  }`}
                   onClick={() => setInputMode("text")}
                   tone={inputMode === "text" ? "secondary" : "ghost"}
                   type="button"
