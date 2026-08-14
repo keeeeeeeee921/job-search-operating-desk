@@ -15,6 +15,7 @@ type AuditRow = {
   roleTitle: string;
   company: string;
   location: string;
+  link: string;
   jobDescription: string;
   searchText: string;
 };
@@ -100,7 +101,7 @@ function buildReasons(row: AuditRow) {
   }
 
   if (
-    /(display:\s*inline|#job-location|locate me|location\s*\(city\)|jobs\s*[>›]|workplace type|select\.\.\.)/i.test(
+    /(display:\s*inline|#job-location|search by location|locate me|location\s*\(city\)|jobs\s*[>›]|workplace type|select\.\.\.)/i.test(
       row.location
     )
   ) {
@@ -109,6 +110,10 @@ function buildReasons(row: AuditRow) {
 
   if (row.location.length > 110) {
     reasons.push("location_too_long");
+  }
+
+  if (/\b(has been|we are|our mission|transforming)\b/i.test(row.location)) {
+    reasons.push("location_description_fragment");
   }
 
   if (
@@ -182,6 +187,7 @@ async function main() {
       roleTitle: jobsTable.roleTitle,
       company: jobsTable.company,
       location: jobsTable.location,
+      link: jobsTable.link,
       jobDescription: jobsTable.jobDescription,
       searchText: jobsTable.searchText
     })
@@ -319,7 +325,8 @@ async function main() {
       row.id,
       {
         roleTitle: row.roleTitle,
-        company: row.company
+        company: row.company,
+        location: row.location
       }
     ])
   );
@@ -345,6 +352,7 @@ async function main() {
             roleTitle: row.roleTitle,
             company: row.company,
             location: row.location,
+            link: row.link,
             reasons: row.reasons
           }))
         },

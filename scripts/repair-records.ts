@@ -60,7 +60,7 @@ function looksSuspiciousLocationValue(value: string) {
   return (
     !normalized ||
     looksLikeInternalLocationValue(normalized) ||
-    /(join the team|jobs\s*[>›]|req id|position type|about the role|career opportunities)/i.test(
+    /(join the team|jobs\s*[>›]|req id|position type|about the role|career opportunities|search by location|\bhas been\b|\btransforming\b|\bour mission\b)/i.test(
       normalized
     )
   );
@@ -151,7 +151,7 @@ function isRepairCandidate(record: JobRecord, dateKey: string) {
       record.jobDescription
     ) || looksLikeBadUkgDescription(record.jobDescription);
   const badLocation =
-    looksLikeInternalLocationValue(record.location) ||
+    (Boolean(record.location.trim()) && looksSuspiciousLocationValue(record.location)) ||
     record.location.length > 100 ||
     /\b\d{5}(?:-\d{4})?\b/.test(record.location) ||
     /(join the team|jobs\s*[>›]|req id|position type|who are we hiring|madison square garden entertainment corp|analyst business intelligence)/i.test(

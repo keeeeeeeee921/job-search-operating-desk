@@ -121,21 +121,21 @@ export function HomeWorkspace({
   return (
     <>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 px-1 pb-1 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-6 xl:space-y-5">
+          <div className="flex flex-col gap-4 px-1 pb-1 sm:flex-row sm:items-end sm:justify-between xl:gap-3">
             <div>
               <p className="text-sm font-semibold text-accent">Today</p>
-              <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-foreground lg:text-5xl">
+              <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-foreground lg:text-5xl xl:text-[2.625rem] xl:leading-[1.08]">
                 Keep the working set honest.
               </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground xl:mt-2 xl:leading-6">
                 Capture a role, review uncertain fields, and move on without cluttering the active list.
               </p>
             </div>
             <div className="flex justify-center sm:shrink-0 sm:justify-start">
                 <Image
                   alt="Animated line drawing of a small office character sitting among papers."
-                  className="h-auto w-24 object-contain sm:w-28"
+                  className="h-auto w-24 object-contain sm:w-28 xl:w-24"
                   height={128}
                   src="/pool-honest-bear.gif"
                   unoptimized
@@ -144,20 +144,20 @@ export function HomeWorkspace({
             </div>
           </div>
 
-          <Surface className="p-5 sm:p-6" elevated>
+          <Surface className="p-5 sm:p-6 xl:p-5" elevated>
             <h2 className="text-xl font-semibold text-foreground">Add a job</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Incomplete extraction pauses for review before anything is saved.
             </p>
-            <div className="mt-6">
+            <div className="mt-6 xl:mt-5">
               <div
                 aria-label="Job input mode"
-                className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1"
+                className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1 xl:mb-4"
                 role="group"
               >
                 <Button
                   aria-pressed={inputMode === "link"}
-                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:underline focus-visible:decoration-2 focus-visible:decoration-foreground/35 focus-visible:underline-offset-4 focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
                     inputMode === "link"
                       ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
                       : "shadow-none"
@@ -170,7 +170,7 @@ export function HomeWorkspace({
                 </Button>
                 <Button
                   aria-pressed={inputMode === "text"}
-                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:underline focus-visible:decoration-2 focus-visible:decoration-foreground/35 focus-visible:underline-offset-4 focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
                     inputMode === "text"
                       ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
                       : "shadow-none"

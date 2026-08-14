@@ -10,6 +10,7 @@ type ScriptMode = "dry-run" | "apply";
 type RecordPatch = {
   roleTitle?: string;
   company?: string;
+  location?: string;
 };
 
 type ParsedArgs = {
@@ -143,7 +144,9 @@ function loadPatchMapFromFile(filePath: string): Map<string, RecordPatch> {
   const raw = readFileSync(filePath, "utf8");
   const parsed = JSON.parse(raw) as Record<string, RecordPatch>;
   const entries = Object.entries(parsed).filter(
-    ([, patch]) => Boolean(patch.roleTitle?.trim() || patch.company?.trim())
+    ([, patch]) => Boolean(
+      patch.roleTitle?.trim() || patch.company?.trim() || patch.location?.trim()
+    )
   );
 
   return new Map(
@@ -151,7 +154,8 @@ function loadPatchMapFromFile(filePath: string): Map<string, RecordPatch> {
       id,
       {
         roleTitle: patch.roleTitle?.trim() || undefined,
-        company: patch.company?.trim() || undefined
+        company: patch.company?.trim() || undefined,
+        location: patch.location?.trim() || undefined
       } satisfies RecordPatch
     ])
   );
@@ -189,12 +193,14 @@ async function main() {
     const nextRecord: JobRecord = {
       ...record,
       roleTitle: patch.roleTitle ?? record.roleTitle,
-      company: patch.company ?? record.company
+      company: patch.company ?? record.company,
+      location: patch.location ?? record.location
     };
 
     if (
       nextRecord.roleTitle === record.roleTitle &&
-      nextRecord.company === record.company
+      nextRecord.company === record.company &&
+      nextRecord.location === record.location
     ) {
       return [];
     }
@@ -221,6 +227,8 @@ async function main() {
       afterRoleTitle: update.after.roleTitle,
       beforeCompany: update.before.company,
       afterCompany: update.after.company,
+      beforeLocation: update.before.location,
+      afterLocation: update.after.location,
       searchText: update.searchText
     }))
   );

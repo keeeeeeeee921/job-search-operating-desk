@@ -103,6 +103,37 @@ describe("server extraction service", () => {
     expect(result.candidateValues.company).not.toContain("Proxima Beta U.S.");
   });
 
+  it("rejects Workday description fragments and location-search shell text", () => {
+    const result = extractCandidatesFromHtml(
+      `
+        <html>
+          <head>
+            <title>Financial Analyst | NVIDIA Careers</title>
+            <meta property="og:title" content="Financial Analyst" />
+            <meta property="og:description" content="NVIDIA has been transforming computer graphics, PC gaming, and accelerated computing." />
+          </head>
+          <body>
+            <main>
+              <h1>Financial Analyst</h1>
+              <div class="location-search">Search by Location</div>
+              <section>
+                NVIDIA has been transforming computer graphics, PC gaming, and accelerated computing.
+              </section>
+            </main>
+          </body>
+        </html>
+      `,
+      "https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/US-CA-Santa-Clara/Financial-Analyst_JR2015651"
+    );
+
+    expect(result.fields.location).toBe("");
+    expect(result.candidateValues.location).not.toContain(
+      "NVIDIA has been transforming computer graphics, PC"
+    );
+    expect(result.candidateValues.location).not.toContain("Search by Location");
+    expect(result.issues.some((issue) => issue.field === "location")).toBe(true);
+  });
+
   it("parses UKG inline job payloads before generic page scraping", () => {
     const result = extractCandidatesFromHtml(
       readFixture("inquirer-ukg.html"),

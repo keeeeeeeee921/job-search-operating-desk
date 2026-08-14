@@ -503,7 +503,7 @@ function isUsefulLocationCandidate(value: string) {
     return false;
   }
 
-  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence|locate me|location\s*\(city\)|workplace type|select\.\.\.|^\(?city\)?\*?$|display:\s*inline|job-location|first name|last name|phone\b|country\b)/i.test(
+  return !/(req id|position type|join the team|jobs\s*[>›]|who are we hiring|customer insights analyst|analyst business intelligence|search by location|locate me|location\s*\(city\)|workplace type|select\.\.\.|^\(?city\)?\*?$|display:\s*inline|job-location|first name|last name|phone\b|country\b)/i.test(
     value
   );
 }
@@ -1266,7 +1266,19 @@ function mergeExtractionCandidates(
 function extractGeoLocationCandidatesFromText(values: string[]) {
   const locations: string[] = [];
   const locationPattern =
-    /\b([A-Z][A-Za-z.'\- ]+,\s*[A-Z]{2})(?:,\s*(United States|USA|US|Canada))?\b/g;
+    /\b([A-Z][A-Za-z.'\- ]+),\s*([A-Z]{2})(?:,\s*(United States|USA|US|Canada))?\b/g;
+  const usRegionCodes = new Set([
+    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+    "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+    "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+    "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+    "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+    "DC", "PR", "VI", "GU", "AS", "MP"
+  ]);
+  const canadaRegionCodes = new Set([
+    "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC",
+    "SK", "YT"
+  ]);
 
   for (const value of values) {
     const normalized = normalizeWhitespace(value);
@@ -1278,11 +1290,23 @@ function extractGeoLocationCandidatesFromText(values: string[]) {
     }
 
     for (const match of normalized.matchAll(locationPattern)) {
-      let cityState = normalizeWhitespace(match[1] ?? "");
-      if (/\bin\s+/i.test(cityState)) {
-        cityState = cityState.replace(/^.*\bin\s+/i, "");
+      let city = normalizeWhitespace(match[1] ?? "");
+      const regionCode = match[2] ?? "";
+      const country = normalizeCountryName(match[3] ?? "");
+      const validRegion = country.toLowerCase() === "canada"
+        ? canadaRegionCodes.has(regionCode)
+        : country
+          ? usRegionCodes.has(regionCode)
+          : usRegionCodes.has(regionCode) || canadaRegionCodes.has(regionCode);
+
+      if (!validRegion) {
+        continue;
       }
-      const country = normalizeCountryName(match[2] ?? "");
+
+      if (/\bin\s+/i.test(city)) {
+        city = city.replace(/^.*\bin\s+/i, "");
+      }
+      const cityState = `${city}, ${regionCode}`;
       locations.push(country ? `${cityState}, ${country}` : cityState);
     }
   }
@@ -1450,10 +1474,7 @@ function collectWorkdayFamilyCandidates(
   candidates.roleTitle.push(cleanTitle(context.documentTitle), cleanTitle(context.ogTitle));
 
   candidates.location.push(
-    ...extractGeoLocationCandidatesFromText([
-      ...context.metaDescriptions,
-      ...context.structuredDescriptionCandidates.slice(0, 2)
-    ])
+    ...extractGeoLocationCandidatesFromText(context.metaDescriptions)
   );
   candidates.notes?.push("Workday host and metadata hints were prioritized.");
   return candidates;

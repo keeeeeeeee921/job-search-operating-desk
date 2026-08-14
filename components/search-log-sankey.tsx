@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { sankey, sankeyLinkHorizontal } from "d3-sankey";
 import { jobStageLabels } from "@/lib/job-stage";
 import type {
@@ -30,7 +30,7 @@ type SankeyLink = {
 };
 
 const chartWidth = 980;
-const chartHeight = 420;
+const chartHeight = 300;
 const rootLabel = "Applications";
 
 const stageProgression: Record<JobStage, string[]> = {
@@ -156,7 +156,7 @@ function buildSankeyGraph(cycle: SearchLogCycleAnalytics | undefined) {
   return sankey<SankeyNode, SankeyLink>()
     .nodeId((node) => node.name)
     .nodeWidth(22)
-    .nodePadding(24)
+    .nodePadding(18)
     .nodeAlign((node) => {
       if (node.name === rootLabel) {
         return 0;
@@ -201,13 +201,14 @@ function nodeLabelAnchor(node: SankeyNode) {
 }
 
 export function SearchLogSankey({
-  analytics
+  analytics,
+  selectedLabel,
+  onSelectedLabelChange
 }: {
   analytics: SearchLogAnalytics;
+  selectedLabel: string;
+  onSelectedLabelChange: (label: string) => void;
 }) {
-  const [selectedLabel, setSelectedLabel] = useState(
-    analytics.cycles.at(-1)?.label ?? ""
-  );
   const selectedCycle =
     analytics.cycles.find((cycle) => cycle.label === selectedLabel) ??
     analytics.cycles.at(-1);
@@ -230,7 +231,7 @@ export function SearchLogSankey({
                   : "border-border bg-surface text-muted-foreground hover:text-foreground"
               )}
               key={cycle.label}
-              onClick={() => setSelectedLabel(cycle.label)}
+              onClick={() => onSelectedLabelChange(cycle.label)}
               type="button"
             >
               {cycle.label}
@@ -267,7 +268,7 @@ export function SearchLogSankey({
         ) : null}
       </div>
 
-      <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface sm:block">
+      <div className="hidden overflow-x-auto rounded-2xl bg-muted/25 sm:block">
         {graph.links.length > 0 ? (
           <svg
             aria-label={`${selectedCycle?.label ?? "Search cycle"} Sankey flow`}
