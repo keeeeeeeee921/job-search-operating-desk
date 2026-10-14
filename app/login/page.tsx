@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Surface } from "@/components/ui/surface";
 import { getConfiguredAccessToken, sanitizeNextPath } from "@/lib/access-token";
+import { isPublicDemoMode } from "@/lib/demo-mode";
 import { isCurrentRequestAuthorized } from "@/lib/server/auth";
 
 export const metadata: Metadata = {
@@ -30,7 +31,7 @@ export default async function LoginPage({
   const params = searchParams ? await searchParams : {};
   const nextPath = sanitizeNextPath(readStringParam(params.next));
 
-  if (await isCurrentRequestAuthorized()) {
+  if (isPublicDemoMode() || (await isCurrentRequestAuthorized())) {
     redirect(nextPath);
   }
 

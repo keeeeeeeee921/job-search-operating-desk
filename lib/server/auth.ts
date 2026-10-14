@@ -7,6 +7,7 @@ import {
   UNAUTHORIZED_MESSAGE,
   type AccessDecision
 } from "@/lib/access-token";
+import { DEMO_READ_ONLY_MESSAGE, isPublicDemoMode } from "@/lib/demo-mode";
 
 async function readAccessCookie() {
   try {
@@ -36,8 +37,8 @@ export async function isCurrentRequestAuthorized() {
 }
 
 export type WriteBlock = {
-  kind: "unauthorized" | "token_not_configured";
-  status: 401 | 503;
+  kind: "demo_read_only" | "unauthorized" | "token_not_configured";
+  status: 401 | 403 | 503;
   message: string;
 };
 
@@ -48,6 +49,14 @@ export type WriteBlock = {
  * so a misconfigured matcher or a direct server-action call cannot bypass it.
  */
 export async function getWriteBlock(): Promise<WriteBlock | null> {
+  if (isPublicDemoMode()) {
+    return {
+      kind: "demo_read_only",
+      status: 403,
+      message: DEMO_READ_ONLY_MESSAGE
+    };
+  }
+
   const decision = await getCurrentAccessDecision();
   if (decision.allowed) {
     return null;
@@ -66,8 +75,13 @@ export async function getWriteBlock(): Promise<WriteBlock | null> {
 
 /**
  * Gate for read-only server actions that still expose private data.
+ * The public demo only serves seed data, so it needs no token.
  */
 export async function assertReadAllowed() {
+  if (isPublicDemoMode()) {
+    return;
+  }
+
   const decision = await getCurrentAccessDecision();
   if (!decision.allowed) {
     throw new Error(

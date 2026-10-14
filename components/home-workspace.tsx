@@ -10,6 +10,7 @@ import {
   type CreateJobResult
 } from "@/app/actions";
 import { DailyGoalsWidget } from "@/components/daily-goals-widget";
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { DuplicateModal } from "@/components/duplicate-modal";
 import { JobLinkInput } from "@/components/job-link-input";
 import { JobTextInput } from "@/components/job-text-input";
@@ -36,6 +37,7 @@ export function HomeWorkspace({
   initialGoals: DailyGoalsState;
 }) {
   const router = useRouter();
+  const demoMode = useDemoMode();
   const pushToast = useJobDeskStore((state) => state.pushToast);
 
   const [inputMode, setInputMode] = useState<InputMode>("link");
@@ -148,7 +150,9 @@ export function HomeWorkspace({
           <Surface className="p-5 sm:p-6 xl:p-5" elevated>
             <h2 className="text-xl font-semibold text-foreground">Add a job</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Incomplete extraction pauses for review before anything is saved.
+              {demoMode
+                ? "Adding jobs is disabled in the read-only demo. Browse Active, Rejected, and the Search Log instead."
+                : "Incomplete extraction pauses for review before anything is saved."}
             </p>
             <div className="mt-6 xl:mt-5">
               <div
@@ -185,14 +189,14 @@ export function HomeWorkspace({
               </div>
               {inputMode === "link" ? (
                 <JobLinkInput
-                  disabled={false}
+                  disabled={demoMode}
                   onChange={setLinkValue}
                   onSubmit={handleProcess}
                   value={linkValue}
                 />
               ) : (
                 <JobTextInput
-                  disabled={false}
+                  disabled={demoMode}
                   onChange={setTextValue}
                   onSubmit={handleProcess}
                   value={textValue}

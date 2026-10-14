@@ -4,6 +4,7 @@ import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MailSearch } from "lucide-react";
 import { matchRejectionEmail } from "@/app/actions";
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,7 @@ export function EmailMatchPanel({
   hasActiveJobs: boolean;
 }) {
   const router = useRouter();
+  const demoMode = useDemoMode();
   const pushToast = useJobDeskStore((state) => state.pushToast);
   const [value, setValue] = useState("");
   const [matches, setMatches] = useState<EmailMatch[]>([]);
@@ -139,6 +141,8 @@ export function EmailMatchPanel({
                 </p>
                 <div className="mt-4 flex justify-end">
                   <Button
+                    disabled={demoMode}
+                    title={demoMode ? "Archiving is disabled in the read-only demo." : undefined}
                     onClick={async () => {
                       const response = await fetch(`/api/jobs/${match.record.id}/archive`, {
                         method: "POST",
@@ -158,7 +162,7 @@ export function EmailMatchPanel({
                     }}
                     tone="secondary"
                   >
-                    Archive to Rejected
+                    {demoMode ? "Archive disabled (demo)" : "Archive to Rejected"}
                   </Button>
                 </div>
               </div>

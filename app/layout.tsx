@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import { AppProviders } from "@/components/app-providers";
+import { isPublicDemoMode } from "@/lib/demo-mode";
 import "@/app/globals.css";
 
 const manrope = Manrope({
@@ -30,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${manrope.variable} ${mono.variable} font-sans antialiased`}>
-        <AppProviders>{children}</AppProviders>
+        <AppProviders publicDemo={isPublicDemoMode()}>{children}</AppProviders>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { updateDailyGoal } from "@/app/actions";
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { Surface } from "@/components/ui/surface";
 import { useJobDeskStore } from "@/lib/store";
 import type { DailyGoalsState, GoalKey } from "@/lib/types";
@@ -14,6 +15,7 @@ export function DailyGoalsWidget({
 }: {
   initialGoals: DailyGoalsState;
 }) {
+  const demoMode = useDemoMode();
   const pushToast = useJobDeskStore((state) => state.pushToast);
   const [dailyGoals, setDailyGoals] = useState(initialGoals);
 
@@ -25,7 +27,9 @@ export function DailyGoalsWidget({
     <Surface className="p-5">
       <h2 className="text-xl font-semibold text-foreground">Daily check-in</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Small targets, one clear action each.
+        {demoMode
+          ? "Check-ins are read-only in the demo."
+          : "Small targets, one clear action each."}
       </p>
       <div className="mt-4 divide-y divide-border">
         {goalOrder.map((goal) => {
@@ -45,7 +49,8 @@ export function DailyGoalsWidget({
               </div>
               <button
                 aria-label={`Add one ${item.label.toLowerCase()}`}
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:translate-y-px"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface"
+                disabled={demoMode}
                 onClick={() =>
                   startTransition(async () => {
                     const result = await updateDailyGoal({

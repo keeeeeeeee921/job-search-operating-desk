@@ -24,6 +24,7 @@ import {
   updateLocalJobRecord
 } from "@/lib/db/local-store";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { DEMO_READ_ONLY_MESSAGE, isPublicDemoMode } from "@/lib/demo-mode";
 import { normalizeJobStage } from "@/lib/job-stage";
 import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import {
@@ -149,7 +150,19 @@ function hasDatabaseUrl() {
 }
 
 function shouldUseLocalFallback() {
-  return !hasDatabaseUrl() && !process.env.VERCEL;
+  // The public demo always serves the seed set from the in-memory local
+  // store, even when a DATABASE_URL is present in the environment.
+  return isPublicDemoMode() || (!hasDatabaseUrl() && !process.env.VERCEL);
+}
+
+/**
+ * Last line of defence for the public demo: the server actions and API
+ * routes already refuse writes, but the repository must never mutate either.
+ */
+function assertWritable() {
+  if (isPublicDemoMode()) {
+    throw new Error(DEMO_READ_ONLY_MESSAGE);
+  }
 }
 
 function shouldExplicitlySeedPostgres() {
@@ -1272,6 +1285,7 @@ async function runKeywordEmailMatch(input: string) {
 }
 
 export async function insertJob(record: JobRecord) {
+  assertWritable();
   await ensureDatabaseReady();
 
   const nextRecord = withAutoApplyMarker(record);
@@ -1295,6 +1309,7 @@ export async function insertJob(record: JobRecord) {
 }
 
 export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (records.length === 0) {
@@ -1324,6 +1339,7 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
 }
 
 export async function updateJobRecord(record: JobRecord) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
@@ -1359,6 +1375,7 @@ export async function updateJobRecord(record: JobRecord) {
 }
 
 export async function updateComments(id: string, comments: string) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
@@ -1372,6 +1389,7 @@ export async function updateComments(id: string, comments: string) {
 }
 
 export async function updateJobStage(id: string, stage: JobStage) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
@@ -1388,6 +1406,7 @@ export async function updateJobStage(id: string, stage: JobStage) {
 }
 
 export async function archiveJobRecord(id: string) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
@@ -1407,6 +1426,7 @@ export async function archiveJobRecord(id: string) {
 }
 
 export async function deleteJobRecord(id: string) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
@@ -1464,6 +1484,7 @@ export async function updateDailyGoalState(input: {
   kind: "increment" | "target";
   value?: number;
 }) {
+  assertWritable();
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
@@ -1502,6 +1523,7 @@ export async function repairTodayConnectGoalBaseline(input?: {
   count?: number;
   target?: number;
 }) {
+  assertWritable();
   await ensureDatabaseReady();
 
   const countValue = Math.max(0, Math.trunc(input?.count ?? 0));

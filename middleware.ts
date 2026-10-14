@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ACCESS_COOKIE_NAME, evaluateAccess } from "@/lib/access-token";
+import { isPublicDemoMode } from "@/lib/demo-mode";
 
 /**
  * Paths that must stay reachable without a token:
@@ -21,6 +22,13 @@ let loggedMissingToken = false;
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Public demo: every page is readable without a token. Server actions and
+  // API routes refuse writes themselves (lib/server/auth.ts getWriteBlock),
+  // so letting their requests through only yields the "read-only" message.
+  if (isPublicDemoMode()) {
+    return NextResponse.next();
+  }
+
   if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
@@ -37,7 +45,7 @@ export function middleware(request: NextRequest) {
       loggedMissingToken = true;
       console.error(
         "[job-desk] Refusing all requests: JOB_DESK_ACCESS_TOKEN is not set and NODE_ENV is production. " +
-          "Set JOB_DESK_ACCESS_TOKEN and redeploy."
+          "Set JOB_DESK_ACCESS_TOKEN (or JOB_DESK_PUBLIC_DEMO=true for a read-only demo) and redeploy."
       );
     }
 

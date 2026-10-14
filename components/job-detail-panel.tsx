@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ExternalLink } from "lucide-react";
+import { useDemoMode } from "@/components/demo-mode-provider";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
 import { Textarea } from "@/components/ui/textarea";
 import { jobStageLabels, selectableJobStages } from "@/lib/job-stage";
 import { formatSourceTypeLabel } from "@/lib/sourceDetection";
+import { DEMO_READ_ONLY_MESSAGE } from "@/lib/demo-mode";
 import type { JobRecord, JobStage } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
@@ -26,6 +28,7 @@ export function JobDetailPanel({
   onSaveComments: (comments: string) => Promise<void>;
   onSaveStage: (stage: JobStage) => Promise<void>;
 }) {
+  const demoMode = useDemoMode();
   const [comments, setComments] = useState(record.comments);
   const [stage, setStage] = useState(record.stage);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
@@ -38,6 +41,10 @@ export function JobDetailPanel({
   }, [record.comments, record.stage]);
 
   useEffect(() => {
+    if (demoMode) {
+      return;
+    }
+
     const savedDraft = window.sessionStorage.getItem(getDraftStorageKey(record.id));
     if (!savedDraft || savedDraft === record.comments) {
       if (savedDraft === record.comments) {
@@ -49,7 +56,7 @@ export function JobDetailPanel({
     setComments(savedDraft);
     latestCommentsRef.current = savedDraft;
     void onSaveComments(savedDraft);
-  }, [onSaveComments, record.comments, record.id]);
+  }, [demoMode, onSaveComments, record.comments, record.id]);
 
   useEffect(() => {
     latestCommentsRef.current = comments;
@@ -62,6 +69,10 @@ export function JobDetailPanel({
   }, [comments, record.comments, record.id]);
 
   useEffect(() => {
+    if (demoMode) {
+      return;
+    }
+
     const handlePageHide = () => {
       const nextComments = latestCommentsRef.current;
 
@@ -79,7 +90,7 @@ export function JobDetailPanel({
     return () => {
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [record.comments, record.id]);
+  }, [demoMode, record.comments, record.id]);
 
   return (
     <div>
@@ -134,7 +145,9 @@ export function JobDetailPanel({
           <div>
             <label className="text-xs font-medium text-muted-foreground" htmlFor="job-stage-select">Stage</label>
             <select
-              className="mt-2 w-full rounded-2xl border border-border bg-muted/60 px-3 py-2 text-base text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10 sm:text-sm"
+              aria-describedby={demoMode ? "job-stage-demo-note" : undefined}
+              className="mt-2 w-full rounded-2xl border border-border bg-muted/60 px-3 py-2 text-base text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+              disabled={demoMode}
               id="job-stage-select"
               onChange={(event) => {
                 const nextStage = event.target.value as JobStage;
@@ -149,6 +162,11 @@ export function JobDetailPanel({
                 </option>
               ))}
             </select>
+            {demoMode ? (
+              <p className="mt-2 text-xs text-muted-foreground" id="job-stage-demo-note">
+                Stage changes are disabled in the read-only demo.
+              </p>
+            ) : null}
           </div>
         </div>
       </Surface>
@@ -162,7 +180,9 @@ export function JobDetailPanel({
           </div>
           <label className="mt-4 block text-sm font-semibold text-foreground" htmlFor="job-comments">Comments</label>
           <Textarea
-            className="mt-2 min-h-48"
+            aria-describedby={demoMode ? "job-comments-demo-note" : undefined}
+            className="mt-2 min-h-48 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={demoMode}
             id="job-comments"
             onBlur={() => {
               void onSaveComments(comments);
@@ -175,9 +195,14 @@ export function JobDetailPanel({
                 nextValue
               );
             }}
-            placeholder="Add a note..."
+            placeholder={demoMode ? "Comments are read-only in the demo." : "Add a note..."}
             value={comments}
           />
+          {demoMode ? (
+            <p className="mt-2 text-xs text-muted-foreground" id="job-comments-demo-note">
+              {DEMO_READ_ONLY_MESSAGE}
+            </p>
+          ) : null}
         </Surface>
 
         <Surface className="p-5 sm:p-6">
@@ -195,9 +220,14 @@ export function JobDetailPanel({
         <Surface className="flex flex-col gap-4 border-rose-200 bg-rose-50 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-rose-800">Delete record</h2>
-            <p className="mt-1 text-sm text-rose-700">Permanently removes this application.</p>
+            <p className="mt-1 text-sm text-rose-700">
+              {demoMode
+                ? "Deleting is disabled in the read-only demo."
+                : "Permanently removes this application."}
+            </p>
           </div>
           <Button
+            disabled={demoMode}
             onClick={() => {
               if (window.confirm("Delete this record permanently? This can't be undone.")) {
                 void onDelete();

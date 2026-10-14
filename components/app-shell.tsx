@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { DemoModeBanner } from "@/components/demo-mode-banner";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -57,6 +58,7 @@ export function AppShell({
           </nav>
         </div>
       </header>
+      <DemoModeBanner />
       <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
   );

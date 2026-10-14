@@ -6,6 +6,7 @@ import {
   toJobListItem
 } from "@/lib/job-list";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
+import { isPublicDemoMode } from "@/lib/demo-mode";
 import { normalizeJobStage, stageAfterArchive } from "@/lib/job-stage";
 import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
 import { getDefaultSeedState } from "@/lib/seed";
@@ -38,6 +39,17 @@ type LocalStore = {
 };
 
 let localWriteQueue = Promise.resolve();
+
+/**
+ * Public demo deployments keep the store in memory only: the serverless
+ * filesystem is read-only, nothing may persist, and every instance should
+ * boot from the same seed set.
+ */
+let memoryStore: LocalStore | null = null;
+
+function isMemoryStoreMode() {
+  return isPublicDemoMode();
+}
 
 function computeDisplayedApplyCount(autoCount: number, applyAdjustment: number) {
   return Math.max(0, autoCount + applyAdjustment);
@@ -109,6 +121,7 @@ function withAutoApplyMarker(record: JobRecord) {
 
 function shouldSeedLocalStore() {
   return (
+    isPublicDemoMode() ||
     process.env.JOB_DESK_ENABLE_SEED === "true" ||
     process.env.NODE_ENV !== "production"
   );
@@ -142,6 +155,11 @@ async function withLocalWriteLock<T>(callback: () => Promise<T>) {
 }
 
 export async function ensureLocalStoreReady() {
+  if (isMemoryStoreMode()) {
+    memoryStore ??= createEmptyStore();
+    return;
+  }
+
   const storePath = getLocalStorePath();
   await mkdir(path.dirname(storePath), { recursive: true });
 
@@ -154,6 +172,10 @@ export async function ensureLocalStoreReady() {
 
 async function readLocalStore(): Promise<LocalStore> {
   await ensureLocalStoreReady();
+  if (isMemoryStoreMode() && memoryStore) {
+    return memoryStore;
+  }
+
   const raw = await readFile(getLocalStorePath(), "utf8");
   const parsed = JSON.parse(raw) as Partial<LocalStore>;
 
@@ -185,6 +207,11 @@ async function readLocalStore(): Promise<LocalStore> {
 }
 
 async function writeLocalStore(store: LocalStore) {
+  if (isMemoryStoreMode()) {
+    memoryStore = store;
+    return;
+  }
+
   const storePath = getLocalStorePath();
   const tempPath = `${storePath}.tmp`;
   await ensureLocalStoreReady();
@@ -474,6 +501,7 @@ export async function repairLocalTodayConnectGoalBaseline(input?: {
 }
 
 export async function resetLocalStoreForTests() {
+  memoryStore = null;
   await rm(getLocalStorePath(), { force: true });
   await ensureLocalStoreReady();
   await seedLocalStoreIfNeeded();
