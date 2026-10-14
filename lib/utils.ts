@@ -9,8 +9,16 @@ export function createId() {
   return crypto.randomUUID();
 }
 
+/**
+ * Display dates in a fixed zone so the server (UTC on Vercel) and the
+ * browser (wherever the user is) render the same text. Without `timeZone`
+ * a timestamp near midnight could read "Apr 6" on the server and "Apr 5" in
+ * the client, which also triggers a React hydration mismatch (#418).
+ * America/New_York matches getEasternDateKey() used for daily goals.
+ */
 export function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
     month: "short",
     day: "numeric",
     year: "numeric"
