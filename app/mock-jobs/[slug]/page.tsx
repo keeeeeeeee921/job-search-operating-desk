@@ -11,12 +11,14 @@ export async function generateMetadata({
   const job = getMockJobBySlug(slug);
 
   if (!job) {
-    return {};
+    return { robots: { index: false, follow: false } };
   }
 
   return {
     title: `${job.title} | ${job.company}`,
-    description: job.description
+    description: job.description,
+    // Synthetic postings for extraction demos; keep them out of search results.
+    robots: { index: false, follow: false }
   };
 }
 
