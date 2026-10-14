@@ -9,6 +9,11 @@ import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { isPublicDemoMode } from "@/lib/demo-mode";
 import { normalizeJobStage, stageAfterArchive } from "@/lib/job-stage";
 import {
+  appendSystemNote,
+  buildAutoArchiveNote,
+  isStaleActiveRecord
+} from "@/lib/stale-archive";
+import {
   matchesSearchCycleScope,
   normalizeSearchCycleLabel,
   type SearchCycleScope
@@ -397,13 +402,47 @@ export async function updateLocalComments(id: string, comments: string) {
   });
 }
 
+/**
+ * The single archive transition for the local store: manual archive and the
+ * stale sweep both go through here so "Rejected" means the same thing.
+ */
+function applyLocalArchive(target: JobRecord, systemNote?: string) {
+  target.stage = stageAfterArchive(normalizeJobStage(target.stage, target.pool));
+  target.pool = "rejected";
+  if (systemNote) {
+    target.comments = appendSystemNote(target.comments, systemNote);
+  }
+}
+
 export async function archiveLocalJob(id: string) {
   await mutateLocalStore(async (store) => {
     const target = store.jobs.find((job) => job.id === id);
     if (target) {
-      target.stage = stageAfterArchive(normalizeJobStage(target.stage, target.pool));
-      target.pool = "rejected";
+      applyLocalArchive(target);
     }
+  });
+}
+
+export async function findLocalStaleActiveJobs(now: Date) {
+  const store = await readLocalStore();
+  return store.jobs
+    .filter((job) => isStaleActiveRecord(job, now))
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+}
+
+export async function archiveLocalStaleActiveJobs(now: Date) {
+  return mutateLocalStore(async (store) => {
+    const archivedIds: string[] = [];
+    for (const job of store.jobs) {
+      if (!isStaleActiveRecord(job, now)) {
+        continue;
+      }
+
+      applyLocalArchive(job, buildAutoArchiveNote(job.timestamp));
+      archivedIds.push(job.id);
+    }
+
+    return { archivedIds };
   });
 }
 

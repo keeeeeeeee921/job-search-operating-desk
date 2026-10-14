@@ -11,6 +11,7 @@ import {
   type SearchCycleView
 } from "@/components/list-page-view";
 import { normalizePageNumber } from "@/lib/job-list";
+import { runStaleArchiveSweepIfDue } from "@/lib/server/stale-archive-sweep";
 import { getCurrentSearchCycleLabel } from "@/lib/search-cycle";
 
 function readStringParam(value: string | string[] | undefined) {
@@ -29,6 +30,8 @@ export default async function ActivePage({
     readStringParam(params[OLDER_CYCLES_PARAM]) === OLDER_CYCLES_VALUE
       ? "older"
       : "current";
+
+  await runStaleArchiveSweepIfDue();
 
   const [activeJobs, currentCount, olderCount] = await Promise.all([
     query

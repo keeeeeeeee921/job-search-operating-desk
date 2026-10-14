@@ -17,6 +17,7 @@
     "report:extraction-health:weekly": "tsx scripts/report-extraction-health.ts --weekly --days 28",
     "repair:connect-goal": "tsx scripts/repair-connect-goal.ts",
     "repair:search-text": "tsx scripts/repair-search-text.ts",
+    "archive:stale-active": "tsx scripts/archive-stale-active.ts",
     "db:generate": "drizzle-kit generate --config config/drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config config/drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts",

@@ -14,7 +14,9 @@ import {
 import { getDb } from "@/lib/db/client";
 import {
   archiveLocalJob,
+  archiveLocalStaleActiveJobs,
   deleteLocalJob,
+  findLocalStaleActiveJobs,
   ensureLocalStoreReady,
   getAllLocalRecords,
   getLocalActiveJobById,
@@ -59,6 +61,10 @@ import {
 } from "@/lib/query-cache-config";
 import { getDefaultSeedState } from "@/lib/seed";
 import { buildSearchLogAnalyticsFromRows } from "@/lib/search-log-analytics";
+import {
+  AUTO_ARCHIVE_NOTE_PREFIX,
+  getStaleActiveThreshold
+} from "@/lib/stale-archive";
 import {
   type DailyGoalsState,
   type EmailMatch,
@@ -1472,6 +1478,14 @@ export async function updateJobStage(id: string, stage: JobStage) {
   clearQueryCaches();
 }
 
+/**
+ * SQL form of stageAfterArchive(): "No Response" becomes "Rejected", any
+ * advanced stage is kept so the Search Log still shows how far it went.
+ */
+function archivedStageSql() {
+  return sql<string>`case when ${jobsTable.stage} = 'no_response' then 'rejected' else ${jobsTable.stage} end`;
+}
+
 export async function archiveJobRecord(id: string) {
   assertWritable();
   await ensureDatabaseReady();
@@ -1486,10 +1500,66 @@ export async function archiveJobRecord(id: string) {
     .update(jobsTable)
     .set({
       pool: "rejected",
-      stage: sql<string>`case when ${jobsTable.stage} = 'no_response' then 'rejected' else ${jobsTable.stage} end`
+      stage: archivedStageSql()
     })
     .where(eq(jobsTable.id, id));
   clearQueryCaches();
+}
+
+function staleActiveWhereClause(now: Date) {
+  return and(
+    eq(jobsTable.pool, "active"),
+    eq(jobsTable.stage, "no_response"),
+    lt(jobsTable.timestamp, getStaleActiveThreshold(now))
+  );
+}
+
+/** Active records at "No Response" saved more than STALE_ACTIVE_DAYS ago. */
+export async function findStaleActiveJobs(now = new Date()) {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    return findLocalStaleActiveJobs(now);
+  }
+
+  const rows = await getDb()
+    .select()
+    .from(jobsTable)
+    .where(staleActiveWhereClause(now))
+    .orderBy(desc(jobsTable.timestamp));
+
+  return rows.map(mapJobRow);
+}
+
+/**
+ * Archives every stale Active record in one statement, using the same
+ * pool/stage transition as archiveJobRecord() plus a system note in comments:
+ * "Auto-archived: no response for over a year (saved Sep 6, 2025)". The date
+ * is rendered in America/New_York to match formatDate().
+ */
+export async function archiveStaleActiveJobs(now = new Date()) {
+  assertWritable();
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    const result = await archiveLocalStaleActiveJobs(now);
+    clearQueryCaches();
+    return result;
+  }
+
+  const noteSql = sql<string>`${AUTO_ARCHIVE_NOTE_PREFIX} || ' (saved ' || to_char(${jobsTable.timestamp} at time zone 'America/New_York', 'Mon FMDD, YYYY') || ')'`;
+  const rows = await getDb()
+    .update(jobsTable)
+    .set({
+      pool: "rejected",
+      stage: archivedStageSql(),
+      comments: sql<string>`case when btrim(${jobsTable.comments}) = '' then ${noteSql} else rtrim(${jobsTable.comments}) || E'\n' || ${noteSql} end`
+    })
+    .where(staleActiveWhereClause(now))
+    .returning({ id: jobsTable.id });
+  clearQueryCaches();
+
+  return { archivedIds: rows.map((row) => row.id) };
 }
 
 export async function deleteJobRecord(id: string) {
