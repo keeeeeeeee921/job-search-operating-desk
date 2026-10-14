@@ -1,10 +1,17 @@
 import {
+  getActiveJobCount,
   getJobsPage,
   searchActiveJobsPage
 } from "@/lib/db/repository";
 import { AppShell } from "@/components/app-shell";
-import { ListPageView } from "@/components/list-page-view";
+import {
+  ListPageView,
+  OLDER_CYCLES_PARAM,
+  OLDER_CYCLES_VALUE,
+  type SearchCycleView
+} from "@/components/list-page-view";
 import { normalizePageNumber } from "@/lib/job-list";
+import { getCurrentSearchCycleLabel } from "@/lib/search-cycle";
 
 function readStringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
@@ -18,15 +25,36 @@ export default async function ActivePage({
   const params = searchParams ? await searchParams : {};
   const query = readStringParam(params.q).trim();
   const page = normalizePageNumber(Number(readStringParam(params.page)));
-  const activeJobs = query
-    ? await searchActiveJobsPage({ query, page })
-    : await getJobsPage({ pool: "active", page });
+  const searchCycle =
+    readStringParam(params[OLDER_CYCLES_PARAM]) === OLDER_CYCLES_VALUE
+      ? "older"
+      : "current";
+
+  const [activeJobs, currentCount, olderCount] = await Promise.all([
+    query
+      ? searchActiveJobsPage({ query, page, searchCycle })
+      : getJobsPage({ pool: "active", page, searchCycle }),
+    getActiveJobCount("current"),
+    getActiveJobCount("older")
+  ]);
+
+  const cycleView: SearchCycleView = {
+    mode: searchCycle,
+    currentLabel: getCurrentSearchCycleLabel(),
+    currentCount,
+    olderCount
+  };
 
   return (
     <AppShell currentPath="/active">
       <ListPageView
         basePath="/active"
-        description="Your current applications, sorted newest first."
+        cycleView={cycleView}
+        description={
+          searchCycle === "older"
+            ? "Applications from earlier search cycles, sorted newest first."
+            : "Your current applications, sorted newest first."
+        }
         detailBasePath="/active"
         pageData={activeJobs}
         query={query}

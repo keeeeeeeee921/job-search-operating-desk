@@ -102,6 +102,64 @@ describe("repository", () => {
     expect(page.records.every((record) => "jobDescription" in record === false)).toBe(true);
   });
 
+  it("scopes Active lists, search, recent items, and counts to the current search cycle", async () => {
+    const seededActive = await getJobsByPool("active");
+    expect(seededActive.every((record) => record.searchCycleLabel === "Search 01")).toBe(
+      true
+    );
+
+    await insertJob({
+      id: "cycle-current-1",
+      roleTitle: "Revenue Analyst",
+      company: "Northwind Analytics",
+      location: "Remote",
+      link: "https://example.com/jobs/northwind-revenue-analyst",
+      jobDescription: "Own weekly revenue reporting for the sales organization.",
+      timestamp: new Date().toISOString(),
+      pool: "active",
+      stage: "no_response",
+      searchCycleLabel: null,
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "high",
+      extractionStatus: "confirmed"
+    });
+
+    const currentPage = await getJobsPage({ pool: "active", searchCycle: "current" });
+    expect(currentPage.totalCount).toBe(1);
+    expect(currentPage.records.map((record) => record.id)).toEqual(["cycle-current-1"]);
+
+    const olderPage = await getJobsPage({ pool: "active", searchCycle: "older" });
+    expect(olderPage.totalCount).toBe(seededActive.length);
+    expect(olderPage.records.some((record) => record.id === "cycle-current-1")).toBe(false);
+
+    const allPage = await getJobsPage({ pool: "active" });
+    expect(allPage.totalCount).toBe(seededActive.length + 1);
+
+    expect(await getActiveJobCount("current")).toBe(1);
+    expect(await getActiveJobCount("older")).toBe(seededActive.length);
+    expect(await getActiveJobCount()).toBe(seededActive.length + 1);
+
+    const recent = await getRecentActiveJobs(4, "current");
+    expect(recent.map((record) => record.id)).toEqual(["cycle-current-1"]);
+
+    const currentSearch = await searchActiveJobsPage({
+      query: "IBM Canada",
+      searchCycle: "current"
+    });
+    expect(currentSearch.totalCount).toBe(0);
+
+    const olderSearch = await searchActiveJobsPage({
+      query: "IBM Canada",
+      searchCycle: "older"
+    });
+    expect(olderSearch.totalCount).toBeGreaterThan(0);
+    expect(olderSearch.records.every((record) => record.company.includes("IBM Canada"))).toBe(
+      true
+    );
+  });
+
   it("returns active counts without loading full records into the page layer", async () => {
     const active = await getJobsByPool("active");
     const count = await getActiveJobCount();

@@ -1,4 +1,16 @@
-import { and, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  ne,
+  or,
+  sql
+} from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import {
   archiveLocalJob,
@@ -26,7 +38,12 @@ import {
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { DEMO_READ_ONLY_MESSAGE, isPublicDemoMode } from "@/lib/demo-mode";
 import { normalizeJobStage } from "@/lib/job-stage";
-import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
+import {
+  getCurrentSearchCycleLabel,
+  normalizeSearchCycleLabel,
+  SEARCH_02_START_INSTANT,
+  type SearchCycleScope
+} from "@/lib/search-cycle";
 import {
   buildPaginatedJobListResult,
   JOB_DESCRIPTION_PREVIEW_LENGTH,
@@ -286,6 +303,36 @@ function buildSearchCondition(query: string) {
 
   const escaped = normalizedQuery.replace(/[\\%_]/g, "\\$&");
   return sql<boolean>`${jobsTable.searchText} like ${`%${escaped}%`} escape '\\'`;
+}
+
+/**
+ * Rows whose search_cycle_label is still null fall back to the timestamp,
+ * mirroring normalizeSearchCycleLabel() for the local store.
+ */
+function buildSearchCycleCondition(scope: SearchCycleScope) {
+  if (scope === "all") {
+    return undefined;
+  }
+
+  const currentLabel = getCurrentSearchCycleLabel();
+
+  if (scope === "current") {
+    return or(
+      eq(jobsTable.searchCycleLabel, currentLabel),
+      and(
+        isNull(jobsTable.searchCycleLabel),
+        gte(jobsTable.timestamp, SEARCH_02_START_INSTANT)
+      )
+    );
+  }
+
+  return or(
+    ne(jobsTable.searchCycleLabel, currentLabel),
+    and(
+      isNull(jobsTable.searchCycleLabel),
+      lt(jobsTable.timestamp, SEARCH_02_START_INSTANT)
+    )
+  );
 }
 
 const tokenStopwords = new Set([
@@ -718,18 +765,24 @@ export async function getSearchLogAnalytics(
   );
 }
 
-export async function getRecentActiveJobs(limit = 4) {
+export async function getRecentActiveJobs(
+  limit = 4,
+  searchCycle: SearchCycleScope = "all"
+) {
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
-    return getLocalRecentActiveJobs(limit);
+    return getLocalRecentActiveJobs(limit, searchCycle);
   }
 
-  return getOrLoadCached(recentActiveCache, `recent-active:${limit}`, async () => {
+  const cacheKey = `recent-active:${searchCycle}:${limit}`;
+  return getOrLoadCached(recentActiveCache, cacheKey, async () => {
     const rows = await getDb()
       .select(getJobListPreviewSelection())
       .from(jobsTable)
-      .where(eq(jobsTable.pool, "active"))
+      .where(
+        and(eq(jobsTable.pool, "active"), buildSearchCycleCondition(searchCycle))
+      )
       .orderBy(desc(jobsTable.timestamp))
       .limit(limit);
 
@@ -759,28 +812,34 @@ export async function getJobsPage(input: {
   pool: JobPool;
   page?: number;
   pageSize?: number;
+  searchCycle?: SearchCycleScope;
 }): Promise<PaginatedJobListResult> {
   await ensureDatabaseReady();
 
   const pageSize = input.pageSize ?? JOB_LIST_PAGE_SIZE;
   const page = normalizePageNumber(input.page);
+  const searchCycle = input.searchCycle ?? "all";
 
   if (shouldUseLocalFallback()) {
     return getLocalJobsPage({
       pool: input.pool,
       page,
-      pageSize
+      pageSize,
+      searchCycle
     });
   }
 
-  const cacheKey = `jobs-page:${input.pool}:${page}:${pageSize}`;
+  const cacheKey = `jobs-page:${input.pool}:${searchCycle}:${page}:${pageSize}`;
   const cachedPage = readCache(paginatedResultCache, cacheKey);
   if (cachedPage) {
     return cachedPage;
   }
 
-  const whereClause = eq(jobsTable.pool, input.pool);
-  const totalCount = await getCachedCount(`jobs-count:${input.pool}`, async () => {
+  const whereClause = and(
+    eq(jobsTable.pool, input.pool),
+    buildSearchCycleCondition(searchCycle)
+  );
+  const totalCount = await getCachedCount(`jobs-count:${input.pool}:${searchCycle}`, async () => {
     const [{ value }] = await getDb()
       .select({ value: count() })
       .from(jobsTable)
@@ -814,6 +873,7 @@ export async function searchActiveJobsPage(input: {
   query: string;
   page?: number;
   pageSize?: number;
+  searchCycle?: SearchCycleScope;
 }): Promise<PaginatedJobListResult> {
   return searchJobsPage({
     ...input,
@@ -826,34 +886,39 @@ export async function searchJobsPage(input: {
   query: string;
   page?: number;
   pageSize?: number;
+  searchCycle?: SearchCycleScope;
 }): Promise<PaginatedJobListResult> {
   await ensureDatabaseReady();
 
   const pageSize = input.pageSize ?? JOB_LIST_PAGE_SIZE;
   const page = normalizePageNumber(input.page);
   const searchCondition = buildSearchCondition(input.query);
+  const searchCycle = input.searchCycle ?? "all";
 
   if (shouldUseLocalFallback()) {
     return searchLocalJobsPage({
       pool: input.pool,
       query: input.query,
       page,
-      pageSize
+      pageSize,
+      searchCycle
     });
   }
 
   const normalizedQuery = normalizeText(input.query);
-  const cacheKey = `search-page:${input.pool}:${normalizedQuery}:${page}:${pageSize}`;
+  const cacheKey = `search-page:${input.pool}:${searchCycle}:${normalizedQuery}:${page}:${pageSize}`;
   const cachedPage = readCache(paginatedResultCache, cacheKey);
   if (cachedPage) {
     return cachedPage;
   }
 
-  const whereClause = searchCondition
-    ? and(eq(jobsTable.pool, input.pool), searchCondition)
-    : eq(jobsTable.pool, input.pool);
+  const whereClause = and(
+    eq(jobsTable.pool, input.pool),
+    buildSearchCycleCondition(searchCycle),
+    searchCondition
+  );
   const totalCount = await getCachedCount(
-    `search-count:${input.pool}:${normalizedQuery}`,
+    `search-count:${input.pool}:${searchCycle}:${normalizedQuery}`,
     async () => {
       const [{ value }] = await getDb()
         .select({ value: count() })
@@ -885,18 +950,20 @@ export async function searchJobsPage(input: {
   return pageResult;
 }
 
-export async function getActiveJobCount() {
+export async function getActiveJobCount(searchCycle: SearchCycleScope = "all") {
   await ensureDatabaseReady();
 
   if (shouldUseLocalFallback()) {
-    return getLocalActiveJobCount();
+    return getLocalActiveJobCount(searchCycle);
   }
 
-  return getCachedCount("active-job-count", async () => {
+  return getCachedCount(`active-job-count:${searchCycle}`, async () => {
     const [{ value }] = await getDb()
       .select({ value: count() })
       .from(jobsTable)
-      .where(eq(jobsTable.pool, "active"));
+      .where(
+        and(eq(jobsTable.pool, "active"), buildSearchCycleCondition(searchCycle))
+      );
 
     return value;
   });

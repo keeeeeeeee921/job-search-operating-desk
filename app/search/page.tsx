@@ -12,7 +12,12 @@ export default async function SearchPage({
   const params = searchParams ? await searchParams : {};
   const query = readStringParam(params.q).trim();
   const page = readStringParam(params.page).trim();
+  const cycle = readStringParam(params.cycle).trim();
   const nextParams = new URLSearchParams();
+
+  if (cycle) {
+    nextParams.set("cycle", cycle);
+  }
 
   if (query) {
     nextParams.set("q", query);

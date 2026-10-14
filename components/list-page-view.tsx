@@ -6,19 +6,81 @@ import { Surface } from "@/components/ui/surface";
 import type { PaginatedJobListResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-function buildPageHref(basePath: string, page: number, query: string) {
+export const OLDER_CYCLES_PARAM = "cycle";
+export const OLDER_CYCLES_VALUE = "older";
+
+/**
+ * Describes the search-cycle split shown on /active: the current cycle is the
+ * default working set, older cycles stay one click away.
+ */
+export type SearchCycleView = {
+  mode: "current" | "older";
+  currentLabel: string;
+  currentCount: number;
+  olderCount: number;
+};
+
+function buildListHref(
+  basePath: string,
+  input: { page?: number; query?: string; olderCycles?: boolean }
+) {
   const params = new URLSearchParams();
 
-  if (query.trim()) {
-    params.set("q", query.trim());
+  if (input.olderCycles) {
+    params.set(OLDER_CYCLES_PARAM, OLDER_CYCLES_VALUE);
   }
 
-  if (page > 1) {
-    params.set("page", String(page));
+  if (input.query?.trim()) {
+    params.set("q", input.query.trim());
+  }
+
+  if (input.page && input.page > 1) {
+    params.set("page", String(input.page));
   }
 
   const serialized = params.toString();
   return serialized ? `${basePath}?${serialized}` : basePath;
+}
+
+function CycleToggle({
+  basePath,
+  cycleView,
+  query
+}: {
+  basePath: string;
+  cycleView: SearchCycleView;
+  query: string;
+}) {
+  const linkClassName = cn(
+    "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
+    "border-border bg-surface text-foreground hover:border-accent/20 hover:bg-white"
+  );
+
+  if (cycleView.mode === "older") {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
+        <span>
+          Showing records saved before {cycleView.currentLabel}. They stay out of the
+          default working set.
+        </span>
+        <Link className={linkClassName} href={buildListHref(basePath, { query })}>
+          Back to {cycleView.currentLabel} ({cycleView.currentCount})
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
+      <span>Showing {cycleView.currentLabel} only.</span>
+      <Link
+        className={linkClassName}
+        href={buildListHref(basePath, { query, olderCycles: true })}
+      >
+        Older cycles ({cycleView.olderCount})
+      </Link>
+    </div>
+  );
 }
 
 function formatRange(pageData: PaginatedJobListResult) {
@@ -40,7 +102,8 @@ export function ListPageView({
   searchPlaceholder = "Search Active by company or role",
   eyebrow,
   detailBasePath,
-  query = ""
+  query = "",
+  cycleView
 }: {
   title: string;
   description: string;
@@ -51,13 +114,19 @@ export function ListPageView({
   eyebrow?: string;
   detailBasePath?: string;
   query?: string;
+  cycleView?: SearchCycleView;
 }) {
+  const olderCycles = cycleView?.mode === "older";
+  const pageHref = (page: number) =>
+    buildListHref(basePath, { page, query, olderCycles });
+
   return (
     <div className="space-y-6">
         <div className="flex flex-col gap-5 px-1 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold text-accent">
-              {eyebrow ?? (searchable ? "Working set" : "Archive")}
+              {eyebrow ??
+                (olderCycles ? "Older cycles" : searchable ? "Working set" : "Archive")}
             </p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
             <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
@@ -67,9 +136,16 @@ export function ListPageView({
           <div className="text-sm text-muted-foreground">{formatRange(pageData)}</div>
         </div>
 
+        {cycleView ? (
+          <CycleToggle basePath={basePath} cycleView={cycleView} query={query} />
+        ) : null}
+
         {searchable ? (
           <Surface className="p-4 sm:p-5">
           <form action={basePath} className="flex max-w-2xl flex-col gap-3 sm:flex-row">
+            {olderCycles ? (
+              <input name={OLDER_CYCLES_PARAM} type="hidden" value={OLDER_CYCLES_VALUE} />
+            ) : null}
             <Input
               aria-label={searchPlaceholder}
               defaultValue={query}
@@ -84,7 +160,7 @@ export function ListPageView({
                     "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
                     "border-transparent bg-transparent text-muted-foreground hover:bg-surface hover:text-foreground"
                   )}
-                  href={basePath}
+                  href={buildListHref(basePath, { olderCycles })}
                 >
                   Clear
                 </Link>
@@ -97,11 +173,23 @@ export function ListPageView({
       <JobRecordTable
         detailBasePath={detailBasePath}
         emptyDescription={
-          searchable
+          query
             ? `Try another company or role in ${title}.`
-            : "Nothing archived here yet."
+            : cycleView?.mode === "current"
+              ? "New records land here as soon as they are saved. Older cycles are one click away."
+              : searchable
+                ? `Try another company or role in ${title}.`
+                : "Nothing archived here yet."
         }
-        emptyTitle={searchable ? `No matches in ${title}` : "No records yet"}
+        emptyTitle={
+          query
+            ? `No matches in ${title}`
+            : cycleView?.mode === "current"
+              ? `No ${title} records in ${cycleView.currentLabel} yet`
+              : searchable
+                ? `No matches in ${title}`
+                : "No records yet"
+        }
         records={pageData.records}
       />
 
@@ -117,7 +205,7 @@ export function ListPageView({
                   "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
                   "border-transparent bg-transparent text-muted-foreground hover:bg-surface hover:text-foreground"
                 )}
-                href={buildPageHref(basePath, pageData.page - 1, query)}
+                href={pageHref(pageData.page - 1)}
               >
                 Previous
               </Link>
@@ -132,7 +220,7 @@ export function ListPageView({
                   "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
                   "border-border bg-surface text-foreground hover:border-accent/20 hover:bg-white"
                 )}
-                href={buildPageHref(basePath, pageData.page + 1, query)}
+                href={pageHref(pageData.page + 1)}
               >
                 Next
               </Link>

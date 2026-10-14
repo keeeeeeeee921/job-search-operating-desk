@@ -4,7 +4,7 @@ import { HomeWorkspace } from "@/components/home-workspace";
 
 export default async function HomePage() {
   const [recentItems, dailyGoals] = await Promise.all([
-    getRecentActiveJobs(4),
+    getRecentActiveJobs(4, "current"),
     getDailyGoalsState()
   ]);
 

@@ -78,8 +78,32 @@ test("shows duplicate modal and respects cancel or continue", async ({ page, bas
     page.getByRole("heading", { name: "Possible duplicate" })
   ).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.goto("/active");
+  await page.goto("/active?cycle=older");
   await expect(page.getByText("IBM Canada").first()).toBeVisible();
+});
+
+test("Active shows the current cycle by default and keeps older cycles one click away", async ({
+  page
+}) => {
+  await page.goto("/active");
+  await expect(page.getByText("Showing Search 02 only.")).toBeVisible();
+  await expect(page.getByText("IBM Canada")).toHaveCount(0);
+
+  const olderLink = page.getByRole("link", { name: /^Older cycles \(\d+\)$/ });
+  await expect(olderLink).toBeVisible();
+  await olderLink.click();
+  await expect(page).toHaveURL(/\/active\?cycle=older/);
+  await expect(page.getByText("IBM Canada").first()).toBeVisible();
+
+  await page.getByPlaceholder("Search Active by company or role").fill("IBM");
+  await page.getByRole("button", { name: "Search" }).click();
+  await expect(page).toHaveURL(/cycle=older/);
+  await expect(page).toHaveURL(/q=IBM/);
+  await expect(page.getByText("IBM Canada").first()).toBeVisible();
+
+  await page.getByRole("link", { name: /^Back to Search 02 \(\d+\)$/ }).click();
+  await expect(page).toHaveURL(/\/active\?q=IBM$/);
+  await expect(page.getByText("No matches in Active")).toBeVisible();
 });
 
 test("search scans only active records", async ({ page }) => {
@@ -96,7 +120,7 @@ test("legacy /search links redirect to /active with query params", async ({ page
 });
 
 test("comments persist after blur", async ({ page }) => {
-  await page.goto("/active");
+  await page.goto("/active?cycle=older");
   await page.getByRole("link", { name: "Business Analyst", exact: true }).click();
   const textarea = page.getByPlaceholder("Add a note...");
   await textarea.fill("Second round interview");
@@ -128,11 +152,12 @@ test("update by email archives manually", async ({ page }) => {
 });
 
 test("active records can be deleted from the detail page", async ({ page }) => {
-  await page.goto("/active");
+  await page.goto("/active?cycle=older");
   await page.getByRole("link", { name: "Ops Research Scientist I", exact: true }).click();
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete record" }).click();
   await page.waitForURL("**/active");
+  await page.goto("/active?cycle=older");
   await expect(
     page.getByRole("link", { name: "Ops Research Scientist I", exact: true })
   ).toHaveCount(0);

@@ -8,7 +8,11 @@ import {
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { isPublicDemoMode } from "@/lib/demo-mode";
 import { normalizeJobStage, stageAfterArchive } from "@/lib/job-stage";
-import { normalizeSearchCycleLabel } from "@/lib/search-cycle";
+import {
+  matchesSearchCycleScope,
+  normalizeSearchCycleLabel,
+  type SearchCycleScope
+} from "@/lib/search-cycle";
 import { getDefaultSeedState } from "@/lib/seed";
 import type {
   DailyGoalsState,
@@ -264,15 +268,23 @@ export async function resetLocalStoreToSeedState() {
   });
 }
 
-export async function getLocalJobsByPool(pool: JobPool) {
+export async function getLocalJobsByPool(
+  pool: JobPool,
+  searchCycle: SearchCycleScope = "all"
+) {
   const store = await readLocalStore();
   return store.jobs
-    .filter((job) => job.pool === pool)
+    .filter(
+      (job) => job.pool === pool && matchesSearchCycleScope(job, searchCycle)
+    )
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }
 
-export async function getLocalRecentActiveJobs(limit: number): Promise<JobListItem[]> {
-  const jobs = await getLocalJobsByPool("active");
+export async function getLocalRecentActiveJobs(
+  limit: number,
+  searchCycle: SearchCycleScope = "all"
+): Promise<JobListItem[]> {
+  const jobs = await getLocalJobsByPool("active", searchCycle);
   return jobs.slice(0, limit).map(toJobListItem);
 }
 
@@ -286,8 +298,9 @@ export async function getLocalJobsPage(input: {
   pool: JobPool;
   page: number;
   pageSize: number;
+  searchCycle?: SearchCycleScope;
 }): Promise<PaginatedJobListResult> {
-  const records = await getLocalJobsByPool(input.pool);
+  const records = await getLocalJobsByPool(input.pool, input.searchCycle ?? "all");
   const totalCount = records.length;
   const page = normalizePageNumber(input.page);
   const totalPages = Math.max(1, Math.ceil(totalCount / input.pageSize));
@@ -303,8 +316,9 @@ export async function searchLocalJobsPage(input: {
   query: string;
   page: number;
   pageSize: number;
+  searchCycle?: SearchCycleScope;
 }): Promise<PaginatedJobListResult> {
-  const records = await getLocalJobsByPool(input.pool);
+  const records = await getLocalJobsByPool(input.pool, input.searchCycle ?? "all");
   const normalizedQuery = normalizeText(input.query);
   const filtered = normalizedQuery
     ? records.filter((record) =>
@@ -327,6 +341,7 @@ export async function searchLocalActiveJobsPage(input: {
   query: string;
   page: number;
   pageSize: number;
+  searchCycle?: SearchCycleScope;
 }): Promise<PaginatedJobListResult> {
   return searchLocalJobsPage({
     ...input,
@@ -334,9 +349,13 @@ export async function searchLocalActiveJobsPage(input: {
   });
 }
 
-export async function getLocalActiveJobCount() {
+export async function getLocalActiveJobCount(
+  searchCycle: SearchCycleScope = "all"
+) {
   const store = await readLocalStore();
-  return store.jobs.filter((job) => job.pool === "active").length;
+  return store.jobs.filter(
+    (job) => job.pool === "active" && matchesSearchCycleScope(job, searchCycle)
+  ).length;
 }
 
 export async function insertLocalJob(record: JobRecord) {

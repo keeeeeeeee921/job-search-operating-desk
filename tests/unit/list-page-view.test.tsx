@@ -1,0 +1,101 @@
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { ListPageView } from "@/components/list-page-view";
+import type { PaginatedJobListResult } from "@/lib/types";
+
+const emptyPage: PaginatedJobListResult = {
+  records: [],
+  page: 1,
+  pageSize: 50,
+  totalCount: 0,
+  totalPages: 1,
+  hasPreviousPage: false,
+  hasNextPage: false
+};
+
+describe("ListPageView search cycle toggle", () => {
+  // next/link schedules prefetch work after render; unmount before the jsdom
+  // environment is torn down so the scheduler does not touch a missing window.
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("links from the current cycle to the older cycles view and keeps the query", () => {
+    render(
+      <ListPageView
+        basePath="/active"
+        cycleView={{
+          mode: "current",
+          currentLabel: "Search 02",
+          currentCount: 0,
+          olderCount: 1857
+        }}
+        description="Your current applications."
+        pageData={emptyPage}
+        query="analyst"
+        searchable
+        title="Active"
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "Older cycles (1857)" })).toHaveAttribute(
+      "href",
+      "/active?cycle=older&q=analyst"
+    );
+    expect(screen.getByText("No matches in Active")).toBeInTheDocument();
+  });
+
+  it("explains an empty current cycle instead of calling it a failed search", () => {
+    render(
+      <ListPageView
+        basePath="/active"
+        cycleView={{
+          mode: "current",
+          currentLabel: "Search 02",
+          currentCount: 0,
+          olderCount: 6
+        }}
+        description="Your current applications."
+        pageData={emptyPage}
+        searchable
+        title="Active"
+      />
+    );
+
+    expect(screen.getByText("No Active records in Search 02 yet")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Older cycles (6)" })).toHaveAttribute(
+      "href",
+      "/active?cycle=older"
+    );
+  });
+
+  it("links back to the current cycle and keeps the search form in the older view", () => {
+    render(
+      <ListPageView
+        basePath="/active"
+        cycleView={{
+          mode: "older",
+          currentLabel: "Search 02",
+          currentCount: 53,
+          olderCount: 1857
+        }}
+        description="Applications from earlier search cycles."
+        pageData={{ ...emptyPage, totalCount: 1857, totalPages: 38, hasNextPage: true }}
+        searchable
+        title="Active"
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "Back to Search 02 (53)" })).toHaveAttribute(
+      "href",
+      "/active"
+    );
+    expect(screen.getByText("Older cycles")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1-50 of 1857 records")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
+      "href",
+      "/active?cycle=older&page=2"
+    );
+    expect(document.querySelector('input[name="cycle"]')).toHaveAttribute("value", "older");
+  });
+});

@@ -31,6 +31,47 @@ export function resolveSearchCycleLabel(timestamp: string | Date) {
     : SEARCH_02_LABEL;
 }
 
+/**
+ * The first instant (UTC) that counts as Search 02: midnight in Toronto on
+ * SEARCH_02_START_DATE_KEY (EDT, UTC-4). Used by the Postgres query to
+ * resolve rows whose search_cycle_label is still null.
+ */
+export const SEARCH_02_START_INSTANT = new Date("2026-04-03T04:00:00.000Z");
+
+export function getCurrentSearchCycleLabel(now = new Date()) {
+  return resolveSearchCycleLabel(now);
+}
+
+/**
+ * Which search cycles a list should show. "current" is the default working
+ * set on /active and the home page; "older" is everything before it; "all"
+ * keeps the historical behaviour (Rejected, analytics, scripts).
+ */
+export type SearchCycleScope = "current" | "older" | "all";
+
+export function isCurrentSearchCycleRecord(
+  record: { searchCycleLabel: string | null; timestamp: string | Date },
+  now = new Date()
+) {
+  return (
+    normalizeSearchCycleLabel(record.searchCycleLabel, record.timestamp) ===
+    getCurrentSearchCycleLabel(now)
+  );
+}
+
+export function matchesSearchCycleScope(
+  record: { searchCycleLabel: string | null; timestamp: string | Date },
+  scope: SearchCycleScope,
+  now = new Date()
+) {
+  if (scope === "all") {
+    return true;
+  }
+
+  const isCurrent = isCurrentSearchCycleRecord(record, now);
+  return scope === "current" ? isCurrent : !isCurrent;
+}
+
 export function normalizeSearchCycleLabel(
   label: string | null | undefined,
   timestamp: string | Date
