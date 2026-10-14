@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateComments } from "@/lib/db/repository";
+import { getWriteBlock } from "@/lib/server/auth";
 import { revalidateAfterCommentsUpdated } from "@/lib/server/revalidation";
 
 export async function POST(
@@ -8,6 +9,11 @@ export async function POST(
     params: Promise<{ id: string }>;
   }
 ) {
+  const blocked = await getWriteBlock();
+  if (blocked) {
+    return NextResponse.json({ error: blocked.message }, { status: blocked.status });
+  }
+
   const { id } = await context.params;
   const payload = (await request.json().catch(() => null)) as
     | { comments?: unknown }

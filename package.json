@@ -24,7 +24,7 @@
     "test": "vitest run --config config/vitest.config.ts",
     "test:postgres": "vitest run --config config/vitest.config.ts tests/integration/postgres-smoke.test.ts",
     "test:watch": "vitest --config config/vitest.config.ts",
-    "test:e2e": "rm -rf .data/job-desk-e2e && DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true pnpm build && DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true playwright test --config config/playwright.config.ts"
+    "test:e2e": "rm -rf .data/job-desk-e2e && DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true pnpm build && DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true JOB_DESK_ACCESS_TOKEN=e2e-access-token playwright test --config config/playwright.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",

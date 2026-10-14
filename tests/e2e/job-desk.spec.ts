@@ -1,5 +1,17 @@
 import { expect, test } from "@playwright/test";
 
+// The production server under test requires JOB_DESK_ACCESS_TOKEN
+// (see config/playwright.config.ts); present it as the session cookie.
+test.beforeEach(async ({ context, baseURL }) => {
+  await context.addCookies([
+    {
+      name: "job_desk_token",
+      value: "e2e-access-token",
+      url: baseURL ?? "http://127.0.0.1:3000"
+    }
+  ]);
+});
+
 test("saves a fully extracted job into Active", async ({ page, baseURL }) => {
   await page.goto("/");
   await expect(page.getByText("0 / 10").first()).toBeVisible();

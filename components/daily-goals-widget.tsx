@@ -4,6 +4,7 @@ import { startTransition, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { updateDailyGoal } from "@/app/actions";
 import { Surface } from "@/components/ui/surface";
+import { useJobDeskStore } from "@/lib/store";
 import type { DailyGoalsState, GoalKey } from "@/lib/types";
 
 const goalOrder: GoalKey[] = ["apply", "connect", "follow"];
@@ -13,6 +14,7 @@ export function DailyGoalsWidget({
 }: {
   initialGoals: DailyGoalsState;
 }) {
+  const pushToast = useJobDeskStore((state) => state.pushToast);
   const [dailyGoals, setDailyGoals] = useState(initialGoals);
 
   useEffect(() => {
@@ -46,12 +48,16 @@ export function DailyGoalsWidget({
                 className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 active:translate-y-px"
                 onClick={() =>
                   startTransition(async () => {
-                    setDailyGoals(
-                      await updateDailyGoal({
-                        goal,
-                        kind: "increment"
-                      })
-                    );
+                    const result = await updateDailyGoal({
+                      goal,
+                      kind: "increment"
+                    });
+                    if (!result.ok) {
+                      pushToast(result.error, "error");
+                      return;
+                    }
+
+                    setDailyGoals(result.state);
                   })
                 }
                 type="button"

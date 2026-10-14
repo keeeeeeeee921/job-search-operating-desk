@@ -66,7 +66,12 @@ export function ActiveDetailPageClient({
             }
 
             try {
-              await updateActiveJobStage(currentRecord.id, stage);
+              const result = await updateActiveJobStage(currentRecord.id, stage);
+              if (!result.ok) {
+                pushToast(result.error, "error");
+                return;
+              }
+
               setCurrentRecord({ ...currentRecord, stage });
               pushToast("Stage updated", "success");
             } catch {

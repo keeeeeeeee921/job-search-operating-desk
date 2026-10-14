@@ -12,7 +12,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true pnpm start",
+      "DATABASE_URL= DATABASE_URL_UNPOOLED= JOB_DESK_DB_DIR=.data/job-desk-e2e JOB_DESK_ENABLE_SEED=true JOB_DESK_ACCESS_TOKEN=e2e-access-token pnpm start",
     port: 3000,
     reuseExistingServer: !process.env.CI
   },

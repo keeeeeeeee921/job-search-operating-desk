@@ -3,7 +3,12 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createJobFromLink, createJobFromText, saveReviewedJob } from "@/app/actions";
+import {
+  createJobFromLink,
+  createJobFromText,
+  saveReviewedJob,
+  type CreateJobResult
+} from "@/app/actions";
 import { DailyGoalsWidget } from "@/components/daily-goals-widget";
 import { DuplicateModal } from "@/components/duplicate-modal";
 import { JobLinkInput } from "@/components/job-link-input";
@@ -20,8 +25,7 @@ import type {
   DuplicateCandidate,
   InputMode,
   JobDraft,
-  JobListItem,
-  JobRecord
+  JobListItem
 } from "@/lib/types";
 
 export function HomeWorkspace({
@@ -45,16 +49,13 @@ export function HomeWorkspace({
     DuplicateCandidate[]
   >([]);
 
-  const handleServerResult = (
-    result:
-      | { status: "review"; draft: JobDraft }
-      | {
-          status: "duplicate";
-          draft: JobDraft;
-          candidates: DuplicateCandidate[];
-        }
-      | { status: "saved"; record: JobRecord }
-  ) => {
+  const handleServerResult = (result: CreateJobResult) => {
+    if (result.status === "blocked") {
+      pushToast(result.message, "error");
+      setProcessingStatus(null);
+      return;
+    }
+
     if (result.status === "review") {
       setReviewDraft(result.draft);
       pushToast("Review needed", "warning");

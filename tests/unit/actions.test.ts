@@ -1,7 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn()
+}));
+
+const cookieJar = new Map<string, string>();
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) =>
+      cookieJar.has(name) ? { name, value: cookieJar.get(name) } : undefined
+  })
 }));
 
 delete process.env.DATABASE_URL;
@@ -13,6 +21,11 @@ describe("server actions", () => {
   beforeEach(async () => {
     const { resetDatabaseForTests } = await import("@/lib/db/repository");
     await resetDatabaseForTests();
+  });
+
+  afterEach(() => {
+    cookieJar.clear();
+    delete process.env.JOB_DESK_ACCESS_TOKEN;
   });
 
   it("saves a fully extracted record", async () => {
@@ -69,5 +82,30 @@ Python
       expect(result.record.company).toBe("Federal Express Corporation");
       expect(result.record.link).toBe("");
     }
+  });
+
+  it("refuses writes without a matching access cookie when a token is configured", async () => {
+    process.env.JOB_DESK_ACCESS_TOKEN = "unit-test-token";
+    const { createJobFromText, updateActiveJobStage, updateDailyGoal } = await import(
+      "@/app/actions"
+    );
+
+    const created = await createJobFromText("Data Analyst at Example Corp");
+    expect(created.status).toBe("blocked");
+
+    const staged = await updateActiveJobStage("seed-active-1", "round_1");
+    expect(staged).toEqual({ ok: false, error: expect.stringContaining("access token") });
+
+    const goal = await updateDailyGoal({ goal: "connect", kind: "increment" });
+    expect(goal.ok).toBe(false);
+  });
+
+  it("accepts writes when the access cookie matches the configured token", async () => {
+    process.env.JOB_DESK_ACCESS_TOKEN = "unit-test-token";
+    cookieJar.set("job_desk_token", "unit-test-token");
+    const { updateActiveJobStage } = await import("@/app/actions");
+
+    const staged = await updateActiveJobStage("seed-active-1", "round_1");
+    expect(staged).toEqual({ ok: true });
   });
 });
