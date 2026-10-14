@@ -5,7 +5,7 @@
  */
 
 export const ACCESS_COOKIE_NAME = "job_desk_token";
-export const ACCESS_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+export const ACCESS_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 90;
 export const UNAUTHORIZED_MESSAGE =
   "This action requires a valid access token. Sign in at /login first.";
 export const TOKEN_NOT_CONFIGURED_MESSAGE =

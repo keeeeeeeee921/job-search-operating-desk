@@ -48,7 +48,7 @@ export default async function LoginPage({
         </h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           This desk holds real application records. The token is set in the
-          deployment environment and stays in an HTTP-only cookie for 30 days.
+          deployment environment and stays in an HTTP-only cookie for 90 days.
         </p>
 
         <form action={loginWithAccessToken} className="mt-6 space-y-4">
