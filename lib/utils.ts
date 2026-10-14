@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { restoreAcronymCasing } from "@/lib/field-noise";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -360,7 +361,7 @@ export function capitalizeWords(input: string) {
     github: "GitHub"
   };
 
-  return input
+  const titleCased = input
     .split(/\s+/)
     .filter(Boolean)
     .map((part) => {
@@ -370,9 +371,21 @@ export function capitalizeWords(input: string) {
         return mapped;
       }
 
+      // Capitalize the first letter even when the token is wrapped in
+      // punctuation: "(usa)" -> "(Usa)" so the acronym pass can finish it.
+      const wrapped = part.match(/^([^A-Za-z0-9&]*)([A-Za-z0-9&]+)([^A-Za-z0-9&]*)$/);
+      if (wrapped) {
+        const [, leading, core, trailing] = wrapped;
+        return `${leading}${core.charAt(0).toUpperCase()}${core.slice(1).toLowerCase()}${trailing}`;
+      }
+
       return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
     })
     .join(" ");
+
+  // Title-casing flattens acronyms ("II" -> "Ii", "FP&A" -> "Fp&a"); restore
+  // the whitelisted ones so titles like "Data Analyst II" survive extraction.
+  return restoreAcronymCasing(titleCased);
 }
 
 export function tokenOverlapScore(a: string, b: string) {

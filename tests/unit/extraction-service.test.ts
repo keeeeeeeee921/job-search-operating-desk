@@ -345,4 +345,34 @@ describe("server extraction service", () => {
     ).toContain("blocked");
     expect(result.extractionStatus).toBe("needs_review");
   });
+
+  it("decodes entities and keeps acronyms when cleaning scraped titles and locations", () => {
+    const html = `<!doctype html><html><head>
+      <title>Senior Fp&amp;amp;a Analyst Ii - Careers</title>
+      <meta property="og:site_name" content="Johnson &amp;amp; Johnson" />
+      <script type="application/ld+json">${JSON.stringify({
+        "@type": "JobPosting",
+        title: "Senior Fp&amp;a Analyst Ii",
+        hiringOrganization: { "@type": "Organization", name: "Johnson &amp; Johnson" },
+        jobLocation: {
+          "@type": "Place",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: "San JoseEmployment Type:RegularJob Code:A107949",
+            addressRegion: "CA",
+            addressCountry: "US"
+          }
+        },
+        description: "Own the monthly close, variance analysis, and forecasting for the business unit. Partner with finance leaders across the organization."
+      })}</script>
+    </head><body><h1>Senior Fp&amp;amp;a Analyst Ii</h1><main>${"Own the monthly close, variance analysis, and forecasting for the business unit. ".repeat(6)}</main></body></html>`;
+
+    const result = extractCandidatesFromHtml(html, "https://careers.example.com/jobs/123");
+
+    expect(result.fields.roleTitle).toBe("Senior FP&A Analyst II");
+    expect(result.fields.company).toBe("Johnson & Johnson");
+    expect(result.fields.location).not.toContain("Employment Type");
+    expect(result.fields.location).not.toContain("Job Code");
+    expect(result.fields.location).toContain("San Jose");
+  });
 });

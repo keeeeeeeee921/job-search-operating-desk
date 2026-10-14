@@ -1,3 +1,4 @@
+import { decodeHtmlEntities, stripLocationNoise } from "@/lib/field-noise";
 import { validateJobDraft } from "@/lib/recordValidation";
 import type {
   ExtractionResult,
@@ -114,7 +115,7 @@ type LocationCandidateSeed = {
 
 function normalizeLocationCandidate(value: string): string {
   const cleaned = cleanLine(
-    value.replace(/^(location|remote|workplace type)\s*:\s*/i, "")
+    stripLocationNoise(value).replace(/^(location|remote|workplace type)\s*:\s*/i, "")
   );
 
   if (!cleaned) {
@@ -707,7 +708,7 @@ function looksLikeRoleTitle(line: string) {
 
 function normalizeRoleTitle(value: string) {
   return cleanLine(
-    value
+    decodeHtmlEntities(value)
       .replace(/^(title|role|role title|job title)\s*:\s*/i, "")
       .replace(/\s+/g, " ")
   );
@@ -734,7 +735,7 @@ function extractRoleTitle(lines: string[]) {
 
 function normalizeCompany(value: string) {
   return cleanLine(
-    value
+    decodeHtmlEntities(value)
       .replace(/\blogo\b/gi, "")
       .replace(/\s+/g, " ")
   );

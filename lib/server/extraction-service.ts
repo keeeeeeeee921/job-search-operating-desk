@@ -2,6 +2,10 @@ import { lookup } from "node:dns/promises";
 import net from "node:net";
 import { load } from "cheerio";
 import { buildFallbackExtraction } from "@/lib/extractor";
+import {
+  decodeHtmlEntities as decodeFieldEntities,
+  stripLocationNoise
+} from "@/lib/field-noise";
 import { getMockJobBySlug } from "@/lib/mock-jobs";
 import { validateJobDraft } from "@/lib/recordValidation";
 import { detectSource } from "@/lib/sourceDetection";
@@ -387,7 +391,7 @@ function parseJsonLd(raw: string) {
 
 function cleanTitle(value: string) {
   return capitalizeWords(
-    value
+    decodeFieldEntities(value)
       .replace(/^title\s*:\s*/i, "")
       .replace(/\|.*$/, "")
       .replace(/- careers?.*$/i, "")
@@ -416,7 +420,7 @@ function isUsefulTitleCandidate(value: string) {
 function cleanCompany(value: string) {
   return normalizeWhitespace(
     normalizeCountryName(
-      value
+      decodeFieldEntities(value)
         .replace(/[®™]/g, "")
         .replace(/^Amazon\.jobs$/i, "Amazon")
         .replace(/^\d+\s+/, "")
@@ -436,7 +440,7 @@ function cleanCompany(value: string) {
 
 function cleanLocation(value: string) {
   return normalizeCountryName(
-    value
+    stripLocationNoise(value)
       .replace(/^remote\s*\((.+)\)$/i, "$1 (Remote)")
       .replace(/^locations?\s*:?\s*/i, "")
       .replace(/^locations?\s*\(city\)\*?/i, "")

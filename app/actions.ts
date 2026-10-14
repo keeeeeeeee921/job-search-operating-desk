@@ -2,6 +2,7 @@
 
 import { findDuplicateCandidates } from "@/lib/duplicateDetection";
 import { draftFromExtraction } from "@/lib/extractor";
+import { cleanJobIdentityFields } from "@/lib/field-noise";
 import { extractJobFromText } from "@/lib/text-extractor";
 import {
   archiveJobRecord,
@@ -40,12 +41,20 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
     (value) => value === "confirmed"
   );
   const timestamp = new Date().toISOString();
+  // Last safety net for scraped noise (HTML entities, posting metadata glued
+  // onto the location, flattened acronyms) regardless of which extractor or
+  // review path produced the draft.
+  const identity = cleanJobIdentityFields({
+    company: draft.company,
+    roleTitle: draft.roleTitle,
+    location: draft.location
+  });
 
   return {
     id: createId(),
-    roleTitle: draft.roleTitle,
-    company: draft.company,
-    location: normalizeLocationForStorage(draft.location),
+    roleTitle: identity.roleTitle,
+    company: identity.company,
+    location: normalizeLocationForStorage(identity.location),
     link: draft.link,
     jobDescription: draft.jobDescription,
     timestamp,
