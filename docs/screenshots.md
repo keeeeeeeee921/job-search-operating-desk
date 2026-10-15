@@ -16,7 +16,9 @@ These screenshots are generated from the app's local seed data. They do not cont
 
 ## Search Log
 
-![Search Log analytics and saved story](images/search-log.png)
+One funnel per search cycle; the Interviewed toggle zooms the same chart into the people who reached an interview.
+
+![Search Log funnels and saved story](images/search-log.png)
 
 ## Email Match
 

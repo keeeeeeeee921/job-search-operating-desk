@@ -162,3 +162,22 @@ test("active records can be deleted from the detail page", async ({ page }) => {
     page.getByRole("link", { name: "Ops Research Scientist I", exact: true })
   ).toHaveCount(0);
 });
+
+test("Search Log drills into the interviewed subset of a cycle", async ({ page }) => {
+  await page.goto("/search-log");
+  const row = page.getByRole("region", { name: "Search 01" });
+  const all = row.getByRole("button", { name: /^All [\d,]+$/ });
+  const interviewed = row.getByRole("button", { name: /^Interviewed [\d,]+$/ });
+
+  await expect(all).toHaveAttribute("aria-pressed", "true");
+  await expect(interviewed).toHaveAttribute("aria-pressed", "false");
+  await expect(interviewed).toBeEnabled();
+
+  await interviewed.click();
+
+  await expect(interviewed).toHaveAttribute("aria-pressed", "true");
+  await expect(all).toHaveAttribute("aria-pressed", "false");
+  await expect(
+    row.locator('[data-node-label="round_1"]').getByText("Round 1")
+  ).toBeVisible();
+});

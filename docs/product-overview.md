@@ -14,7 +14,7 @@ Personal job tracking wastes time on repetitive, messy work. This project is a q
 - Search the current Active working set and keep Rejected records separate
 - Track stage and follow-up notes on each application
 - Match rejection emails back to Active jobs
-- Compare application outcomes by search cycle with a Sankey flow
+- Compare application outcomes by search cycle with a drill-down funnel: every cycle drawn to scale, one click to zoom into the interviewed subset
 - Preserve each completed search as a note plus a fixed summary image
 - Track daily Apply / Connect / Follow counts
 
@@ -42,7 +42,7 @@ Paste rejection email text or a `job title + company` query to find the most lik
 
 ### Record a search cycle
 
-The Search Log compares saved outcomes by cycle, then preserves the context behind each completed search with its goals, approach, interviewed companies, and one fixed summary image.
+The Search Log shows one funnel per search cycle (Applied → Screening / OA → Round 1 → Round 2+ → Offer, with Rejected and No Response beside it). Each funnel is drawn to scale by default; clicking the Screening / OA node or the Interviewed button rescales the same chart to the people who reached an interview. Below the funnels, each completed search keeps its goals, approach, interviewed companies, and one fixed summary image.
 
 ## Design principles
 

@@ -147,6 +147,24 @@ const defaultSeedStateBase: SeedState = {
       sourceType: "company",
       sourceConfidence: "low",
       extractionStatus: "needs_review"
+    },
+    {
+      id: "seed-active-7",
+      roleTitle: "Data Analyst, Walmart Channel",
+      company: "ZURU Toys",
+      location: "Remote",
+      link: "https://example.com/jobs/zuru-data-analyst-walmart",
+      jobDescription:
+        "Own the weekly Walmart performance read, maintain the semantic model, and brief the channel team.",
+      timestamp: offsetTimestamp(defaultSeedAnchor, 80),
+      pool: "active",
+      stage: "offer",
+      searchCycleLabel: SEARCH_01_LABEL,
+      comments: "Offer accepted after the final round.",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "low",
+      extractionStatus: "confirmed"
     }
   ],
   rejectedJobs: [
@@ -325,6 +343,42 @@ const defaultSeedStateBase: SeedState = {
       stage: "rejected",
       searchCycleLabel: SEARCH_01_LABEL,
       comments: "Rejected after screening.",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "low",
+      extractionStatus: "needs_review"
+    },
+    {
+      id: "seed-rejected-11",
+      roleTitle: "Data Analyst Intern",
+      company: "Tencent",
+      location: "Palo Alto, CA",
+      link: "https://example.com/jobs/tencent-data-analyst-intern",
+      jobDescription:
+        "Analyze product usage, build dashboards, and support experiment readouts.",
+      timestamp: offsetTimestamp(defaultSeedAnchor, 290),
+      pool: "rejected",
+      stage: "round_1",
+      searchCycleLabel: SEARCH_01_LABEL,
+      comments: "Rejected after the first-round interview.",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "low",
+      extractionStatus: "needs_review"
+    },
+    {
+      id: "seed-rejected-12",
+      roleTitle: "Junior Data Analyst",
+      company: "Northwind Analytics",
+      location: "Remote",
+      link: "https://example.com/jobs/northwind-junior-data-analyst",
+      jobDescription:
+        "Clean client datasets, maintain recurring reports, and answer ad hoc data questions.",
+      timestamp: offsetTimestamp(defaultSeedAnchor, 310),
+      pool: "rejected",
+      stage: "screening_oa",
+      searchCycleLabel: SEARCH_01_LABEL,
+      comments: "Rejected after the online assessment.",
       applyCountedDateKey: null,
       sourceType: "company",
       sourceConfidence: "low",
