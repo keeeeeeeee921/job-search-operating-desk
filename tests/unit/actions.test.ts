@@ -16,9 +16,13 @@ delete process.env.DATABASE_URL;
 delete process.env.DATABASE_URL_UNPOOLED;
 delete process.env.VERCEL;
 process.env.JOB_DESK_DB_DIR = ".data/job-desk-vitest";
+// CI exports JOB_DESK_ACCESS_TOKEN for the e2e server; these tests set it
+// explicitly where they need it, so start every test without one.
+delete process.env.JOB_DESK_ACCESS_TOKEN;
 
 describe("server actions", () => {
   beforeEach(async () => {
+    delete process.env.JOB_DESK_ACCESS_TOKEN;
     const { resetDatabaseForTests } = await import("@/lib/db/repository");
     await resetDatabaseForTests();
   });
