@@ -24,6 +24,7 @@
 - [Postgres deployment](docs/postgres-deployment.md)
 - [Operations runbook](docs/operations-runbook.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Decision log](docs/decisions.md)
 
 ## Stack
 
