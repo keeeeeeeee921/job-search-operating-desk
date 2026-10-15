@@ -19,6 +19,7 @@
     "repair:search-text": "tsx scripts/repair-search-text.ts",
     "archive:stale-active": "tsx scripts/archive-stale-active.ts",
     "repair:extraction-noise": "tsx scripts/repair-extraction-noise.ts",
+    "backfill:stage-from-comments": "tsx scripts/backfill-stage-from-comments.ts",
     "db:generate": "drizzle-kit generate --config config/drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config config/drizzle.config.ts",
     "db:studio": "drizzle-kit studio --config config/drizzle.config.ts",

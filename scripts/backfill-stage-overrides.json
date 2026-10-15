@@ -1,0 +1,4 @@
+{
+  "_comment": "Manual corrections for scripts/backfill-stage-from-comments.ts. Key = record id or id prefix (first 8 chars from the preview table is enough), value = stage (screening_oa, unpaid, round_1 ... round_5, offer) or \"skip\" to leave the record alone. Keys starting with _ are ignored. Example: \"1a2b3c4d\": \"offer\"",
+  "_example": "skip"
+}
