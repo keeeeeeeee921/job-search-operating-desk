@@ -119,6 +119,21 @@ test("legacy /search links redirect to /active with query params", async ({ page
   await expect(page).toHaveURL(/\/active\?q=Canva&page=2/);
 });
 
+test("unknown Active record shows the not-found page with a 404", async ({ page }) => {
+  const response = await page.goto("/active/does-not-exist");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByText("Active record not found")).toBeVisible();
+  await page.getByRole("link", { name: "Back to Active" }).click();
+  await expect(page).toHaveURL(/\/active$/);
+});
+
+test("unknown routes show the desk's own not-found page", async ({ page }) => {
+  const response = await page.goto("/nowhere");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByText("There is no page at this address")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Go to Active" })).toBeVisible();
+});
+
 test("comments persist after blur", async ({ page }) => {
   await page.goto("/active?cycle=older");
   await page.getByRole("link", { name: "Business Analyst", exact: true }).click();
