@@ -2,46 +2,37 @@
 
 ## 1) Active record exists but search cannot find it
 
-Most common cause: `search_text` is empty for that row.
+Most common cause used to be an empty `search_text` for that row. Since
+migration `0004` a database trigger (`jobs_set_search_text_before_write`)
+fills `search_text` on every insert and update, so this should not recur for
+new or edited rows.
 
-Run a bounded dry-run first:
-
-```bash
-pnpm repair:search-text -- --from 2026-03-08 --to 2026-03-10 --dry-run
-```
-
-Then apply:
-
-```bash
-pnpm repair:search-text -- --from 2026-03-08 --to 2026-03-10 --apply
-```
-
-Notes:
-- Keep the date window narrow.
-- This operation is data-index repair only. It does not change business fields.
+If it does: confirm the trigger exists in the target database
+(`\d jobs` in psql), then save any edit to the record (a comment is enough) so
+the trigger rebuilds its search text. The one-off `repair:search-text` script
+that fixed the pre-trigger rows was removed on 2026-10-14; it is in git history
+if a bulk repair is ever needed again.
 
 ## 2) Company / Role / Location is clearly polluted
 
-Use the Active-only audit/fix flow.
-
-1. Audit with JSON output:
+1. Audit recent Active records:
 
 ```bash
 pnpm audit:active-records -- --days 7 --limit 150 --json
 ```
 
-2. Build a patch map from `patchTemplate` output (or your own file).
-3. Dry-run manual fix first:
+2. Scraped noise (undecoded entities, metadata glued onto the location,
+   aggregator chrome, flattened acronyms) has a bulk repair. Dry-run first,
+   then apply:
 
 ```bash
-pnpm manual-fix:records -- --patch-file ./tmp/patches.json --dry-run
+pnpm repair:extraction-noise
+pnpm repair:extraction-noise -- --apply
 ```
 
-4. Apply after review:
-
-```bash
-pnpm manual-fix:records -- --patch-file ./tmp/patches.json --apply
-```
+3. Anything the noise repair does not cover is fixed by hand on that record.
+   The one-off patch-map scripts (`manual-fix:records`, `repair:records`) were
+   removed on 2026-10-14 and remain in git history.
 
 Rule: repair is always Active-only. Rejected records stay untouched.
 

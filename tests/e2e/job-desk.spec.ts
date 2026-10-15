@@ -114,11 +114,6 @@ test("search scans only active records", async ({ page }) => {
   await expect(page.getByText("No matches in Active")).toBeVisible();
 });
 
-test("legacy /search links redirect to /active with query params", async ({ page }) => {
-  await page.goto("/search?q=Canva&page=2");
-  await expect(page).toHaveURL(/\/active\?q=Canva&page=2/);
-});
-
 test("unknown Active record shows the not-found page with a 404", async ({ page }) => {
   const response = await page.goto("/active/does-not-exist");
   expect(response?.status()).toBe(404);

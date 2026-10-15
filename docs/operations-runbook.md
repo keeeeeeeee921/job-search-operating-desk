@@ -33,29 +33,28 @@ This command groups extraction status by week and highlights the top failing hos
 ## Active-Only Data Fix Workflow
 
 1. Run `audit:active-records` and identify suspicious IDs.
-2. Prepare a patch map for `manual-fix:records` (from `patchTemplate` or your own map).
-3. Dry run first:
+2. Run the scraped-noise repair as a dry run, read the report, then apply:
 
 ```bash
-pnpm manual-fix:records -- --patch-file ./tmp/patches.json --dry-run
+pnpm repair:extraction-noise
+pnpm repair:extraction-noise -- --apply
 ```
 
-4. Apply only after review:
-
-```bash
-pnpm manual-fix:records -- --patch-file ./tmp/patches.json --apply
-```
+3. Fix whatever remains by hand on the record.
 
 Rule: data repair is always `Active`-only. Rejected records are not modified.
 
 ## Release Safety Gate
 
-Before push/deploy:
+GitHub Actions runs the same gate on every push and pull request
+(`.github/workflows/ci.yml`). Locally, before push/deploy:
 
 ```bash
 pnpm lint
+pnpm typecheck
 pnpm test
 pnpm build
+pnpm test:e2e
 ```
 
 ## Troubleshooting
@@ -66,18 +65,27 @@ See `docs/troubleshooting.md` for common production issues:
 - update-by-email misses
 - location missing in pasted text flows
 
-## Emergency Utilities
+## Maintenance Utilities
 
-Repair search index text in a bounded window:
+All of these are dry-run by default and write only with `--apply`.
 
-```bash
-pnpm repair:search-text -- --from 2026-03-08 --to 2026-03-10 --dry-run
-pnpm repair:search-text -- --from 2026-03-08 --to 2026-03-10 --apply
-```
-
-Repair extraction for a date window:
+Archive Active records with no response for over a year (the app also runs
+this sweep once a day on its own):
 
 ```bash
-pnpm repair:records -- --date 2026-03-08 --dry-run
-pnpm repair:records -- --date 2026-03-08 --apply
+pnpm archive:stale-active
+pnpm archive:stale-active -- --apply
 ```
+
+Backfill `stage` from comment keywords for records that predate the stage
+column:
+
+```bash
+pnpm backfill:stage-from-comments
+pnpm backfill:stage-from-comments -- --apply
+```
+
+The one-off repair scripts from March 2026 (`repair:search-text`,
+`repair:records`, `repair:search-cycle-label`, `repair:connect-goal`,
+`manual-fix:records`) were removed on 2026-10-14 after their fixes landed in
+production; see git history before that date if one is needed again.
