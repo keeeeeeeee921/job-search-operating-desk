@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "import:historical": "tsx scripts/import-historical-applications.ts",
     "build:extraction-corpus": "tsx scripts/build-extraction-corpus.ts",
     "repair:records": "tsx scripts/repair-records.ts",

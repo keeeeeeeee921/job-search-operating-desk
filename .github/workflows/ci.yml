@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types, unit and e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Corepack reads packageManager from package.json and fetches that exact
+      # pnpm; this silences its interactive download prompt on a fresh runner.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      # The e2e run must never touch a real database: an empty DATABASE_URL
+      # makes the app use its local file store, seeded with demo records.
+      DATABASE_URL: ""
+      DATABASE_URL_UNPOOLED: ""
+      JOB_DESK_ENABLE_SEED: "true"
+      # Every page needs a token in production mode. test:e2e pins its own
+      # value for the server it starts and for the cookie the tests present;
+      # this one covers anything else that reads the variable.
+      JOB_DESK_ACCESS_TOKEN: ci-token
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable pnpm through Corepack
+        run: corepack enable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Chromium system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Build and run end-to-end tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
