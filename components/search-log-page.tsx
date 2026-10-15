@@ -1,27 +1,35 @@
-"use client";
-
 import Image from "next/image";
-import { useState } from "react";
 import { SearchLogSankey } from "@/components/search-log-sankey";
 import { Surface } from "@/components/ui/surface";
-import { searchLogCycles } from "@/lib/search-cycle";
+import {
+  SEARCH_02_START_INSTANT,
+  getCurrentSearchCycleLabel,
+  searchLogCycles
+} from "@/lib/search-cycle";
+import { buildSearchLogFlow } from "@/lib/search-log-flow";
 import type { SearchLogAnalytics } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
+
+function cyclePeriod(label: string) {
+  const story = searchLogCycles.find((cycle) => cycle.label === label);
+  if (story) {
+    return story.period.replace(" ~ ", " to ");
+  }
+  if (label === getCurrentSearchCycleLabel()) {
+    return `Since ${formatDate(SEARCH_02_START_INSTANT.toISOString())}`;
+  }
+  return "Period not saved";
+}
 
 export function SearchLogPage({
   analytics
 }: {
   analytics: SearchLogAnalytics;
 }) {
-  const [selectedLabel, setSelectedLabel] = useState(
-    analytics.cycles.at(-1)?.label ?? searchLogCycles[0]?.label ?? ""
-  );
-  const searchCycle = searchLogCycles.find(
-    (cycle) => cycle.label === selectedLabel
-  );
-
-  if (!selectedLabel) {
-    return null;
-  }
+  const flows = analytics.cycles.map((cycle) => ({
+    cycle,
+    flow: buildSearchLogFlow(cycle)
+  }));
 
   return (
     <div className="space-y-8">
@@ -42,20 +50,72 @@ export function SearchLogPage({
             Application flow by search cycle
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Choose a cycle to see how saved applications moved through each stage.
+            Each cycle is drawn to scale. Click the Screening / OA node, or the
+            Interviewed button, to zoom into the people who reached an interview.
           </p>
         </div>
-        <div className="mt-6">
-          <SearchLogSankey
-            analytics={analytics}
-            onSelectedLabelChange={setSelectedLabel}
-            selectedLabel={selectedLabel}
-          />
+
+        <div className="mt-6 grid gap-5 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-3">
+          {flows.map(({ cycle }) => (
+            <div key={cycle.label}>
+              <p className="text-sm text-muted-foreground">Applications in {cycle.label}</p>
+              <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
+                {cycle.total.toLocaleString("en-US")}
+              </p>
+            </div>
+          ))}
+          <div>
+            <p className="text-sm text-muted-foreground">Legacy active records</p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
+              {analytics.sunkenActiveCount.toLocaleString("en-US")}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Saved before {formatDate(analytics.sunkenThresholdDate)}
+            </p>
+          </div>
         </div>
+
+        {flows.length > 0 ? (
+          <div className="divide-y divide-border">
+            {flows.map(({ cycle, flow }) => (
+              <section
+                aria-labelledby={`search-log-row-${cycle.label.replace(/\s+/g, "-").toLowerCase()}`}
+                className="py-6"
+                key={cycle.label}
+              >
+                <SearchLogSankey
+                  flow={flow}
+                  heading={
+                    <div>
+                      <h3
+                        className="text-lg font-semibold text-foreground"
+                        id={`search-log-row-${cycle.label.replace(/\s+/g, "-").toLowerCase()}`}
+                      >
+                        {cycle.label}
+                      </h3>
+                      <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+                        {cyclePeriod(cycle.label)} · {cycle.total.toLocaleString("en-US")}{" "}
+                        applications · {flow.counts.screening.toLocaleString("en-US")} reached
+                        Screening / OA
+                      </p>
+                    </div>
+                  }
+                />
+              </section>
+            ))}
+          </div>
+        ) : (
+          <div className="px-6 py-12 text-center">
+            <p className="text-base font-semibold text-foreground">No flow data yet</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Save records with a search cycle label to populate this chart.
+            </p>
+          </div>
+        )}
       </Surface>
 
-      {searchCycle ? (
-        <Surface className="p-5 lg:p-6">
+      {searchLogCycles.map((searchCycle) => (
+        <Surface className="p-5 lg:p-6" key={searchCycle.label}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-accent">Saved story</p>
@@ -114,17 +174,7 @@ export function SearchLogPage({
             <p className="mt-3 text-xs text-muted-foreground">Updated May 21, 2026</p>
           </div>
         </Surface>
-      ) : (
-        <Surface className="p-5 lg:p-6">
-          <p className="text-sm font-semibold text-accent">Saved story</p>
-          <h2 className="mt-2 text-2xl font-semibold text-foreground">
-            No saved story for {selectedLabel}
-          </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            This cycle has flow data, but its note and summary image have not been saved yet.
-          </p>
-        </Surface>
-      )}
+      ))}
     </div>
   );
 }

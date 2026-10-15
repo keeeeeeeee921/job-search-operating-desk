@@ -13,6 +13,15 @@
   --accent-foreground: 0 0% 100%;
   --success: 144 45% 48%;
   --warning: 35 83% 56%;
+
+  /* Search Log funnel stage colors. Plain hex (not HSL triplets): used as
+     var(--stage-x) directly on SVG fills, never through hsl(). */
+  --stage-screening: #c4bcd8;
+  --stage-round1: #8d82b0;
+  --stage-round2: #5e5388;
+  --stage-offer: #4f8063;
+  --stage-rejected: #6b6474;
+  --stage-no-response: #b39b6b;
 }
 
 * {
