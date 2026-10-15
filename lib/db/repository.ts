@@ -667,7 +667,17 @@ async function assertPostgresSchemaReady() {
   const mismatch = describeMigrationMismatch(latestApplied, migrationJournal.entries);
 
   if (mismatch) {
-    throw new Error(mismatch);
+    // In production the error page hides the message, so a hard failure would
+    // leave the owner staring at "couldn't load" with no hint. Log loudly to
+    // the Vercel function logs and keep serving; opt into a hard stop with
+    // JOB_DESK_STRICT_MIGRATIONS=true. Development and tests always throw.
+    const strict =
+      process.env.NODE_ENV !== "production" ||
+      process.env.JOB_DESK_STRICT_MIGRATIONS === "true";
+    if (strict) {
+      throw new Error(mismatch);
+    }
+    console.error(`[job-desk] migration version mismatch: ${mismatch}`);
   }
 }
 
