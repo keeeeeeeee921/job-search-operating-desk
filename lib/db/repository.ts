@@ -12,6 +12,8 @@ import {
   sql
 } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import migrationJournal from "@/drizzle/meta/_journal.json";
+import { describeMigrationMismatch } from "@/lib/db/migration-check";
 import {
   archiveLocalJob,
   archiveLocalStaleActiveJobs,
@@ -648,6 +650,24 @@ async function assertPostgresSchemaReady() {
     throw new Error(
       "Postgres schema is missing required tables. Run `pnpm db:migrate` with DATABASE_URL_UNPOOLED before starting the app."
     );
+  }
+
+  // Tables existing is not enough: 0005-0008 add and remove columns. Compare
+  // the newest row Drizzle recorded with the last journal entry the code
+  // was built from (see lib/db/migration-check.ts).
+  const latestResult = await db.execute(sql`
+    select created_at as "createdAt"
+    from public.__drizzle_migrations
+    order by created_at desc
+    limit 1
+  `);
+  const latestApplied = latestResult[0] as
+    | { createdAt: number | string | bigint | null }
+    | undefined;
+  const mismatch = describeMigrationMismatch(latestApplied, migrationJournal.entries);
+
+  if (mismatch) {
+    throw new Error(mismatch);
   }
 }
 

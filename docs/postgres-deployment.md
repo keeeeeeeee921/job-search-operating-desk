@@ -34,9 +34,19 @@ That keeps Preview schema in sync with the branch-specific Neon database before 
 
 1. Update `lib/db/schema.ts`
 2. Generate SQL: `pnpm db:generate --name <change>`
-3. Review the SQL under `drizzle/`
+3. Review the SQL under `drizzle/` and commit the matching `drizzle/meta/NNNN_snapshot.json`
 4. Apply it: `pnpm db:migrate`
 5. Deploy
+
+Hand-written SQL files need a snapshot too: `drizzle-kit generate` diffs the
+schema against the newest snapshot, so a missing one makes the next generate
+produce a wrong migration. Snapshots `0004`-`0008` were reconstructed by hand
+for exactly that reason.
+
+On startup the app compares the newest row in `__drizzle_migrations` with the
+last entry of `drizzle/meta/_journal.json` and refuses to serve when they
+differ, with a message naming both migrations. A database that is behind means
+`pnpm db:migrate` was not run for this deploy.
 
 ## Validation Checklist
 
