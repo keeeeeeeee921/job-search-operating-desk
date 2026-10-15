@@ -48,6 +48,7 @@ export const stageKeywordRules: readonly KeywordRule[] = [
   { stage: "screening_oa", label: "assessment", pattern: /\bassessment/i },
   { stage: "screening_oa", label: "hackerrank", pattern: /\bhacker\s*rank/i },
   { stage: "screening_oa", label: "take-home", pattern: /\btake[\s-]?home/i },
+  { stage: "screening_oa", label: "questionnaire", pattern: /\b(?:pre[\s-]?interview|questionnaire)\b/i },
   { stage: "screening_oa", label: "笔试", pattern: /笔试/ },
   { stage: "screening_oa", label: "过了一轮筛", pattern: /过了一轮筛/ },
   {
@@ -62,7 +63,10 @@ export const stageKeywordRules: readonly KeywordRule[] = [
   {
     stage: "round_1",
     label: "interview",
-    pattern: /(?<!\b(?:hr|ai|phone|recruiter|screening)\s*)\binterview(?!\s+process)/i
+    // "pre-interview questionnaire", "interview questionnaire", "offered an
+    // interview" and "interview process" are screening-stage wording.
+    pattern:
+      /(?<!\b(?:hr|ai|phone|recruiter|screening)\s*)(?<!\bpre[\s-]?)\binterview(?!\s+(?:process|questionnaire|survey))/i
   },
   { stage: "round_1", label: "面试", pattern: /(?<!hr\s*)(?<!ai\s*)面试/i },
   // round_2
@@ -76,11 +80,19 @@ export const stageKeywordRules: readonly KeywordRule[] = [
   { stage: "round_3", label: "三面", pattern: /三面|终面/ },
   { stage: "round_3", label: "third round", pattern: /\b(?:third|3rd)[\s-]*round\b/i },
   { stage: "round_3", label: "round 3", pattern: /\bround\s*(?:3|three)\b/i },
-  { stage: "round_3", label: "final", pattern: /\bfinal\b/i },
+  // bare "final" shows up in "final decision", "final answer"; require the round
+  { stage: "round_3", label: "final round", pattern: /\bfinal\s*(?:round|interview|stage|面试)/i },
   { stage: "round_3", label: "onsite", pattern: /\bon[\s-]?site\b/i },
   { stage: "round_3", label: "case study", pattern: /\bcase[\s-]*study/i },
   // offer
-  { stage: "offer", label: "offer", pattern: /(?<!\bno\s*)(?<!\bnot\s*)(?<!没有?\s*)(?<!无\s*)\boffer/i },
+  // A bare "offer" inside long notes (job descriptions, outreach emails) is
+  // almost never an offer; require the word to carry a result.
+  {
+    stage: "offer",
+    label: "offer",
+    pattern:
+      /(?<!\bno\s*)(?<!\bnot\s*)(?<!没有?\s*)(?<!无\s*)(?:\b(?:got|received|accepted|signed|verbal)\s+(?:an?\s+|the\s+)?offer\b|\boffer\s*(?:letter|received|accepted|signed|stage)\b|^\s*offer\b|(?:拿到|收到|接了)\s*offer)/im
+  },
   { stage: "offer", label: "拿到", pattern: /拿到(?!\s*(?:面试|一面|二面|interview))/i }
 ];
 
@@ -368,7 +380,10 @@ export function planStageBackfill(
       continue;
     }
 
-    if (listedCompany) {
+    // The company list says "I interviewed with this company once", not "every
+    // application there got an interview", so it only backs up a record that
+    // carries a human note (an empty or auto-archived record never interviewed).
+    if (listedCompany && hasHumanComment(record.comments)) {
       rows.push({
         record,
         currentStage: record.stage,

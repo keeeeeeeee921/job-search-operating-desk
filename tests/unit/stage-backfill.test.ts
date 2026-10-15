@@ -97,6 +97,19 @@ describe("guessStageFromComments", () => {
     expect(guessStageFromComments("finally rejected")).toBeNull();
   });
 
+  it("does not read screening questionnaires or 'final decision' as interview rounds", () => {
+    expect(guessStageFromComments("You have been selected to take a pre-interview questionnaire")?.stage).toBe("screening_oa");
+    expect(guessStageFromComments("pre-screening Sales Analytics Interview Questionnaire")?.stage).toBe("screening_oa");
+    expect(guessStageFromComments("we will make a final decision next week")).toBeNull();
+  });
+
+  it("does not read a bare 'offer' inside long notes as an offer", () => {
+    expect(guessStageFromComments("2.20面试 the role will offer exposure to BI dashboards")?.stage).toBe("round_1");
+    expect(guessStageFromComments("I wanted to reach out directly to offer a conversation")).toBeNull();
+    expect(guessStageFromComments("offer")?.stage).toBe("offer");
+    expect(guessStageFromComments("got the offer!")?.stage).toBe("offer");
+  });
+
   it("returns null for empty, whitespace-only or keyword-free comments", () => {
     expect(guessStageFromComments("")).toBeNull();
     expect(guessStageFromComments("   ")).toBeNull();
@@ -169,18 +182,19 @@ describe("planStageBackfill", () => {
     expect(plan.rows.every((row) => row.changed)).toBe(true);
   });
 
-  it("suggests Round 1 for Search 01 records of listed companies without keywords", () => {
+  it("suggests Round 1 for Search 01 records of listed companies only when a human note exists", () => {
     const records = [
-      buildRecord("c1", { company: "Axon" }),
+      buildRecord("c1", { company: "Axon", comments: "10.21电话" }),
       buildRecord("c2", {
         company: "Axon Enterprise",
         comments: buildAutoArchiveNote("2025-09-06T12:00:00.000Z"),
         pool: "rejected",
         stage: "rejected"
       }),
-      buildRecord("c3", { company: "Axon", searchCycleLabel: "Search 02" }),
+      buildRecord("c3", { company: "Axon", searchCycleLabel: "Search 02", comments: "note" }),
       buildRecord("c4", { company: "Axon", comments: "hr hm: ..." }),
-      buildRecord("c5", { company: "ZURU", stage: "offer" })
+      buildRecord("c5", { company: "ZURU", stage: "offer" }),
+      buildRecord("c6", { company: "Axon" })
     ];
 
     const plan = planStageBackfill(records, {}, list);
@@ -189,17 +203,20 @@ describe("planStageBackfill", () => {
     expect(byId.get("c1")?.suggestedStage).toBe("round_1");
     expect(byId.get("c1")?.evidence).toEqual([INTERVIEWED_COMPANIES_EVIDENCE]);
     expect(byId.get("c1")?.source).toBe("company-list");
-    expect(byId.get("c2")?.suggestedStage).toBe("round_1");
+    // auto-archived note only: never interviewed, so the list does not apply
+    expect(byId.has("c2")).toBe(false);
     expect(byId.has("c3")).toBe(false);
     expect(byId.get("c4")?.suggestedStage).toBe("round_2");
     expect(byId.get("c4")?.evidence).toEqual(["hm", INTERVIEWED_COMPANIES_EVIDENCE]);
     expect(byId.has("c5")).toBe(false);
+    // no comment at all: one of many applications to that company, not the interview
+    expect(byId.has("c6")).toBe(false);
   });
 
   it("resolves the Search 01 label from the timestamp when the label is null", () => {
     const records = [
-      buildRecord("t1", { company: "Axon", searchCycleLabel: null, timestamp: "2025-12-01T12:00:00.000Z" }),
-      buildRecord("t2", { company: "Axon", searchCycleLabel: null, timestamp: "2026-06-01T12:00:00.000Z" })
+      buildRecord("t1", { company: "Axon", comments: "note", searchCycleLabel: null, timestamp: "2025-12-01T12:00:00.000Z" }),
+      buildRecord("t2", { company: "Axon", comments: "note", searchCycleLabel: null, timestamp: "2026-06-01T12:00:00.000Z" })
     ];
     const ids = planStageBackfill(records, {}, list).rows.map((row) => row.record.id);
     expect(ids).toEqual(["t1"]);
