@@ -2,7 +2,7 @@
 
 > A desktop-first personal workspace for managing job applications with calm structure and honest handling of uncertain data.
 
-[Live app](https://job-search-operating-desk.vercel.app)
+[Live app](https://job-search-operating-desk.vercel.app) · private workspace, sign-in required. It holds my real applications, so the link lands on a login page; the [screenshot gallery](docs/screenshots.md) shows every screen. Set `JOB_DESK_PUBLIC_DEMO=true` to run a read-only copy on seed data, no sign-in needed.
 
 ![Job Search Operating Desk home screen](docs/images/home-intake.png)
 
