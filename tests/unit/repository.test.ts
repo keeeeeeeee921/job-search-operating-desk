@@ -104,9 +104,15 @@ describe("repository", () => {
 
   it("scopes Active lists, search, recent items, and counts to the current search cycle", async () => {
     const seededActive = await getJobsByPool("active");
-    expect(seededActive.every((record) => record.searchCycleLabel === "Search 01")).toBe(
-      true
+    const seededCurrent = seededActive.filter(
+      (record) => record.searchCycleLabel === "Search 02"
     );
+    const seededOlder = seededActive.filter(
+      (record) => record.searchCycleLabel === "Search 01"
+    );
+    expect(seededCurrent.length).toBeGreaterThan(0);
+    expect(seededOlder.length).toBeGreaterThan(0);
+    expect(seededCurrent.length + seededOlder.length).toBe(seededActive.length);
 
     await insertJob({
       id: "cycle-current-1",
@@ -127,22 +133,24 @@ describe("repository", () => {
     });
 
     const currentPage = await getJobsPage({ pool: "active", searchCycle: "current" });
-    expect(currentPage.totalCount).toBe(1);
-    expect(currentPage.records.map((record) => record.id)).toEqual(["cycle-current-1"]);
+    expect(currentPage.totalCount).toBe(seededCurrent.length + 1);
+    expect(currentPage.records[0]?.id).toBe("cycle-current-1");
+    expect(currentPage.records.every((record) => record.id !== "seed-active-1")).toBe(true);
 
     const olderPage = await getJobsPage({ pool: "active", searchCycle: "older" });
-    expect(olderPage.totalCount).toBe(seededActive.length);
+    expect(olderPage.totalCount).toBe(seededOlder.length);
     expect(olderPage.records.some((record) => record.id === "cycle-current-1")).toBe(false);
 
     const allPage = await getJobsPage({ pool: "active" });
     expect(allPage.totalCount).toBe(seededActive.length + 1);
 
-    expect(await getActiveJobCount("current")).toBe(1);
-    expect(await getActiveJobCount("older")).toBe(seededActive.length);
+    expect(await getActiveJobCount("current")).toBe(seededCurrent.length + 1);
+    expect(await getActiveJobCount("older")).toBe(seededOlder.length);
     expect(await getActiveJobCount()).toBe(seededActive.length + 1);
 
     const recent = await getRecentActiveJobs(4, "current");
-    expect(recent.map((record) => record.id)).toEqual(["cycle-current-1"]);
+    expect(recent[0]?.id).toBe("cycle-current-1");
+    expect(recent.every((record) => record.id !== "seed-active-1")).toBe(true);
 
     const currentSearch = await searchActiveJobsPage({
       query: "IBM Canada",

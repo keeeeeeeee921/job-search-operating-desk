@@ -1,5 +1,5 @@
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
-import { SEARCH_01_LABEL } from "@/lib/search-cycle";
+import { SEARCH_01_LABEL, SEARCH_02_LABEL } from "@/lib/search-cycle";
 import type { DailyGoalsState, JobRecord } from "@/lib/types";
 import { getEasternDateKey } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ export interface SeedState {
 }
 
 const defaultSeedAnchor = new Date("2026-03-06T18:00:00.000Z");
+/** Search 02 starts 2026-04-03; these records sit well inside it. */
+const searchTwoSeedAnchor = new Date("2026-10-01T15:00:00.000Z");
 
 function offsetTimestamp(anchor: Date, hoursAgo: number) {
   return new Date(anchor.getTime() - hoursAgo * 60 * 60 * 1000).toISOString();
@@ -40,6 +42,60 @@ function cloneSeedState(seed: SeedState, date = new Date()): SeedState {
 
 const defaultSeedStateBase: SeedState = {
   activeJobs: [
+    {
+      id: "seed-active-s02-1",
+      roleTitle: "Retail Analytics Associate",
+      company: "Lumen Retail Analytics",
+      location: "Toronto, ON",
+      link: "https://example.com/jobs/lumen-retail-analytics-associate",
+      jobDescription:
+        "Own the weekly sell-through read for a grocery client, maintain the Power BI model, and brief the account team.",
+      timestamp: offsetTimestamp(searchTwoSeedAnchor, 6),
+      pool: "active",
+      stage: "no_response",
+      searchCycleLabel: SEARCH_02_LABEL,
+      comments: "",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "high",
+      extractionStatus: "confirmed"
+    },
+    {
+      id: "seed-active-s02-2",
+      roleTitle: "Supply Chain Data Analyst",
+      company: "Northgate Logistics",
+      location: "Mississauga, ON",
+      link: "https://example.com/jobs/northgate-supply-chain-data-analyst",
+      jobDescription:
+        "Build forecasting inputs from shipment data and keep the on-time delivery dashboard honest.",
+      timestamp: offsetTimestamp(searchTwoSeedAnchor, 30),
+      pool: "active",
+      stage: "no_response",
+      searchCycleLabel: SEARCH_02_LABEL,
+      comments: "Applied through the careers page.",
+      applyCountedDateKey: null,
+      sourceType: "company",
+      sourceConfidence: "high",
+      extractionStatus: "confirmed"
+    },
+    {
+      id: "seed-active-s02-3",
+      roleTitle: "Senior Data Analyst, Consumer Insights",
+      company: "Brightline Consumer Goods",
+      location: "Remote",
+      link: "https://example.com/jobs/brightline-senior-data-analyst",
+      jobDescription:
+        "Translate retailer point-of-sale data into category stories for the brand teams.",
+      timestamp: offsetTimestamp(searchTwoSeedAnchor, 96),
+      pool: "active",
+      stage: "round_1",
+      searchCycleLabel: SEARCH_02_LABEL,
+      comments: "First round with the insights lead went well; case study next.",
+      applyCountedDateKey: null,
+      sourceType: "greenhouse",
+      sourceConfidence: "high",
+      extractionStatus: "confirmed"
+    },
     {
       id: "seed-active-1",
       roleTitle: "Associate Business Analyst - Entry Level",
@@ -168,6 +224,24 @@ const defaultSeedStateBase: SeedState = {
     }
   ],
   rejectedJobs: [
+    {
+      id: "seed-rejected-s02-1",
+      roleTitle: "Audience Analyst",
+      company: "Pinecrest Media",
+      location: "New York, NY",
+      link: "https://example.com/jobs/pinecrest-audience-analyst",
+      jobDescription:
+        "Measure audience growth across platforms and report on campaign performance.",
+      timestamp: offsetTimestamp(searchTwoSeedAnchor, 200),
+      pool: "rejected",
+      stage: "screening_oa",
+      searchCycleLabel: SEARCH_02_LABEL,
+      comments: "Rejected after the online assessment.",
+      applyCountedDateKey: null,
+      sourceType: "lever",
+      sourceConfidence: "high",
+      extractionStatus: "confirmed"
+    },
     {
       id: "seed-rejected-1",
       roleTitle: "Data Analyst (Contractor)",
