@@ -1,5 +1,6 @@
 import {
   and,
+  asc,
   count,
   desc,
   eq,
@@ -27,8 +28,10 @@ import {
   getLocalJobsByPool,
   getLocalJobsPage,
   getLocalRecentActiveJobs,
+  getLocalSearchCycles,
   insertLocalJob,
   insertLocalJobsWithoutGoalEffects,
+  insertLocalSearchCycle,
   repairLocalTodayConnectGoalBaseline,
   resetLocalStoreToSeedState,
   resetLocalStoreForTests,
@@ -37,7 +40,8 @@ import {
   updateLocalComments,
   updateLocalDailyGoalState,
   updateLocalJobStage,
-  updateLocalJobRecord
+  updateLocalJobRecord,
+  updateLocalSearchCycle
 } from "@/lib/db/local-store";
 import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { DEMO_READ_ONLY_MESSAGE, isPublicDemoMode } from "@/lib/demo-mode";
@@ -54,7 +58,7 @@ import {
   JOB_LIST_PAGE_SIZE,
   normalizePageNumber
 } from "@/lib/job-list";
-import { dailyGoalsTable, jobsTable } from "@/lib/db/schema";
+import { dailyGoalsTable, jobsTable, searchCyclesTable } from "@/lib/db/schema";
 import { findEmailMatches } from "@/lib/emailMatching";
 import {
   QUERY_CACHE_BUCKET_LIMITS,
@@ -75,6 +79,9 @@ import {
   type JobPool,
   type JobRecord,
   type JobStage,
+  type SearchCycle,
+  type SearchCycleInput,
+  type SearchCyclePatch,
   type PaginatedJobListResult,
   type SearchLogAnalytics
 } from "@/lib/types";
@@ -102,6 +109,12 @@ const paginatedResultCache = new Map<
 >();
 const totalCountCache = new Map<string, CacheEntry<number>>();
 const recentActiveCache = new Map<string, CacheEntry<JobListItem[]>>();
+/**
+ * search_cycles is tiny and read on almost every request (scope filters,
+ * label resolution), so the whole table is cached for QUERY_CACHE_TTL_MS and
+ * dropped by every write.
+ */
+let searchCyclesCache: CacheEntry<SearchCycle[]> | null = null;
 
 function readCache<T>(
   cache: Map<string, CacheEntry<T>>,
@@ -168,6 +181,7 @@ function clearQueryCaches() {
   paginatedResultCache.clear();
   totalCountCache.clear();
   recentActiveCache.clear();
+  searchCyclesCache = null;
 }
 
 function hasDatabaseUrl() {
@@ -224,6 +238,23 @@ function mapJobRow(row: typeof jobsTable.$inferSelect): JobRecord {
     sourceType: row.sourceType as JobRecord["sourceType"],
     sourceConfidence: row.sourceConfidence as JobRecord["sourceConfidence"],
     extractionStatus: row.extractionStatus as JobRecord["extractionStatus"]
+  };
+}
+
+function mapSearchCycleRow(row: typeof searchCyclesTable.$inferSelect): SearchCycle {
+  return {
+    id: row.id,
+    label: row.label,
+    startDate: row.startDate,
+    endDate: row.endDate ?? null,
+    title: row.title,
+    goals: Array.isArray(row.goals)
+      ? row.goals.filter((goal): goal is string => typeof goal === "string")
+      : [],
+    note: row.note,
+    imageSrc: row.imageSrc ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString()
   };
 }
 
@@ -636,17 +667,24 @@ async function assertPostgresSchemaReady() {
     select
       to_regclass('public.jobs')::text as "jobsTable",
       to_regclass('public.daily_goals')::text as "dailyGoalsTable",
+      to_regclass('public.search_cycles')::text as "searchCyclesTable",
       to_regclass('public.__drizzle_migrations')::text as "migrationsTable"
   `);
   const health = healthResult[0] as
     | {
         jobsTable: string | null;
         dailyGoalsTable: string | null;
+        searchCyclesTable: string | null;
         migrationsTable: string | null;
       }
     | undefined;
 
-  if (!health?.jobsTable || !health?.dailyGoalsTable || !health?.migrationsTable) {
+  if (
+    !health?.jobsTable ||
+    !health?.dailyGoalsTable ||
+    !health?.searchCyclesTable ||
+    !health?.migrationsTable
+  ) {
     throw new Error(
       "Postgres schema is missing required tables. Run `pnpm db:migrate` with DATABASE_URL_UNPOOLED before starting the app."
     );
@@ -748,6 +786,88 @@ export async function ensureDatabaseReady() {
   }
 
   initialized = true;
+}
+
+export async function getSearchCycles(): Promise<SearchCycle[]> {
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    return getLocalSearchCycles();
+  }
+
+  if (searchCyclesCache && searchCyclesCache.expiresAt > Date.now()) {
+    return searchCyclesCache.value;
+  }
+
+  const rows = await getDb()
+    .select()
+    .from(searchCyclesTable)
+    .orderBy(asc(searchCyclesTable.startDate), asc(searchCyclesTable.id));
+  const cycles = rows.map(mapSearchCycleRow);
+  searchCyclesCache = { value: cycles, expiresAt: Date.now() + QUERY_CACHE_TTL_MS };
+  return cycles;
+}
+
+export async function createSearchCycle(input: SearchCycleInput): Promise<SearchCycle> {
+  assertWritable();
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    const created = await insertLocalSearchCycle(input);
+    clearQueryCaches();
+    return created;
+  }
+
+  const [row] = await getDb()
+    .insert(searchCyclesTable)
+    .values({
+      label: input.label,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      title: input.title,
+      goals: [...input.goals],
+      note: input.note,
+      imageSrc: input.imageSrc
+    })
+    .returning();
+  clearQueryCaches();
+  return mapSearchCycleRow(row);
+}
+
+export async function updateSearchCycle(
+  id: number,
+  patch: SearchCyclePatch
+): Promise<SearchCycle> {
+  assertWritable();
+  await ensureDatabaseReady();
+
+  if (shouldUseLocalFallback()) {
+    const updated = await updateLocalSearchCycle(id, patch);
+    clearQueryCaches();
+    return updated;
+  }
+
+  const [row] = await getDb()
+    .update(searchCyclesTable)
+    .set({
+      ...(patch.label !== undefined ? { label: patch.label } : {}),
+      ...(patch.startDate !== undefined ? { startDate: patch.startDate } : {}),
+      ...(patch.endDate !== undefined ? { endDate: patch.endDate } : {}),
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.goals !== undefined ? { goals: [...patch.goals] } : {}),
+      ...(patch.note !== undefined ? { note: patch.note } : {}),
+      ...(patch.imageSrc !== undefined ? { imageSrc: patch.imageSrc } : {}),
+      updatedAt: new Date()
+    })
+    .where(eq(searchCyclesTable.id, id))
+    .returning();
+  clearQueryCaches();
+
+  if (!row) {
+    throw new Error(`Search cycle ${id} does not exist.`);
+  }
+
+  return mapSearchCycleRow(row);
 }
 
 export async function getJobsByPool(pool: JobPool) {
@@ -1762,6 +1882,7 @@ export async function resetDatabaseForTests() {
   const db = getDb();
   await db.execute(sql`drop table if exists daily_goals`);
   await db.execute(sql`drop table if exists jobs`);
+  await db.execute(sql`drop table if exists search_cycles`);
 }
 
 export async function getAllRecords() {

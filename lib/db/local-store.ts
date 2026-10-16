@@ -14,6 +14,7 @@ import {
   isStaleActiveRecord
 } from "@/lib/stale-archive";
 import {
+  initialSearchCycles,
   matchesSearchCycleScope,
   normalizeSearchCycleLabel,
   type SearchCycleScope
@@ -26,7 +27,10 @@ import type {
   JobPool,
   JobRecord,
   JobStage,
-  PaginatedJobListResult
+  PaginatedJobListResult,
+  SearchCycle,
+  SearchCycleInput,
+  SearchCyclePatch
 } from "@/lib/types";
 import { getEasternDateKey, normalizeText } from "@/lib/utils";
 
@@ -45,6 +49,7 @@ type LocalStore = {
   version: 1;
   jobs: JobRecord[];
   dailyGoals: DailyGoalsRow[];
+  searchCycles: SearchCycle[];
 };
 
 let localWriteQueue = Promise.resolve();
@@ -146,11 +151,64 @@ function getLocalStorePath() {
   return path.join(getLocalDataDir(), "job-desk.json");
 }
 
+/**
+ * The cycles are configuration rather than demo data, so every store boots
+ * with the same two rows migration 0009 inserts into Postgres.
+ */
+function seedSearchCycles(now = new Date()): SearchCycle[] {
+  const createdAt = now.toISOString();
+  return initialSearchCycles.map((cycle, index) => ({
+    ...cycle,
+    goals: [...cycle.goals],
+    id: index + 1,
+    createdAt,
+    updatedAt: createdAt
+  }));
+}
+
+function normalizeStoredSearchCycle(value: unknown): SearchCycle | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const cycle = value as Partial<SearchCycle>;
+  if (
+    typeof cycle.id !== "number" ||
+    typeof cycle.label !== "string" ||
+    typeof cycle.startDate !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: cycle.id,
+    label: cycle.label,
+    startDate: cycle.startDate,
+    endDate: typeof cycle.endDate === "string" ? cycle.endDate : null,
+    title: typeof cycle.title === "string" ? cycle.title : "",
+    goals: Array.isArray(cycle.goals)
+      ? cycle.goals.filter((goal): goal is string => typeof goal === "string")
+      : [],
+    note: typeof cycle.note === "string" ? cycle.note : "",
+    imageSrc: typeof cycle.imageSrc === "string" ? cycle.imageSrc : null,
+    createdAt: typeof cycle.createdAt === "string" ? cycle.createdAt : "",
+    updatedAt: typeof cycle.updatedAt === "string" ? cycle.updatedAt : ""
+  };
+}
+
+function sortSearchCycles(cycles: SearchCycle[]) {
+  return [...cycles].sort(
+    (left, right) =>
+      left.startDate.localeCompare(right.startDate) || left.id - right.id
+  );
+}
+
 function createEmptyStore(): LocalStore {
   return {
     version: 1,
     jobs: [],
-    dailyGoals: []
+    dailyGoals: [],
+    searchCycles: seedSearchCycles()
   };
 }
 
@@ -187,9 +245,17 @@ async function readLocalStore(): Promise<LocalStore> {
 
   const raw = await readFile(getLocalStorePath(), "utf8");
   const parsed = JSON.parse(raw) as Partial<LocalStore>;
+  const storedCycles = Array.isArray(parsed.searchCycles)
+    ? parsed.searchCycles
+        .map(normalizeStoredSearchCycle)
+        .filter((cycle): cycle is SearchCycle => cycle !== null)
+    : [];
 
   return {
     version: 1,
+    // Stores written before search_cycles existed get the initial rows, the
+    // same way migration 0009 inserts them into Postgres.
+    searchCycles: storedCycles.length > 0 ? storedCycles : seedSearchCycles(),
     jobs: Array.isArray(parsed.jobs)
       ? parsed.jobs.map((job) => ({
           ...job,
@@ -563,6 +629,63 @@ export async function resetLocalStoreForTests() {
   await rm(getLocalStorePath(), { force: true });
   await ensureLocalStoreReady();
   await seedLocalStoreIfNeeded();
+}
+
+export async function getLocalSearchCycles(): Promise<SearchCycle[]> {
+  const store = await readLocalStore();
+  return sortSearchCycles(store.searchCycles);
+}
+
+export async function insertLocalSearchCycle(
+  input: SearchCycleInput,
+  now = new Date()
+): Promise<SearchCycle> {
+  return mutateLocalStore(async (store) => {
+    if (store.searchCycles.some((cycle) => cycle.label === input.label)) {
+      throw new Error(`A search cycle labelled "${input.label}" already exists.`);
+    }
+
+    const nextId =
+      store.searchCycles.reduce((max, cycle) => Math.max(max, cycle.id), 0) + 1;
+    const timestamp = now.toISOString();
+    const cycle: SearchCycle = {
+      ...input,
+      goals: [...input.goals],
+      id: nextId,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
+    store.searchCycles.push(cycle);
+    return { ...cycle, goals: [...cycle.goals] };
+  });
+}
+
+export async function updateLocalSearchCycle(
+  id: number,
+  patch: SearchCyclePatch,
+  now = new Date()
+): Promise<SearchCycle> {
+  return mutateLocalStore(async (store) => {
+    const target = store.searchCycles.find((cycle) => cycle.id === id);
+    if (!target) {
+      throw new Error(`Search cycle ${id} does not exist.`);
+    }
+
+    if (
+      patch.label !== undefined &&
+      store.searchCycles.some(
+        (cycle) => cycle.id !== id && cycle.label === patch.label
+      )
+    ) {
+      throw new Error(`A search cycle labelled "${patch.label}" already exists.`);
+    }
+
+    Object.assign(target, patch, {
+      goals: patch.goals ? [...patch.goals] : target.goals,
+      updatedAt: now.toISOString()
+    });
+    return { ...target, goals: [...target.goals] };
+  });
 }
 
 export async function getAllLocalRecords() {

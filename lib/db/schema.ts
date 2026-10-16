@@ -1,7 +1,11 @@
+import { sql } from "drizzle-orm";
 import {
+  date,
   index,
   integer,
+  jsonb,
   pgTable,
+  serial,
   text,
   timestamp,
   varchar
@@ -55,4 +59,30 @@ export const dailyGoalsTable = pgTable("daily_goals", {
   connectTarget: integer("connect_target").notNull(),
   followCount: integer("follow_count").notNull(),
   followTarget: integer("follow_target").notNull()
+});
+
+/**
+ * One row per job search. A record belongs to the cycle whose start_date is
+ * the latest one on or before the record's timestamp (America/Toronto date);
+ * the cycle with the latest start_date is the current working set. The story
+ * fields (title, goals, note, image_src) feed the Search Log page.
+ */
+export const searchCyclesTable = pgTable("search_cycles", {
+  id: serial("id").primaryKey(),
+  label: varchar("label", { length: 32 }).notNull().unique(),
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }),
+  title: text("title").notNull().default(""),
+  goals: jsonb("goals")
+    .$type<string[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  note: text("note").notNull().default(""),
+  imageSrc: text("image_src"),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
+    .notNull()
+    .defaultNow()
 });

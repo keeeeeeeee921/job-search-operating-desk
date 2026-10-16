@@ -143,6 +143,29 @@ export interface EmailMatch {
   reasons: string[];
 }
 
+/**
+ * One job search. Records belong to the cycle whose startDate is the latest
+ * one on or before the record's timestamp; the cycle with the latest
+ * startDate is the current working set. Dates are YYYY-MM-DD keys in the
+ * search-cycle time zone (see lib/search-cycle.ts).
+ */
+export interface SearchCycle {
+  id: number;
+  label: string;
+  startDate: string;
+  endDate: string | null;
+  title: string;
+  goals: string[];
+  note: string;
+  imageSrc: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SearchCycleInput = Omit<SearchCycle, "id" | "createdAt" | "updatedAt">;
+
+export type SearchCyclePatch = Partial<SearchCycleInput>;
+
 export interface SearchLogStageBucket {
   searchCycleLabel: string;
   pool: JobPool;

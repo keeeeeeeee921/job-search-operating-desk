@@ -1,8 +1,36 @@
+import type { SearchCycleInput } from "@/lib/types";
+
 const SEARCH_CYCLE_TIME_ZONE = "America/Toronto";
 
 export const SEARCH_01_LABEL = "Search 01";
 export const SEARCH_02_LABEL = "Search 02";
 export const SEARCH_02_START_DATE_KEY = "2026-04-03";
+
+/**
+ * The rows migration 0009 inserts into search_cycles, repeated here so the
+ * local store (and tests) boot with the same two cycles as Postgres.
+ */
+export const initialSearchCycles: readonly SearchCycleInput[] = [
+  {
+    label: SEARCH_01_LABEL,
+    startDate: "2025-09-06",
+    endDate: "2026-04-02",
+    title: "First full-time search after graduation",
+    goals: ["Find a job", "Keep some data analysis content in the role"],
+    note:
+      "This was my first full-time search after graduation, so the scope stayed broad. The goal was to land a solid role with at least some analytics work, without over-optimizing for a perfect match.",
+    imageSrc: "/job-search-cycle-01.png"
+  },
+  {
+    label: SEARCH_02_LABEL,
+    startDate: SEARCH_02_START_DATE_KEY,
+    endDate: null,
+    title: "",
+    goals: [],
+    note: "",
+    imageSrc: null
+  }
+];
 
 export type SearchLogCycle = {
   label: string;
