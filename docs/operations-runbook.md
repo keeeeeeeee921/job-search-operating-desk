@@ -65,6 +65,35 @@ See `docs/troubleshooting.md` for common production issues:
 - update-by-email misses
 - location missing in pasted text flows
 
+## Search Cycles
+
+Search cycles live in the `search_cycles` table (migration `0009`), one row
+per job search: `label`, `start_date`, optional `end_date`, and the story
+shown on the Search Log (`title`, `goals`, `note`, `image_src`). Nothing
+about a cycle is hard-coded any more:
+
+- A record belongs to the cycle with the latest `start_date` on or before
+  the day it was saved (America/New_York calendar day). Records saved before
+  the first cycle count in the first cycle. `jobs.search_cycle_label` stores
+  the label at save time; rows whose label is still null are resolved from
+  the timestamp the same way.
+- The current working set (Active's default view, the home page) is the
+  cycle with the latest `start_date`.
+- Starting a new cycle is done in the app: Search Log → **Start a new search
+  cycle**. The new start date must be after the previous cycle's start and
+  no later than today; the previous cycle gets `end_date` = the day before.
+  No deploy is needed.
+- The story is edited in the app with the **Edit** button on each cycle.
+  A summary image goes into `public/` and its path (`/name.png`) into the
+  image field.
+- "Companies I interviewed with" is computed from `jobs.stage` (every record
+  of the cycle past `no_response` / `rejected`, furthest stage per company).
+  To change the list, change the stages of the records.
+
+The cycle list is cached in the server process for the same 15 seconds as
+the other queries and dropped on every write, so an edit shows on the next
+request.
+
 ## Maintenance Utilities
 
 All of these are dry-run by default and write only with `--apply`.
@@ -78,7 +107,10 @@ pnpm archive:stale-active -- --apply
 ```
 
 Backfill `stage` from comment keywords for records that predate the stage
-column:
+column. `scripts/backfill-stage-companies.json` names one cycle and the
+companies interviewed with in it; a record of that cycle whose company
+matches and that carries a human note is suggested Round 1 when no keyword
+rule hits. Manual corrections go in `scripts/backfill-stage-overrides.json`.
 
 ```bash
 pnpm backfill:stage-from-comments

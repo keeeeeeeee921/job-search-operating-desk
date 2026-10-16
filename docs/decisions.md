@@ -90,6 +90,23 @@ not enough. Dates are commit dates.
   only change the query string (for example Active → Older cycles) hang
   (vercel/next.js#86151, fixed in the 16.3 canaries). Revisit after upgrading.
 
+## 2026-10-15 — Search cycles become data
+
+- Every search cycle used to be constants in `lib/search-cycle.ts` (the
+  Search 02 start date, the Search 01 story, a hand-typed list of twelve
+  interviewed companies); five commits existed only to edit those values.
+  Migration `0009` adds a `search_cycles` table seeded with the same two
+  rows, the app resolves a record's cycle from the rows (latest `start_date`
+  on or before the save date), and the Search Log edits the story in place
+  and starts new cycles. "Companies I interviewed with" is computed from
+  `jobs.stage`, which the 2026-10-14 backfill made possible; the typed list
+  survives only as `scripts/backfill-stage-companies.json`, an input to that
+  backfill script.
+- The cycle list is cached in-process for the same 15 s as other queries.
+  A new cycle must start after the previous one and no later than today, so
+  "current cycle" (latest start) and "cycle of a record saved now" always
+  agree.
+
 ## Convention
 
 **When removing a feature, say why in the commit body.** Three removals above

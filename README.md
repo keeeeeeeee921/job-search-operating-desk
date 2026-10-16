@@ -11,7 +11,7 @@
 - Capture a job from a link or pasted text without pretending every field was extracted
 - Route incomplete or low-confidence records to manual review
 - Keep Active, follow-up notes, stages, rejection matching, and daily goals in one workflow
-- Compare outcomes by search cycle with a drill-down funnel, and preserve each completed search as a fixed story
+- Compare outcomes by search cycle with a drill-down funnel, and keep each search's story (goals, approach, interviewed companies) next to its numbers
 
 ## Core workflow
 

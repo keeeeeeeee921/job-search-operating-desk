@@ -15,7 +15,7 @@ Personal job tracking wastes time on repetitive, messy work. This project is a q
 - Track stage and follow-up notes on each application
 - Match rejection emails back to Active jobs
 - Compare application outcomes by search cycle with a drill-down funnel: every cycle drawn to scale, one click to zoom into the interviewed subset
-- Preserve each completed search as a note plus a fixed summary image
+- Keep one story per search cycle (title, goals, approach, summary image), edited in the app
 - Track daily Apply / Connect / Follow counts
 
 ## Key workflows
@@ -42,14 +42,20 @@ Paste rejection email text or a `job title + company` query to find the most lik
 
 ### Record a search cycle
 
-The Search Log shows one funnel per search cycle (Applied → Screening / OA → Round 1 → Round 2+ → Offer, with Rejected and No Response beside it). Each funnel is drawn to scale by default; clicking the Screening / OA node or the Interviewed button rescales the same chart to the people who reached an interview. Below the funnels, each completed search keeps its goals, approach, interviewed companies, and one fixed summary image.
+A search cycle is one job search with a start date and, once it is over, an end date. Cycles are rows in the database (`search_cycles`), not code: every saved record belongs to the cycle whose start date is the latest one on or before the day the record was saved (America/New_York calendar day; anything older than the first cycle counts in the first cycle), and the cycle with the latest start date is the current working set that Active shows by default.
+
+The Search Log shows one funnel per search cycle (Applied → Screening / OA → Round 1 → Round 2+ → Offer, with Rejected and No Response beside it). Each funnel is drawn to scale by default; clicking the Screening / OA node or the Interviewed button rescales the same chart to the people who reached an interview.
+
+Below the funnels, each cycle has a saved story: title, main goals, approach note and an optional summary image. The story is edited in place with the **Edit** button (visible with the access token; disabled in the public demo). A cycle without a story shows an empty state until one is written. The "Companies I interviewed with" list is not typed in: it is computed from the cycle's records, one line per company whose furthest stage went past No Response / Rejected, with that stage next to the name.
+
+**Start a new search cycle** opens the next cycle with a label and a start date (after the previous cycle started, no later than today). From that day on, newly saved records belong to the new cycle, Active shows it by default, and the previous cycle is closed the day before.
 
 ## Design principles
 
 - The interface should never look more certain than the underlying data
 - Extraction stays conservative and may route to manual review
 - LinkedIn-style sources are handled realistically, not as fake scraping
-- Search Log analytics come from saved records while the narrative snapshot remains fixed
+- Search Log analytics and the interviewed-companies list come from saved records; only the story text is written by hand
 
 ## Daily goals
 
