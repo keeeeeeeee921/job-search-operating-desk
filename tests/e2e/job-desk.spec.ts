@@ -191,3 +191,75 @@ test("Search Log drills into the interviewed subset of a cycle", async ({ page }
     row.locator('[data-node-label="round_1"]').getByText("Round 1")
   ).toBeVisible();
 });
+
+test("editing a cycle's saved story shows the new title", async ({ page }) => {
+  await page.goto("/search-log");
+  const story = page.getByTestId("search-cycle-story-search-02");
+  await expect(story.getByText("No story written for Search 02 yet")).toBeVisible();
+
+  await story.getByRole("button", { name: "Edit Search 02 story" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit Search 02" });
+  await dialog.getByLabel("Title").fill("Second search, narrower scope");
+  await dialog.getByLabel("Main goals").fill("Senior analyst role\nStay in retail analytics");
+  await dialog.getByLabel("Approach").fill("Fewer, better-targeted applications.");
+  await dialog.getByRole("button", { name: "Save story" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(
+    story.getByRole("heading", { name: "Search 02: Second search, narrower scope" })
+  ).toBeVisible();
+  await expect(story.getByText("Senior analyst role")).toBeVisible();
+  await expect(story.getByText("Fewer, better-targeted applications.")).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Search 02: Second search, narrower scope" })
+  ).toBeVisible();
+});
+
+// Keep this test last: it moves the working set to a new cycle for the rest
+// of the run (the e2e store is wiped before the next `pnpm test:e2e`).
+test("starting a new search cycle routes new records to it", async ({ page }) => {
+  await page.goto("/search-log");
+  await page.getByRole("button", { name: "Start a new search cycle" }).click();
+  const dialog = page.getByRole("dialog", { name: "Start a new search cycle" });
+  await expect(dialog.getByLabel("Label")).toHaveValue("Search 03");
+  await dialog.getByRole("button", { name: "Start cycle" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId("search-cycle-story-search-03")).toBeVisible();
+  // The previous cycle is closed the day before the new one starts.
+  await expect(
+    page.getByTestId("search-cycle-story-search-02").getByText(/^Apr 3, 2026 to /)
+  ).toBeVisible();
+
+  await page.goto("/active");
+  await expect(page.getByText("Showing Search 03 only.")).toBeVisible();
+  await expect(page.getByText("No Active records in Search 03 yet")).toBeVisible();
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Paste job text" }).click();
+  await page
+    .getByPlaceholder(
+      "Paste copied job text. Press Enter to process, or Shift+Enter for a new line."
+    )
+    .fill(`Req ID: HM-2026-07
+Growth Analyst
+Company: Harbor Metrics
+Location:
+Remote
+Description
+As a Growth Analyst at Harbor Metrics, you will own the weekly funnel read, build experiment readouts, and brief the growth team.
+Preferred Qualifications
+SQL`);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Saved to Active").first()).toBeVisible();
+
+  await page.goto("/active");
+  await expect(page.getByText("Showing Search 03 only.")).toBeVisible();
+  await expect(page.getByText("Harbor Metrics")).toBeVisible();
+  await expect(page.getByText("IBM Canada")).toHaveCount(0);
+
+  await page.goto("/search-log");
+  await expect(page.getByText("Applications in Search 03")).toBeVisible();
+});
