@@ -1,35 +1,179 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { SearchLogSankey } from "@/components/search-log-sankey";
 import { Surface } from "@/components/ui/surface";
+import { jobStageLabels } from "@/lib/job-stage";
 import {
-  SEARCH_02_START_INSTANT,
-  getCurrentSearchCycleLabel,
-  searchLogCycles
+  formatSearchCyclePeriod,
+  sortSearchCyclesByStart
 } from "@/lib/search-cycle";
 import { buildSearchLogFlow } from "@/lib/search-log-flow";
-import type { SearchLogAnalytics } from "@/lib/types";
+import type {
+  InterviewedCompany,
+  SearchCycle,
+  SearchLogAnalytics
+} from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
-function cyclePeriod(label: string) {
-  const story = searchLogCycles.find((cycle) => cycle.label === label);
-  if (story) {
-    return story.period.replace(" ~ ", " to ");
+function cycleSlug(label: string) {
+  return label.replace(/\s+/g, "-").toLowerCase();
+}
+
+function hasStory(cycle: SearchCycle) {
+  return Boolean(cycle.title.trim() || cycle.note.trim() || cycle.goals.length > 0);
+}
+
+function InterviewedCompanies({ companies }: { companies: InterviewedCompany[] }) {
+  if (companies.length === 0) {
+    return (
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+        No application in this cycle has reached Screening / OA yet. Set a stage
+        on an Active record and it shows up here.
+      </p>
+    );
   }
-  if (label === getCurrentSearchCycleLabel()) {
-    return `Since ${formatDate(SEARCH_02_START_INSTANT.toISOString())}`;
-  }
-  return "Period not saved";
+
+  return (
+    <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm leading-6 text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
+      {companies.map((entry) => (
+        <li key={entry.company}>
+          <span className="text-foreground">{entry.company}</span>
+          <span aria-hidden="true"> · </span>
+          <span className="sr-only">, furthest stage </span>
+          {jobStageLabels[entry.stage]}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function SearchCycleStory({
+  cycle,
+  interviewedCompanies,
+  actions
+}: {
+  cycle: SearchCycle;
+  interviewedCompanies: InterviewedCompany[];
+  /** Edit controls rendered beside the heading (none for read-only views). */
+  actions?: ReactNode;
+}) {
+  const headingId = `search-log-story-${cycleSlug(cycle.label)}`;
+  const period = formatSearchCyclePeriod(cycle);
+  const saved = hasStory(cycle);
+
+  // Not a landmark region: the Sankey rows above already own the
+  // "<label>" region names, and tests address stories by test id.
+  return (
+    <Surface className="p-5 lg:p-6" data-testid={`search-cycle-story-${cycleSlug(cycle.label)}`}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-accent">Saved story</p>
+          <h2
+            className="mt-2 max-w-3xl text-2xl font-semibold text-foreground"
+            id={headingId}
+          >
+            {cycle.title.trim() ? `${cycle.label}: ${cycle.title.trim()}` : cycle.label}
+          </h2>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-muted-foreground">{period}</p>
+          {actions}
+        </div>
+      </div>
+
+      {saved ? (
+        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Main goals</p>
+            {cycle.goals.length > 0 ? (
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-foreground marker:text-accent">
+                {cycle.goals.map((goal) => (
+                  <li key={goal}>{goal}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                No goals written down.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground">Approach</p>
+            <p className="mt-3 max-w-2xl whitespace-pre-line text-sm leading-6 text-muted-foreground">
+              {cycle.note.trim() || "No approach written down."}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-2xl border border-dashed border-border px-5 py-6">
+          <p className="text-base font-semibold text-foreground">
+            No story written for {cycle.label} yet
+          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            The funnel above already counts this cycle. Add a title, the goals
+            and a note on the approach once the search has a shape.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-6 border-t border-border pt-5">
+        <p className="text-sm font-semibold text-foreground">
+          Companies I interviewed with
+        </p>
+        <InterviewedCompanies companies={interviewedCompanies} />
+      </div>
+
+      {cycle.imageSrc ? (
+        <div className="mt-6 border-t border-border pt-5">
+          <h3 className="text-xl font-semibold text-foreground">
+            {cycle.label} snapshot
+          </h3>
+          <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-surface">
+            <Image
+              alt={`${cycle.label} summary image, ${period}`}
+              className="h-auto w-full"
+              height={1000}
+              sizes="(min-width: 1400px) 1320px, (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)"
+              src={cycle.imageSrc}
+              width={2000}
+            />
+          </div>
+          {cycle.updatedAt ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Story updated {formatDate(cycle.updatedAt)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </Surface>
+  );
 }
 
 export function SearchLogPage({
-  analytics
+  analytics,
+  cycles,
+  storyActions,
+  headerActions
 }: {
   analytics: SearchLogAnalytics;
+  cycles: SearchCycle[];
+  /** Per-cycle edit controls; omitted for read-only renders. */
+  storyActions?: (cycle: SearchCycle) => ReactNode;
+  /** Controls above the saved stories, e.g. "Start a new search cycle". */
+  headerActions?: ReactNode;
 }) {
   const flows = analytics.cycles.map((cycle) => ({
     cycle,
     flow: buildSearchLogFlow(cycle)
   }));
+  const periodByLabel = new Map(
+    cycles.map((cycle) => [cycle.label, formatSearchCyclePeriod(cycle)])
+  );
+  const interviewedByLabel = new Map(
+    analytics.cycles.map((cycle) => [cycle.label, cycle.interviewedCompanies])
+  );
+  const stories = sortSearchCyclesByStart(cycles);
 
   return (
     <div className="space-y-8">
@@ -79,7 +223,7 @@ export function SearchLogPage({
           <div className="divide-y divide-border">
             {flows.map(({ cycle, flow }) => (
               <section
-                aria-labelledby={`search-log-row-${cycle.label.replace(/\s+/g, "-").toLowerCase()}`}
+                aria-labelledby={`search-log-row-${cycleSlug(cycle.label)}`}
                 className="py-6"
                 key={cycle.label}
               >
@@ -89,14 +233,15 @@ export function SearchLogPage({
                     <div>
                       <h3
                         className="text-lg font-semibold text-foreground"
-                        id={`search-log-row-${cycle.label.replace(/\s+/g, "-").toLowerCase()}`}
+                        id={`search-log-row-${cycleSlug(cycle.label)}`}
                       >
                         {cycle.label}
                       </h3>
                       <p className="mt-1 text-sm tabular-nums text-muted-foreground">
-                        {cyclePeriod(cycle.label)} · {cycle.total.toLocaleString("en-US")}{" "}
-                        applications · {flow.counts.screening.toLocaleString("en-US")} reached
-                        Screening / OA
+                        {periodByLabel.get(cycle.label) ?? "Period not saved"} ·{" "}
+                        {cycle.total.toLocaleString("en-US")} applications ·{" "}
+                        {flow.counts.screening.toLocaleString("en-US")} reached Screening
+                        / OA
                       </p>
                     </div>
                   }
@@ -114,66 +259,22 @@ export function SearchLogPage({
         )}
       </Surface>
 
-      {searchLogCycles.map((searchCycle) => (
-        <Surface className="p-5 lg:p-6" key={searchCycle.label}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-accent">Saved story</p>
-              <h2 className="mt-2 max-w-3xl text-2xl font-semibold text-foreground">
-                {searchCycle.label}: {searchCycle.title}
-              </h2>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {searchCycle.period.replace(" ~ ", " to ")}
-            </p>
-          </div>
+      {headerActions ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+          <p className="text-sm text-muted-foreground">
+            New records go to the cycle with the latest start date.
+          </p>
+          {headerActions}
+        </div>
+      ) : null}
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Main goals</p>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-foreground marker:text-accent">
-                {searchCycle.goals.map((goal) => (
-                  <li key={goal}>{goal}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-foreground">Approach</p>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {searchCycle.note}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 border-t border-border pt-5">
-            <p className="text-sm font-semibold text-foreground">
-              Companies I interviewed with
-            </p>
-            <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm leading-6 text-muted-foreground sm:grid-cols-2 lg:grid-cols-3">
-              {searchCycle.interviewedCompanies.map((company) => (
-                <li key={company}>{company}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="mt-6 border-t border-border pt-5">
-            <h3 className="text-xl font-semibold text-foreground">
-              {searchCycle.label} snapshot
-            </h3>
-            <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-surface">
-              <Image
-                alt={searchCycle.imageAlt}
-                className="h-auto w-full"
-                height={1000}
-                sizes="(min-width: 1400px) 1320px, (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)"
-                src={searchCycle.imageSrc}
-                width={2000}
-              />
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">Updated May 21, 2026</p>
-          </div>
-        </Surface>
+      {stories.map((cycle) => (
+        <SearchCycleStory
+          actions={storyActions?.(cycle)}
+          cycle={cycle}
+          interviewedCompanies={interviewedByLabel.get(cycle.label) ?? []}
+          key={cycle.id}
+        />
       ))}
     </div>
   );

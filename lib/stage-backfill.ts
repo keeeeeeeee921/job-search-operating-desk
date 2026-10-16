@@ -1,8 +1,7 @@
 import { isJobStage, jobStageOrder } from "@/lib/job-stage";
 import {
-  SEARCH_01_LABEL,
   normalizeSearchCycleLabel,
-  searchLogCycles
+  type SearchCycleBoundary
 } from "@/lib/search-cycle";
 import { AUTO_ARCHIVE_NOTE_PREFIX } from "@/lib/stale-archive";
 import type { JobRecord, JobStage } from "@/lib/types";
@@ -159,9 +158,39 @@ export function guessStageFromComments(comments: string): KeywordGuess | null {
 // Company list matching
 // ---------------------------------------------------------------------------
 
-export const interviewedCompaniesSearch01: readonly string[] =
-  searchLogCycles.find((cycle) => cycle.label === SEARCH_01_LABEL)
-    ?.interviewedCompanies ?? [];
+/**
+ * scripts/backfill-stage-companies.json: the companies interviewed with in
+ * one cycle. Only records of that cycle are matched against the list.
+ */
+export type InterviewedCompanyList = {
+  cycle: string;
+  companies: string[];
+};
+
+export function parseInterviewedCompanyList(
+  raw: unknown,
+  source: string
+): InterviewedCompanyList {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error(`${source}: expected a JSON object with "cycle" and "companies"`);
+  }
+
+  const { cycle, companies } = raw as { cycle?: unknown; companies?: unknown };
+  if (typeof cycle !== "string" || !cycle.trim()) {
+    throw new Error(`${source}: "cycle" must be a search cycle label`);
+  }
+  if (
+    !Array.isArray(companies) ||
+    companies.some((company) => typeof company !== "string" || !company.trim())
+  ) {
+    throw new Error(`${source}: "companies" must be an array of company names`);
+  }
+
+  return {
+    cycle: cycle.trim(),
+    companies: companies.map((company: string) => company.trim())
+  };
+}
 
 function companyTokens(name: string) {
   return name
@@ -233,7 +262,7 @@ export function matchesCompanyName(recordCompany: string, listedCompany: string)
 
 export function findInterviewedCompany(
   recordCompany: string,
-  list: readonly string[] = interviewedCompaniesSearch01
+  list: readonly string[]
 ) {
   return list.find((listed) => matchesCompanyName(recordCompany, listed)) ?? null;
 }
@@ -305,22 +334,22 @@ export function isBackfillCandidate(record: JobRecord) {
   return record.stage === "no_response" || record.stage === "rejected";
 }
 
-function isSearch01(record: JobRecord) {
-  return (
-    normalizeSearchCycleLabel(record.searchCycleLabel, record.timestamp) ===
-    SEARCH_01_LABEL
-  );
-}
-
 /**
  * Builds the dry-run table. Automatic guesses only touch records still at
  * no_response / rejected; an override may target any record and always wins.
+ * `cycles` resolves the cycle of records whose label is still null, so the
+ * company list only applies to the cycle it was written for.
  */
 export function planStageBackfill(
   records: readonly JobRecord[],
-  overrides: StageOverrides = {},
-  interviewedCompanies: readonly string[] = interviewedCompaniesSearch01
+  overrides: StageOverrides,
+  companyList: InterviewedCompanyList,
+  cycles: readonly SearchCycleBoundary[]
 ): StageBackfillPlan {
+  const inListedCycle = (record: JobRecord) =>
+    normalizeSearchCycleLabel(record.searchCycleLabel, record.timestamp, cycles) ===
+    companyList.cycle;
+
   const overrideById = new Map<string, JobStage | typeof OVERRIDE_SKIP>();
   const unmatchedOverrides: string[] = [];
   const ambiguousOverrides: Array<{ key: string; ids: string[] }> = [];
@@ -362,8 +391,8 @@ export function planStageBackfill(
     const keywordGuess = hasHumanComment(record.comments)
       ? guessStageFromComments(record.comments)
       : null;
-    const listedCompany = isSearch01(record)
-      ? findInterviewedCompany(record.company, interviewedCompanies)
+    const listedCompany = inListedCycle(record)
+      ? findInterviewedCompany(record.company, companyList.companies)
       : null;
 
     if (keywordGuess) {

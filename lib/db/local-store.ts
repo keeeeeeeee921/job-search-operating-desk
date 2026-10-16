@@ -17,6 +17,7 @@ import {
   initialSearchCycles,
   matchesSearchCycleScope,
   normalizeSearchCycleLabel,
+  type SearchCycleBoundary,
   type SearchCycleScope
 } from "@/lib/search-cycle";
 import { getDefaultSeedState } from "@/lib/seed";
@@ -111,24 +112,27 @@ function goalSeedForToday(): DailyGoalsRow {
   };
 }
 
-function withAutoApplyMarker(record: JobRecord) {
+function withAutoApplyMarker(
+  record: JobRecord,
+  cycles: readonly SearchCycleBoundary[]
+) {
+  const searchCycleLabel = normalizeSearchCycleLabel(
+    record.searchCycleLabel,
+    record.timestamp,
+    cycles
+  );
+
   if (record.pool !== "active") {
     return {
       ...record,
-      searchCycleLabel: normalizeSearchCycleLabel(
-        record.searchCycleLabel,
-        record.timestamp
-      ),
+      searchCycleLabel,
       applyCountedDateKey: record.applyCountedDateKey ?? null
     };
   }
 
   return {
     ...record,
-    searchCycleLabel: normalizeSearchCycleLabel(
-      record.searchCycleLabel,
-      record.timestamp
-    ),
+    searchCycleLabel,
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
 }
@@ -346,7 +350,9 @@ export async function getLocalJobsByPool(
   const store = await readLocalStore();
   return store.jobs
     .filter(
-      (job) => job.pool === pool && matchesSearchCycleScope(job, searchCycle)
+      (job) =>
+        job.pool === pool &&
+        matchesSearchCycleScope(job, searchCycle, store.searchCycles)
     )
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }
@@ -425,13 +431,15 @@ export async function getLocalActiveJobCount(
 ) {
   const store = await readLocalStore();
   return store.jobs.filter(
-    (job) => job.pool === "active" && matchesSearchCycleScope(job, searchCycle)
+    (job) =>
+      job.pool === "active" &&
+      matchesSearchCycleScope(job, searchCycle, store.searchCycles)
   ).length;
 }
 
 export async function insertLocalJob(record: JobRecord) {
   await mutateLocalStore(async (store) => {
-    const nextRecord = withAutoApplyMarker(record);
+    const nextRecord = withAutoApplyMarker(record, store.searchCycles);
     store.jobs.push({
       ...nextRecord,
       stage: normalizeJobStage(nextRecord.stage, nextRecord.pool)
@@ -451,7 +459,8 @@ export async function insertLocalJobsWithoutGoalEffects(records: JobRecord[]) {
         stage: normalizeJobStage(record.stage, record.pool),
         searchCycleLabel: normalizeSearchCycleLabel(
           record.searchCycleLabel,
-          record.timestamp
+          record.timestamp,
+          store.searchCycles
         ),
         applyCountedDateKey: record.applyCountedDateKey ?? null
       }))
@@ -527,7 +536,8 @@ export async function updateLocalJobRecord(record: JobRecord) {
             stage: normalizeJobStage(record.stage, record.pool),
             searchCycleLabel: normalizeSearchCycleLabel(
               record.searchCycleLabel,
-              record.timestamp
+              record.timestamp,
+              store.searchCycles
             ),
             applyCountedDateKey: record.applyCountedDateKey ?? null
           }

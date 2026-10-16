@@ -173,10 +173,17 @@ export interface SearchLogStageBucket {
   count: number;
 }
 
+/** A company and the furthest stage any application there reached. */
+export interface InterviewedCompany {
+  company: string;
+  stage: JobStage;
+}
+
 export interface SearchLogCycleAnalytics {
   label: string;
   total: number;
   buckets: SearchLogStageBucket[];
+  interviewedCompanies: InterviewedCompany[];
 }
 
 export interface SearchLogAnalytics {

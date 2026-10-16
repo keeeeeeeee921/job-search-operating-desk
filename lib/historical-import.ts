@@ -1,5 +1,8 @@
 import { createHash } from "node:crypto";
-import { resolveSearchCycleLabel } from "@/lib/search-cycle";
+import {
+  resolveSearchCycleLabel,
+  type SearchCycleBoundary
+} from "@/lib/search-cycle";
 import { detectSource } from "@/lib/sourceDetection";
 import { defaultStageForPool } from "@/lib/job-stage";
 import type {
@@ -155,7 +158,8 @@ export function spreadHistoricalTimestamps(options: {
 
 export function buildHistoricalRecord(
   draft: HistoricalImportDraft,
-  timestamp: string
+  timestamp: string,
+  cycles: readonly SearchCycleBoundary[]
 ): JobRecord {
   const source: {
     sourceType: SourceType;
@@ -180,7 +184,7 @@ export function buildHistoricalRecord(
     timestamp,
     pool: draft.pool,
     stage: defaultStageForPool(draft.pool),
-    searchCycleLabel: resolveSearchCycleLabel(timestamp),
+    searchCycleLabel: resolveSearchCycleLabel(timestamp, cycles),
     comments: draft.comments,
     applyCountedDateKey: null,
     sourceType: source.sourceType,

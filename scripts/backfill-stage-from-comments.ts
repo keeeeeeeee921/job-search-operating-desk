@@ -2,10 +2,15 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { closeDb } from "../lib/db/client";
-import { getAllRecords, updateJobRecord } from "../lib/db/repository";
+import {
+  getAllRecords,
+  getSearchCycles,
+  updateJobRecord
+} from "../lib/db/repository";
 import { jobStageLabels } from "../lib/job-stage";
 import {
   countStages,
+  parseInterviewedCompanyList,
   parseSetArgument,
   parseStageOverrides,
   planStageBackfill,
@@ -20,9 +25,10 @@ import type { JobRecord } from "../lib/types";
  *
  * Scope: records still at no_response / rejected that either carry a human
  * comment (not just the "Auto-archived:" system note) or belong to a company
- * in searchLogCycles[0].interviewedCompanies (Search 01 only). Keyword rules
- * live in lib/stage-backfill.ts; the highest matching stage wins, and listed
- * companies with no keyword hit are suggested Round 1.
+ * in scripts/backfill-stage-companies.json (records of the cycle named in
+ * that file only). Keyword rules live in lib/stage-backfill.ts; the highest
+ * matching stage wins, and listed companies with no keyword hit are
+ * suggested Round 1.
  *
  * Manual corrections: scripts/backfill-stage-overrides.json maps an id (or
  * id prefix) to a stage, or to "skip"; `--set <id>=<stage>` does the same
@@ -39,6 +45,7 @@ import type { JobRecord } from "../lib/types";
 type ScriptMode = "dry-run" | "apply";
 
 const OVERRIDES_FILE = path.join("scripts", "backfill-stage-overrides.json");
+const COMPANIES_FILE = path.join("scripts", "backfill-stage-companies.json");
 
 function loadEnvFile(filePath: string) {
   if (!existsSync(filePath)) {
@@ -104,6 +111,12 @@ function parseArgs(argv: string[]) {
   }
 
   return { mode, overridesPath, setOverrides };
+}
+
+function loadCompanyList(filePath: string) {
+  const resolved = path.resolve(process.cwd(), filePath);
+  const raw = JSON.parse(readFileSync(resolved, "utf8")) as unknown;
+  return parseInterviewedCompanyList(raw, filePath);
 }
 
 function loadOverridesFile(filePath: string): StageOverrides {
@@ -218,8 +231,10 @@ async function main() {
   const fileOverrides = loadOverridesFile(overridesPath);
   const overrides: StageOverrides = { ...fileOverrides, ...setOverrides };
 
+  const companyList = loadCompanyList(COMPANIES_FILE);
   const records = await getAllRecords();
-  const plan = planStageBackfill(records, overrides);
+  const cycles = await getSearchCycles();
+  const plan = planStageBackfill(records, overrides, companyList, cycles);
   const changes = plan.rows.filter((row) => row.changed);
 
   console.log(`Stage backfill from comments (${mode.toUpperCase()})`);
@@ -237,6 +252,9 @@ async function main() {
       `  warning: override "${entry.key}" matches ${entry.ids.length} records (${entry.ids.join(", ")}); use a longer prefix`
     );
   }
+  console.log(
+    `Company list: ${companyList.companies.length} companies for ${companyList.cycle} from ${COMPANIES_FILE}`
+  );
   console.log(`Scanned records: ${records.length}`);
   console.log(`Rows: ${plan.rows.length} (${changes.length} would change)`);
   console.log("");

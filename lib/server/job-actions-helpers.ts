@@ -4,6 +4,7 @@ export {
   getDailyGoalsState,
   getEmailMatchCandidateRecords,
   getPotentialDuplicateCandidates,
+  getSearchCycles,
   insertJob,
   matchEmailAgainstActiveRecords,
   updateComments,

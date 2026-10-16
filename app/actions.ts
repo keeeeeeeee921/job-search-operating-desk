@@ -9,6 +9,7 @@ import {
   deleteJobRecord,
   getDailyGoalsState,
   getPotentialDuplicateCandidates,
+  getSearchCycles,
   insertJob,
   matchEmailAgainstActiveRecords,
   updateComments,
@@ -24,7 +25,10 @@ import {
   revalidateAfterStageUpdated
 } from "@/lib/server/revalidation";
 import { assertReadAllowed, getWriteBlock } from "@/lib/server/auth";
-import { resolveSearchCycleLabel } from "@/lib/search-cycle";
+import {
+  resolveSearchCycleLabel,
+  type SearchCycleBoundary
+} from "@/lib/search-cycle";
 import type {
   DailyGoalsState,
   DuplicateCandidate,
@@ -36,7 +40,10 @@ import type {
 } from "@/lib/types";
 import { createId, normalizeLocationForStorage } from "@/lib/utils";
 
-function createRecordFromDraft(draft: JobDraft): JobRecord {
+function createRecordFromDraft(
+  draft: JobDraft,
+  cycles: readonly SearchCycleBoundary[]
+): JobRecord {
   const confirmedOrigins = Object.values(draft.fieldOrigins).every(
     (value) => value === "confirmed"
   );
@@ -60,7 +67,7 @@ function createRecordFromDraft(draft: JobDraft): JobRecord {
     timestamp,
     pool: "active",
     stage: "no_response",
-    searchCycleLabel: resolveSearchCycleLabel(timestamp),
+    searchCycleLabel: resolveSearchCycleLabel(timestamp, cycles),
     comments: "",
     applyCountedDateKey: null,
     sourceType: draft.sourceType,
@@ -109,7 +116,7 @@ export async function createJobFromLink(rawUrl: string): Promise<CreateJobResult
     return { status: "duplicate", draft, candidates };
   }
 
-  const record = createRecordFromDraft(draft);
+  const record = createRecordFromDraft(draft, await getSearchCycles());
   await insertJob(record);
   revalidateAfterActiveRecordSaved(record.id);
   return { status: "saved", record };
@@ -140,7 +147,7 @@ export async function createJobFromText(rawText: string): Promise<CreateJobResul
     return { status: "duplicate", draft, candidates };
   }
 
-  const record = createRecordFromDraft(draft);
+  const record = createRecordFromDraft(draft, await getSearchCycles());
   await insertJob(record);
   revalidateAfterActiveRecordSaved(record.id);
   return { status: "saved", record };
@@ -170,7 +177,7 @@ export async function saveReviewedJob(
     return { status: "duplicate", draft, candidates };
   }
 
-  const record = createRecordFromDraft(draft);
+  const record = createRecordFromDraft(draft, await getSearchCycles());
   await insertJob(record);
   revalidateAfterActiveRecordSaved(record.id);
   return { status: "saved", record };

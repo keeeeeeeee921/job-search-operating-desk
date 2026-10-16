@@ -1,0 +1,18 @@
+{
+  "_comment": "Companies Ke interviewed with in the named cycle, used by scripts/backfill-stage-from-comments.ts as a fallback signal: a record from that cycle whose company matches an entry and that carries a human note is suggested round_1 when no keyword rule hits. The Search Log page no longer reads this list; it computes interviewed companies from the stage column.",
+  "cycle": "Search 01",
+  "companies": [
+    "FedEx",
+    "Corsair",
+    "Valon",
+    "Jerry.ai",
+    "L'Oréal",
+    "CarMax",
+    "Axon",
+    "Nomura",
+    "ZURU Toys",
+    "IBM Canada",
+    "Tencent",
+    "NYC Tourism + Conventions"
+  ]
+}

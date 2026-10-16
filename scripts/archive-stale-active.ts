@@ -4,7 +4,8 @@ import process from "node:process";
 import { closeDb } from "../lib/db/client";
 import {
   archiveStaleActiveJobs,
-  findStaleActiveJobs
+  findStaleActiveJobs,
+  getSearchCycles
 } from "../lib/db/repository";
 import { normalizeSearchCycleLabel } from "../lib/search-cycle";
 import {
@@ -64,10 +65,15 @@ async function main() {
   const now = new Date();
   const threshold = getStaleActiveThreshold(now);
   const stale = await findStaleActiveJobs(now);
+  const cycles = await getSearchCycles();
 
   const byCycle = new Map<string, number>();
   for (const record of stale) {
-    const label = normalizeSearchCycleLabel(record.searchCycleLabel, record.timestamp);
+    const label = normalizeSearchCycleLabel(
+      record.searchCycleLabel,
+      record.timestamp,
+      cycles
+    );
     byCycle.set(label, (byCycle.get(label) ?? 0) + 1);
   }
 

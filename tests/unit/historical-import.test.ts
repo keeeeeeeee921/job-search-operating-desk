@@ -9,6 +9,7 @@ import {
   mergeComments,
   spreadHistoricalTimestamps
 } from "@/lib/historical-import";
+import { initialSearchCycles } from "@/lib/search-cycle";
 import type { JobRecord } from "@/lib/types";
 
 describe("historical import helpers", () => {
@@ -138,7 +139,8 @@ describe("historical import helpers", () => {
         jobDescription: "Build models and reporting.",
         comments: mergeComments("Rejected", "Keep for future")
       },
-      "2025-12-01T12:00:00.000Z"
+      "2025-12-01T12:00:00.000Z",
+      initialSearchCycles
     );
 
     expect(record.pool).toBe("rejected");

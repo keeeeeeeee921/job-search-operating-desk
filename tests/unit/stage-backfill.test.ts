@@ -7,9 +7,11 @@ import {
   matchesCompanyName,
   parseSetArgument,
   parseStageOverrides,
+  parseInterviewedCompanyList,
   planStageBackfill,
   stripAutoArchiveNote
 } from "@/lib/stage-backfill";
+import { initialSearchCycles } from "@/lib/search-cycle";
 import { buildAutoArchiveNote } from "@/lib/stale-archive";
 import type { JobRecord } from "@/lib/types";
 
@@ -151,14 +153,34 @@ describe("company list matching", () => {
     expect(matchesCompanyName(recordCompany, listed)).toBe(false);
   });
 
-  it("finds the listed company for a record from the Search 01 list", () => {
-    expect(findInterviewedCompany("Tencent America")).toBe("Tencent");
-    expect(findInterviewedCompany("Walmart")).toBeNull();
+  it("finds the listed company for a record from the company list", () => {
+    const list = ["Tencent", "ZURU Toys"];
+    expect(findInterviewedCompany("Tencent America", list)).toBe("Tencent");
+    expect(findInterviewedCompany("Walmart", list)).toBeNull();
+  });
+});
+
+describe("parseInterviewedCompanyList", () => {
+  it("reads the cycle and companies, ignoring documentation keys", () => {
+    expect(
+      parseInterviewedCompanyList(
+        { _comment: "x", cycle: "Search 01", companies: [" Axon ", "ZURU Toys"] },
+        "file"
+      )
+    ).toEqual({ cycle: "Search 01", companies: ["Axon", "ZURU Toys"] });
+    expect(() => parseInterviewedCompanyList({ companies: [] }, "file")).toThrow(
+      /"cycle"/
+    );
+    expect(() =>
+      parseInterviewedCompanyList({ cycle: "Search 01", companies: [1] }, "file")
+    ).toThrow(/"companies"/);
+    expect(() => parseInterviewedCompanyList([], "file")).toThrow(/expected a JSON object/);
   });
 });
 
 describe("planStageBackfill", () => {
-  const list = ["Axon", "ZURU Toys"];
+  const list = { cycle: "Search 01", companies: ["Axon", "ZURU Toys"] };
+  const cycles = initialSearchCycles;
 
   it("only touches records still at no_response / rejected with a human comment", () => {
     const records = [
@@ -174,7 +196,7 @@ describe("planStageBackfill", () => {
       buildRecord("a6", { comments: "applied via referral" })
     ];
 
-    const plan = planStageBackfill(records, {}, list);
+    const plan = planStageBackfill(records, {}, list, cycles);
     expect(plan.rows.map((row) => [row.record.id, row.suggestedStage, row.source])).toEqual([
       ["a1", "screening_oa", "keywords"],
       ["a2", "round_1", "keywords"]
@@ -197,7 +219,7 @@ describe("planStageBackfill", () => {
       buildRecord("c6", { company: "Axon" })
     ];
 
-    const plan = planStageBackfill(records, {}, list);
+    const plan = planStageBackfill(records, {}, list, cycles);
     const byId = new Map(plan.rows.map((row) => [row.record.id, row]));
 
     expect(byId.get("c1")?.suggestedStage).toBe("round_1");
@@ -218,7 +240,7 @@ describe("planStageBackfill", () => {
       buildRecord("t1", { company: "Axon", comments: "note", searchCycleLabel: null, timestamp: "2025-12-01T12:00:00.000Z" }),
       buildRecord("t2", { company: "Axon", comments: "note", searchCycleLabel: null, timestamp: "2026-06-01T12:00:00.000Z" })
     ];
-    const ids = planStageBackfill(records, {}, list).rows.map((row) => row.record.id);
+    const ids = planStageBackfill(records, {}, list, cycles).rows.map((row) => row.record.id);
     expect(ids).toEqual(["t1"]);
   });
 
@@ -237,7 +259,8 @@ describe("planStageBackfill", () => {
         "zz-already-staged": "round_3",
         "keep-me": "skip"
       },
-      list
+      list,
+      cycles
     );
     const byId = new Map(plan.rows.map((row) => [row.record.id, row]));
 
@@ -252,7 +275,7 @@ describe("planStageBackfill", () => {
 
   it("reports unmatched and ambiguous overrides instead of guessing", () => {
     const records = [buildRecord("abc-1"), buildRecord("abc-2")];
-    const plan = planStageBackfill(records, { abc: "offer", nope: "round_1" }, list);
+    const plan = planStageBackfill(records, { abc: "offer", nope: "round_1" }, list, cycles);
 
     expect(plan.rows).toEqual([]);
     expect(plan.unmatchedOverrides).toEqual(["nope"]);
@@ -261,7 +284,7 @@ describe("planStageBackfill", () => {
 
   it("marks an override equal to the current stage as no change", () => {
     const records = [buildRecord("same", { stage: "round_2" })];
-    const plan = planStageBackfill(records, { same: "round_2" }, list);
+    const plan = planStageBackfill(records, { same: "round_2" }, list, cycles);
     expect(plan.rows[0]?.changed).toBe(false);
   });
 
@@ -271,7 +294,7 @@ describe("planStageBackfill", () => {
       buildRecord("k2", { comments: "prescreening" }),
       buildRecord("k3", { comments: "screening" })
     ];
-    expect(countStages(planStageBackfill(records, {}, list).rows)).toEqual([
+    expect(countStages(planStageBackfill(records, {}, list, cycles).rows)).toEqual([
       { stage: "screening_oa", count: 2 },
       { stage: "offer", count: 1 }
     ]);

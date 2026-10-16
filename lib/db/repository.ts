@@ -47,9 +47,10 @@ import { DAILY_GOALS_DEFAULTS } from "@/lib/daily-goals-defaults";
 import { DEMO_READ_ONLY_MESSAGE, isPublicDemoMode } from "@/lib/demo-mode";
 import { normalizeJobStage } from "@/lib/job-stage";
 import {
-  getCurrentSearchCycleLabel,
+  getCurrentSearchCycle,
+  getSearchCycleStartInstant,
   normalizeSearchCycleLabel,
-  SEARCH_02_START_INSTANT,
+  type SearchCycleBoundary,
   type SearchCycleScope
 } from "@/lib/search-cycle";
 import {
@@ -266,15 +267,21 @@ function buildSearchText(input: {
   return normalizeText(`${input.company} ${input.roleTitle} ${input.location}`);
 }
 
-function withAutoApplyMarker(record: JobRecord) {
+function withAutoApplyMarker(
+  record: JobRecord,
+  cycles: readonly SearchCycleBoundary[]
+) {
+  const searchCycleLabel = normalizeSearchCycleLabel(
+    record.searchCycleLabel,
+    record.timestamp,
+    cycles
+  );
+
   if (record.pool !== "active") {
     return {
       ...record,
       stage: normalizeJobStage(record.stage, record.pool),
-      searchCycleLabel: normalizeSearchCycleLabel(
-        record.searchCycleLabel,
-        record.timestamp
-      ),
+      searchCycleLabel,
       applyCountedDateKey: record.applyCountedDateKey ?? null
     };
   }
@@ -282,10 +289,7 @@ function withAutoApplyMarker(record: JobRecord) {
   return {
     ...record,
     stage: normalizeJobStage(record.stage, record.pool),
-    searchCycleLabel: normalizeSearchCycleLabel(
-      record.searchCycleLabel,
-      record.timestamp
-    ),
+    searchCycleLabel,
     applyCountedDateKey: record.applyCountedDateKey ?? getEasternDateKey()
   };
 }
@@ -346,31 +350,38 @@ function buildSearchCondition(query: string) {
 
 /**
  * Rows whose search_cycle_label is still null fall back to the timestamp,
- * mirroring normalizeSearchCycleLabel() for the local store.
+ * mirroring normalizeSearchCycleLabel() for the local store: a null row is
+ * current when it was saved on or after the current cycle's first day.
  */
-function buildSearchCycleCondition(scope: SearchCycleScope) {
+function buildSearchCycleCondition(
+  scope: SearchCycleScope,
+  cycles: readonly SearchCycleBoundary[]
+) {
   if (scope === "all") {
     return undefined;
   }
 
-  const currentLabel = getCurrentSearchCycleLabel();
+  const current = getCurrentSearchCycle(cycles);
+  if (!current) {
+    // No cycles defined: everything counts as current.
+    return scope === "current" ? undefined : sql`false`;
+  }
+
+  const currentStart = getSearchCycleStartInstant(current.startDate);
 
   if (scope === "current") {
     return or(
-      eq(jobsTable.searchCycleLabel, currentLabel),
+      eq(jobsTable.searchCycleLabel, current.label),
       and(
         isNull(jobsTable.searchCycleLabel),
-        gte(jobsTable.timestamp, SEARCH_02_START_INSTANT)
+        gte(jobsTable.timestamp, currentStart)
       )
     );
   }
 
   return or(
-    ne(jobsTable.searchCycleLabel, currentLabel),
-    and(
-      isNull(jobsTable.searchCycleLabel),
-      lt(jobsTable.timestamp, SEARCH_02_START_INSTANT)
-    )
+    ne(jobsTable.searchCycleLabel, current.label),
+    and(isNull(jobsTable.searchCycleLabel), lt(jobsTable.timestamp, currentStart))
   );
 }
 
@@ -890,15 +901,17 @@ export async function getSearchLogAnalytics(
   sunkenMonths = 9
 ): Promise<SearchLogAnalytics> {
   await ensureDatabaseReady();
+  const cycles = await getSearchCycles();
 
   if (shouldUseLocalFallback()) {
     const rows = (await getAllLocalRecords()).map((record) => ({
       timestamp: record.timestamp,
       pool: record.pool,
       stage: normalizeJobStage(record.stage, record.pool),
-      searchCycleLabel: record.searchCycleLabel
+      searchCycleLabel: record.searchCycleLabel,
+      company: record.company
     }));
-    return buildSearchLogAnalyticsFromRows(rows, sunkenMonths);
+    return buildSearchLogAnalyticsFromRows(rows, sunkenMonths, cycles);
   }
 
   const rows = await getDb()
@@ -906,7 +919,8 @@ export async function getSearchLogAnalytics(
       timestamp: jobsTable.timestamp,
       pool: jobsTable.pool,
       stage: jobsTable.stage,
-      searchCycleLabel: jobsTable.searchCycleLabel
+      searchCycleLabel: jobsTable.searchCycleLabel,
+      company: jobsTable.company
     })
     .from(jobsTable);
 
@@ -915,9 +929,11 @@ export async function getSearchLogAnalytics(
       timestamp: row.timestamp.toISOString(),
       pool: row.pool as JobPool,
       stage: normalizeJobStage(row.stage, row.pool as JobPool),
-      searchCycleLabel: row.searchCycleLabel
+      searchCycleLabel: row.searchCycleLabel,
+      company: row.company
     })),
-    sunkenMonths
+    sunkenMonths,
+    cycles
   );
 }
 
@@ -933,11 +949,15 @@ export async function getRecentActiveJobs(
 
   const cacheKey = `recent-active:${searchCycle}:${limit}`;
   return getOrLoadCached(recentActiveCache, cacheKey, async () => {
+    const cycles = await getSearchCycles();
     const rows = await getDb()
       .select(getJobListPreviewSelection())
       .from(jobsTable)
       .where(
-        and(eq(jobsTable.pool, "active"), buildSearchCycleCondition(searchCycle))
+        and(
+          eq(jobsTable.pool, "active"),
+          buildSearchCycleCondition(searchCycle, cycles)
+        )
       )
       .orderBy(desc(jobsTable.timestamp))
       .limit(limit);
@@ -991,9 +1011,10 @@ export async function getJobsPage(input: {
     return cachedPage;
   }
 
+  const cycles = await getSearchCycles();
   const whereClause = and(
     eq(jobsTable.pool, input.pool),
-    buildSearchCycleCondition(searchCycle)
+    buildSearchCycleCondition(searchCycle, cycles)
   );
   const totalCount = await getCachedCount(`jobs-count:${input.pool}:${searchCycle}`, async () => {
     const [{ value }] = await getDb()
@@ -1068,9 +1089,10 @@ export async function searchJobsPage(input: {
     return cachedPage;
   }
 
+  const cycles = await getSearchCycles();
   const whereClause = and(
     eq(jobsTable.pool, input.pool),
-    buildSearchCycleCondition(searchCycle),
+    buildSearchCycleCondition(searchCycle, cycles),
     searchCondition
   );
   const totalCount = await getCachedCount(
@@ -1114,11 +1136,15 @@ export async function getActiveJobCount(searchCycle: SearchCycleScope = "all") {
   }
 
   return getCachedCount(`active-job-count:${searchCycle}`, async () => {
+    const cycles = await getSearchCycles();
     const [{ value }] = await getDb()
       .select({ value: count() })
       .from(jobsTable)
       .where(
-        and(eq(jobsTable.pool, "active"), buildSearchCycleCondition(searchCycle))
+        and(
+          eq(jobsTable.pool, "active"),
+          buildSearchCycleCondition(searchCycle, cycles)
+        )
       );
 
     return value;
@@ -1511,20 +1537,15 @@ export async function insertJob(record: JobRecord) {
   assertWritable();
   await ensureDatabaseReady();
 
-  const nextRecord = withAutoApplyMarker(record);
-
   if (shouldUseLocalFallback()) {
-    await insertLocalJob(nextRecord);
+    await insertLocalJob(record);
     clearQueryCaches();
     return;
   }
 
+  const nextRecord = withAutoApplyMarker(record, await getSearchCycles());
   await getDb().insert(jobsTable).values({
     ...nextRecord,
-    searchCycleLabel: normalizeSearchCycleLabel(
-      nextRecord.searchCycleLabel,
-      nextRecord.timestamp
-    ),
     searchText: buildSearchText(nextRecord),
     timestamp: new Date(nextRecord.timestamp)
   });
@@ -1545,13 +1566,15 @@ export async function insertJobsWithoutGoalEffects(records: JobRecord[]) {
     return;
   }
 
+  const cycles = await getSearchCycles();
   await getDb().insert(jobsTable).values(
     records.map((record) => ({
       ...record,
       stage: normalizeJobStage(record.stage, record.pool),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
-        record.timestamp
+        record.timestamp,
+        cycles
       ),
       searchText: buildSearchText(record),
       applyCountedDateKey: record.applyCountedDateKey ?? null,
@@ -1571,6 +1594,7 @@ export async function updateJobRecord(record: JobRecord) {
     return;
   }
 
+  const cycles = await getSearchCycles();
   await getDb()
     .update(jobsTable)
     .set({
@@ -1585,7 +1609,8 @@ export async function updateJobRecord(record: JobRecord) {
       stage: normalizeJobStage(record.stage, record.pool),
       searchCycleLabel: normalizeSearchCycleLabel(
         record.searchCycleLabel,
-        record.timestamp
+        record.timestamp,
+        cycles
       ),
       comments: record.comments,
       applyCountedDateKey: record.applyCountedDateKey,

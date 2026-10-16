@@ -18,6 +18,7 @@ import {
 import {
   getAllRecords,
   getDailyGoalsState,
+  getSearchCycles,
   insertJobsWithoutGoalEffects
 } from "../lib/db/repository";
 import type { JobPool, JobRecord } from "../lib/types";
@@ -149,11 +150,13 @@ async function main() {
     end: "2026-03-07"
   });
 
+  const cycles = await getSearchCycles();
   const candidates = drafts.map((draft, index) => ({
     draft,
     record: buildHistoricalRecord(
       draft,
-      timestamps[index] ?? timestamps[timestamps.length - 1] ?? new Date().toISOString()
+      timestamps[index] ?? timestamps[timestamps.length - 1] ?? new Date().toISOString(),
+      cycles
     )
   }));
 

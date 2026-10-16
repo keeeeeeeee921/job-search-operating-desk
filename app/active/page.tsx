@@ -1,6 +1,7 @@
 import {
   getActiveJobCount,
   getJobsPage,
+  getSearchCycles,
   searchActiveJobsPage
 } from "@/lib/db/repository";
 import { AppShell } from "@/components/app-shell";
@@ -33,17 +34,18 @@ export default async function ActivePage({
 
   await runStaleArchiveSweepIfDue();
 
-  const [activeJobs, currentCount, olderCount] = await Promise.all([
+  const [activeJobs, currentCount, olderCount, cycles] = await Promise.all([
     query
       ? searchActiveJobsPage({ query, page, searchCycle })
       : getJobsPage({ pool: "active", page, searchCycle }),
     getActiveJobCount("current"),
-    getActiveJobCount("older")
+    getActiveJobCount("older"),
+    getSearchCycles()
   ]);
 
   const cycleView: SearchCycleView = {
     mode: searchCycle,
-    currentLabel: getCurrentSearchCycleLabel(),
+    currentLabel: getCurrentSearchCycleLabel(cycles),
     currentCount,
     olderCount
   };
