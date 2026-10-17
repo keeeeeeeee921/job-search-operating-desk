@@ -26,9 +26,7 @@ Production does not auto-run migrations during `next build`.
 
 ## Preview Deployments
 
-`vercel.json` runs `pnpm db:migrate` automatically for `VERCEL_ENV=preview`.
-
-That keeps Preview schema in sync with the branch-specific Neon database before `pnpm build`.
+Preview deployments do not run migrations. The Neon integration exposes the production `DATABASE_URL` to every Vercel environment, so an automatic migrate on preview would change the production schema from any branch. Apply migrations by hand with `pnpm db:migrate` before pushing `main`.
 
 ## Ongoing Schema Changes
 
