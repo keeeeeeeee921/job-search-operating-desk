@@ -32,9 +32,6 @@ export function AppShell({
               <span className="block truncate text-sm font-semibold text-foreground sm:text-base">
                 Job Search Operating Desk
               </span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                A focused workspace for a truthful job search
-              </span>
             </span>
           </Link>
           <nav className="grid grid-cols-2 gap-1 rounded-2xl border border-border bg-muted p-1 sm:flex sm:w-fit sm:flex-wrap sm:items-center lg:flex-nowrap lg:rounded-full" aria-label="Primary navigation">

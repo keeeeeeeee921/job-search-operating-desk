@@ -30,7 +30,6 @@ describe("ListPageView search cycle toggle", () => {
           currentCount: 0,
           olderCount: 1857
         }}
-        description="Your current applications."
         pageData={emptyPage}
         query="analyst"
         searchable
@@ -55,7 +54,6 @@ describe("ListPageView search cycle toggle", () => {
           currentCount: 0,
           olderCount: 6
         }}
-        description="Your current applications."
         pageData={emptyPage}
         searchable
         title="Active"
@@ -79,7 +77,6 @@ describe("ListPageView search cycle toggle", () => {
           currentCount: 53,
           olderCount: 1857
         }}
-        description="Applications from earlier search cycles."
         pageData={{ ...emptyPage, totalCount: 1857, totalPages: 38, hasNextPage: true }}
         searchable
         title="Active"
@@ -90,8 +87,8 @@ describe("ListPageView search cycle toggle", () => {
       "href",
       "/active"
     );
-    expect(screen.getByText("Older cycles")).toBeInTheDocument();
-    expect(screen.getByText("Showing 1-50 of 1857 records")).toBeInTheDocument();
+    expect(screen.getByText("Before Search 02")).toBeInTheDocument();
+    expect(screen.getByText("1-50 of 1857")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
       "href",
       "/active?cycle=older&page=2"

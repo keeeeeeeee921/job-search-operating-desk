@@ -26,11 +26,11 @@ export function DailyGoalsWidget({
   return (
     <Surface className="p-5">
       <h2 className="text-xl font-semibold text-foreground">Daily check-in</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        {demoMode
-          ? "Check-ins are read-only in the demo."
-          : "Small targets, one clear action each."}
-      </p>
+      {demoMode ? (
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          Check-ins are read-only in the demo.
+        </p>
+      ) : null}
       <div className="mt-4 divide-y divide-border">
         {goalOrder.map((goal) => {
           const item = dailyGoals.goals[goal];

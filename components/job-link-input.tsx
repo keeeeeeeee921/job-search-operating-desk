@@ -19,7 +19,7 @@ export function JobLinkInput({
 }: JobLinkInputProps) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-semibold text-foreground" htmlFor="job-link-input">
+      <label className="sr-only" htmlFor="job-link-input">
         Job posting URL
       </label>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">

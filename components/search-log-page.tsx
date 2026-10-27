@@ -66,9 +66,8 @@ export function SearchCycleStory({
     <Surface className="p-5 lg:p-6" data-testid={`search-cycle-story-${cycleSlug(cycle.label)}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-accent">Saved story</p>
           <h2
-            className="mt-2 max-w-3xl text-2xl font-semibold text-foreground"
+            className="max-w-3xl text-2xl font-semibold text-foreground"
             id={headingId}
           >
             {cycle.title.trim() ? `${cycle.label}: ${cycle.title.trim()}` : cycle.label}
@@ -108,10 +107,6 @@ export function SearchCycleStory({
         <div className="mt-6 rounded-2xl border border-dashed border-border px-5 py-6">
           <p className="text-base font-semibold text-foreground">
             No story written for {cycle.label} yet
-          </p>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            The funnel above already counts this cycle. Add a title, the goals
-            and a note on the approach once the search has a shape.
           </p>
         </div>
       )}
@@ -154,26 +149,15 @@ export function SearchLogPage({
   return (
     <div className="space-y-8">
       <div className="px-1">
-        <p className="text-sm font-semibold text-accent">Search Log</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">
-          Saved snapshots of each job search
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">
+          Search Log
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-          Completed searches live here as a short note plus one summary image.
-        </p>
       </div>
 
       <Surface className="p-5 lg:p-6">
-        <div>
-          <p className="text-sm font-semibold text-accent">Flow overview</p>
-          <h2 className="mt-2 text-2xl font-semibold text-foreground">
-            Application flow by search cycle
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Each cycle is drawn to scale. Click the Screening / OA node, or the
-            Interviewed button, to zoom into the people who reached an interview.
-          </p>
-        </div>
+        <h2 className="text-2xl font-semibold text-foreground">
+          Application flow by search cycle
+        </h2>
 
         <div className="mt-6 grid gap-5 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-3">
           {flows.map(({ cycle }) => (
@@ -236,10 +220,7 @@ export function SearchLogPage({
       </Surface>
 
       {headerActions ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-          <p className="text-sm text-muted-foreground">
-            New records go to the cycle with the latest start date.
-          </p>
+        <div className="flex justify-end px-1">
           {headerActions}
         </div>
       ) : null}

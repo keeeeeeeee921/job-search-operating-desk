@@ -55,11 +55,6 @@ export default async function ActivePage({
       <ListPageView
         basePath="/active"
         cycleView={cycleView}
-        description={
-          searchCycle === "older"
-            ? "Applications from earlier search cycles, sorted newest first."
-            : "Your current applications, sorted newest first."
-        }
         detailBasePath="/active"
         pageData={activeJobs}
         query={query}

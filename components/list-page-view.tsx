@@ -59,10 +59,7 @@ function CycleToggle({
   if (cycleView.mode === "older") {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
-        <span>
-          Showing records saved before {cycleView.currentLabel}. They stay out of the
-          default working set.
-        </span>
+        <span>Before {cycleView.currentLabel}</span>
         <Link className={linkClassName} href={buildListHref(basePath, { query })}>
           Back to {cycleView.currentLabel} ({cycleView.currentCount})
         </Link>
@@ -72,7 +69,7 @@ function CycleToggle({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
-      <span>Showing {cycleView.currentLabel} only.</span>
+      <span>{cycleView.currentLabel}</span>
       <Link
         className={linkClassName}
         href={buildListHref(basePath, { query, olderCycles: true })}
@@ -84,34 +81,30 @@ function CycleToggle({
 }
 
 function formatRange(pageData: PaginatedJobListResult) {
-  if (pageData.totalCount === 0) {
-    return "Nothing to show";
+  if (pageData.totalPages <= 1) {
+    return `${pageData.totalCount} records`;
   }
 
   const start = (pageData.page - 1) * pageData.pageSize + 1;
   const end = Math.min(pageData.totalCount, pageData.page * pageData.pageSize);
-  return `Showing ${start}-${end} of ${pageData.totalCount} records`;
+  return `${start}-${end} of ${pageData.totalCount}`;
 }
 
 export function ListPageView({
   title,
-  description,
   pageData,
   basePath,
   searchable = false,
   searchPlaceholder = "Search Active by company or role",
-  eyebrow,
   detailBasePath,
   query = "",
   cycleView
 }: {
   title: string;
-  description: string;
   pageData: PaginatedJobListResult;
   basePath: string;
   searchable?: boolean;
   searchPlaceholder?: string;
-  eyebrow?: string;
   detailBasePath?: string;
   query?: string;
   cycleView?: SearchCycleView;
@@ -123,16 +116,7 @@ export function ListPageView({
   return (
     <div className="space-y-6">
         <div className="flex flex-col gap-5 px-1 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-accent">
-              {eyebrow ??
-                (olderCycles ? "Older cycles" : searchable ? "Working set" : "Archive")}
-            </p>
-            <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
-            <p className="mt-3 max-w-3xl text-base leading-7 text-muted-foreground">
-              {description}
-            </p>
-          </div>
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
           <div className="text-sm text-muted-foreground">{formatRange(pageData)}</div>
         </div>
 
@@ -141,7 +125,6 @@ export function ListPageView({
         ) : null}
 
         {searchable ? (
-          <Surface className="p-4 sm:p-5">
           <form action={basePath} className="flex max-w-2xl flex-col gap-3 sm:flex-row">
             {olderCycles ? (
               <input name={OLDER_CYCLES_PARAM} type="hidden" value={OLDER_CYCLES_VALUE} />
@@ -167,20 +150,10 @@ export function ListPageView({
               ) : null}
             </div>
           </form>
-          </Surface>
         ) : null}
 
       <JobRecordTable
         detailBasePath={detailBasePath}
-        emptyDescription={
-          query
-            ? `Try another company or role in ${title}.`
-            : cycleView?.mode === "current"
-              ? "New records land here as soon as they are saved. Older cycles are one click away."
-              : searchable
-                ? `Try another company or role in ${title}.`
-                : "Nothing archived here yet."
-        }
         emptyTitle={
           query
             ? `No matches in ${title}`

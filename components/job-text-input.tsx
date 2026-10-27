@@ -36,13 +36,10 @@ export function JobTextInput({
                 onSubmit();
               }
             }}
-            placeholder="Paste copied job text. Press Enter to process, or Shift+Enter for a new line."
+            placeholder="Paste job text. Enter to review, Shift+Enter for a new line."
             value={value}
           />
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs leading-5 text-muted-foreground">
-          Best for Easy Apply or copied listings. Press Enter to review, Shift+Enter for a new line.
-        </p>
+      <div className="mt-3 flex justify-end">
         <Button disabled={disabled || !value.trim()} onClick={onSubmit} type="button">
           Review job
         </Button>

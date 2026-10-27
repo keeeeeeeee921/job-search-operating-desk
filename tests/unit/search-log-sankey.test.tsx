@@ -104,7 +104,6 @@ describe("SearchLogSankey", () => {
     expect(all).toHaveAttribute("aria-pressed", "true");
     expect(interviewed).toHaveAttribute("aria-pressed", "false");
     expect(labelGroup("round_1")).toBeNull();
-    expect(screen.getByText("click to focus on these 34")).toHaveAttribute("opacity", "1");
 
     await user.click(interviewed);
 
@@ -114,7 +113,6 @@ describe("SearchLogSankey", () => {
     expect(within(labelGroup("round_1") as HTMLElement).getByText("Round 1")).toBeInTheDocument();
     // Percentages switch to the interviewed denominator.
     expect(within(labelGroup("round_1") as HTMLElement).getByText("38.2%")).toBeInTheDocument();
-    expect(screen.getByText("click to focus on these 34")).toHaveAttribute("opacity", "0");
 
     await user.click(all);
     expect(all).toHaveAttribute("aria-pressed", "true");

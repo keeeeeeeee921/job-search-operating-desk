@@ -125,15 +125,11 @@ export function HomeWorkspace({
     <>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6 xl:space-y-5">
-          <div className="flex flex-col gap-4 px-1 pb-1 sm:flex-row sm:items-end sm:justify-between xl:gap-3">
+          <div className="flex flex-col gap-4 px-1 pb-1 sm:flex-row sm:items-center sm:justify-between xl:gap-3">
             <div>
-              <p className="text-sm font-semibold text-accent">Today</p>
-              <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-foreground lg:text-5xl xl:text-[2.625rem] xl:leading-[1.08]">
+              <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground lg:text-5xl xl:text-[2.625rem] xl:leading-[1.08]">
                 Keep the working set honest.
               </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground xl:mt-2 xl:leading-6">
-                Capture a role, review uncertain fields, and move on without cluttering the active list.
-              </p>
             </div>
             <div className="flex justify-center sm:shrink-0 sm:justify-start">
                 <Image
@@ -149,11 +145,11 @@ export function HomeWorkspace({
 
           <Surface className="p-5 sm:p-6 xl:p-5" elevated>
             <h2 className="text-xl font-semibold text-foreground">Add a job</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {demoMode
-                ? "Adding jobs is disabled in the read-only demo. Browse Active, Rejected, and the Search Log instead."
-                : "Incomplete extraction pauses for review before anything is saved."}
-            </p>
+            {demoMode ? (
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Adding jobs is disabled in the read-only demo. Browse Active, Rejected, and the Search Log instead.
+              </p>
+            ) : null}
             <div className="mt-6 xl:mt-5">
               <div
                 aria-label="Job input mode"

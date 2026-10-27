@@ -44,7 +44,7 @@ test("saves pasted job text without requiring a link", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Paste job text" }).click();
   const textarea = page.getByPlaceholder(
-    "Paste copied job text. Press Enter to process, or Shift+Enter for a new line."
+    "Paste job text. Enter to review, Shift+Enter for a new line."
   );
   await textarea.fill(`Req ID: P25-321635-2
 Data Science Intern (Summer 2026)
@@ -86,7 +86,7 @@ test("Active shows the current cycle by default and keeps older cycles one click
   page
 }) => {
   await page.goto("/active");
-  await expect(page.getByText("Showing Search 02 only.")).toBeVisible();
+  await expect(page.getByText("Search 02", { exact: true })).toBeVisible();
   await expect(page.getByText("IBM Canada")).toHaveCount(0);
 
   const olderLink = page.getByRole("link", { name: /^Older cycles \(\d+\)$/ });
@@ -234,14 +234,14 @@ test("starting a new search cycle routes new records to it", async ({ page }) =>
   ).toBeVisible();
 
   await page.goto("/active");
-  await expect(page.getByText("Showing Search 03 only.")).toBeVisible();
+  await expect(page.getByText("Search 03", { exact: true })).toBeVisible();
   await expect(page.getByText("No Active records in Search 03 yet")).toBeVisible();
 
   await page.goto("/");
   await page.getByRole("button", { name: "Paste job text" }).click();
   await page
     .getByPlaceholder(
-      "Paste copied job text. Press Enter to process, or Shift+Enter for a new line."
+      "Paste job text. Enter to review, Shift+Enter for a new line."
     )
     .fill(`Req ID: HM-2026-07
 Growth Analyst
@@ -256,7 +256,7 @@ SQL`);
   await expect(page.getByText("Saved to Active").first()).toBeVisible();
 
   await page.goto("/active");
-  await expect(page.getByText("Showing Search 03 only.")).toBeVisible();
+  await expect(page.getByText("Search 03", { exact: true })).toBeVisible();
   await expect(page.getByText("Harbor Metrics")).toBeVisible();
   await expect(page.getByText("IBM Canada")).toHaveCount(0);
 

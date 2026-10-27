@@ -126,8 +126,6 @@ export function JobDetailPanel({
       <Surface className="p-5 sm:p-6">
         <h2 className="text-xl font-semibold text-foreground">Record status</h2>
         <div className="mt-5 space-y-5">
-          <Field label="Role Title" value={record.roleTitle} />
-          <Field label="Company" value={record.company} />
           <Field label="Location" value={record.location} />
           <Field
             label="Source"
@@ -172,13 +170,9 @@ export function JobDetailPanel({
       </Surface>
       <div className="space-y-6">
         <Surface className="p-5 sm:p-6">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Follow-up notes</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Keep recruiter updates, interview progress, and the next action close to the stage control.
-            </p>
-          </div>
-          <label className="mt-4 block text-sm font-semibold text-foreground" htmlFor="job-comments">Comments</label>
+          <h2 className="text-xl font-semibold text-foreground">
+            <label htmlFor="job-comments">Notes</label>
+          </h2>
           <Textarea
             aria-describedby={demoMode ? "job-comments-demo-note" : undefined}
             className="mt-2 min-h-48 disabled:cursor-not-allowed disabled:opacity-60"
@@ -217,15 +211,12 @@ export function JobDetailPanel({
           </Button>
         </Surface>
 
-        <Surface className="flex flex-col gap-4 border-rose-200 bg-rose-50 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-semibold text-rose-800">Delete record</h2>
-            <p className="mt-1 text-sm text-rose-700">
-              {demoMode
-                ? "Deleting is disabled in the read-only demo."
-                : "Permanently removes this application."}
+        <div className="flex items-center justify-end gap-4 px-1">
+          {demoMode ? (
+            <p className="text-sm text-muted-foreground">
+              Deleting is disabled in the read-only demo.
             </p>
-          </div>
+          ) : null}
           <Button
             disabled={demoMode}
             onClick={() => {
@@ -237,7 +228,7 @@ export function JobDetailPanel({
           >
             Delete record
           </Button>
-        </Surface>
+        </div>
       </div>
       </div>
     </div>

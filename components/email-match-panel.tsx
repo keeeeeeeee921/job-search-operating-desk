@@ -48,22 +48,18 @@ export function EmailMatchPanel({
   return (
     <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
       <div className="xl:col-span-2 px-1">
-        <p className="text-sm font-semibold text-accent">Email Match</p>
-        <h1 className="mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-foreground">
-          Match an email to the right Active record
+        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-foreground">
+          Email Match
         </h1>
-        <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-          Paste a rejection email or a title and company search, then archive the right record.
-        </p>
       </div>
 
       <Surface className="p-5 sm:p-6">
         <h2 className="text-xl font-semibold text-foreground">Rejection email</h2>
-        <label className="mt-5 block text-sm font-semibold text-foreground" htmlFor="rejection-email-input">
+        <label className="sr-only" htmlFor="rejection-email-input">
           Email text or job title and company
         </label>
         <Textarea
-          className="mt-2 min-h-[260px]"
+          className="mt-4 min-h-[260px]"
           id="rejection-email-input"
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={(event) => {
@@ -78,13 +74,10 @@ export function EmailMatchPanel({
               });
             }
           }}
-          placeholder="Paste a rejection email or job title + company..."
+          placeholder="Paste a rejection email or job title + company. Enter to match."
           value={value}
         />
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs leading-5 text-muted-foreground">
-            Press Enter to match. Use Shift+Enter for a new line.
-          </p>
+        <div className="mt-4 flex justify-end">
           <Button
             disabled={!value.trim() || emptyState || isMatching}
             onClick={() => {
@@ -108,12 +101,7 @@ export function EmailMatchPanel({
                 <MailSearch aria-hidden="true" className="size-5" />
               </div>
               <p className="text-base font-semibold text-foreground">
-                {emptyState ? "No Active records yet" : "No likely matches yet"}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {emptyState
-                  ? "Save a few records first, then come back here."
-                  : "Paste an email or a title + company search, then press Enter."}
+                {emptyState ? "No Active records yet" : "No matches yet"}
               </p>
               </div>
             </div>

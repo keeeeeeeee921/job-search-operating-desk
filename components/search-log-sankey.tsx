@@ -37,7 +37,6 @@ const PAD = 12;
 const STUB = 2;
 const MIN_LINK = 1.5;
 const LABEL_BLOCK = 26;
-const HINT_EXTRA = 14;
 const LABEL_MIN_HEIGHT = 10;
 const COLUMNS = 4;
 const DURATION_MS = 450;
@@ -116,12 +115,8 @@ function stack(flow: SearchLogFlow, focus: boolean, k: number): Frame {
           (focus && !node.context));
       nodes[node.id] = { y, h, show };
 
-      // Leave room under a short node for its two-line label, and under the
-      // Screening node in the overview for the "click to focus" hint.
-      let advance = Math.max(h, show ? LABEL_BLOCK : 0);
-      if (node.id === "screening" && !focus && show) {
-        advance = Math.max(h, LABEL_BLOCK + HINT_EXTRA);
-      }
+      // Leave room under a short node for its two-line label.
+      const advance = Math.max(h, show ? LABEL_BLOCK : 0);
       y += advance + (advance > 0 ? PAD : 0);
     }
   }
@@ -318,8 +313,6 @@ export function SearchLogSankey({
 
   const nodeById = new Map(flow.nodes.map((node) => [node.id, node]));
   const screeningNode = nodeById.get("screening");
-  const hintX = nodeX(1) + NODE_WIDTH + 6;
-  const hintY = TOP + LABEL_BLOCK + 11;
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -502,17 +495,6 @@ export function SearchLogSankey({
             })}
           </g>
 
-          {canFocus && screeningNode ? (
-            <text
-              fontSize={11.5}
-              opacity={frame.focus ? 0 : 1}
-              style={{ fill: mutedForeground, paintOrder: "stroke", stroke: halo, strokeWidth: 3 }}
-              x={hintX}
-              y={hintY}
-            >
-              {`click to focus on these ${formatCount(screening)}`}
-            </text>
-          ) : null}
         </svg>
       </div>
     </div>

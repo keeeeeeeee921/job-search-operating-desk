@@ -9,14 +9,16 @@ export function JobRecordTable({
 }: {
   records: JobListItem[];
   emptyTitle: string;
-  emptyDescription: string;
+  emptyDescription?: string;
   detailBasePath?: string;
 }) {
   if (records.length === 0) {
     return (
       <div className="rounded-[30px] border border-dashed border-border bg-white/70 px-6 py-10 text-center">
         <p className="text-base font-semibold text-foreground">{emptyTitle}</p>
-        <p className="mt-2 text-sm text-muted-foreground">{emptyDescription}</p>
+        {emptyDescription ? (
+          <p className="mt-2 text-sm text-muted-foreground">{emptyDescription}</p>
+        ) : null}
       </div>
     );
   }

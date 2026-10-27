@@ -42,25 +42,19 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10 text-foreground">
       <Surface className="w-full max-w-md p-6 sm:p-8">
-        <p className="text-sm font-semibold text-accent">Private workspace</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           Enter the access token
         </h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          This desk holds real application records. The token is set in the
-          deployment environment and stays in an HTTP-only cookie for 90 days.
-        </p>
 
         <form action={loginWithAccessToken} className="mt-6 space-y-4">
           <input name="next" type="hidden" value={nextPath} />
           <div>
-            <label className="text-sm font-semibold" htmlFor="access-token">
+            <label className="sr-only" htmlFor="access-token">
               Access token
             </label>
             <Input
               autoComplete="current-password"
               autoFocus
-              className="mt-2"
               id="access-token"
               name="token"
               required

@@ -23,8 +23,6 @@ export default async function RejectedPage({
     <AppShell currentPath="/rejected">
       <ListPageView
         basePath="/rejected"
-        description="Archived applications that are no longer active."
-        eyebrow="Archive"
         pageData={rejectedJobs}
         query={query}
         searchable
