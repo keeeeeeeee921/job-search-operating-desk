@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { ReactNode } from "react";
 import { SearchLogSankey } from "@/components/search-log-sankey";
 import { Surface } from "@/components/ui/surface";
@@ -123,29 +122,6 @@ export function SearchCycleStory({
         </p>
         <InterviewedCompanies companies={interviewedCompanies} />
       </div>
-
-      {cycle.imageSrc ? (
-        <div className="mt-6 border-t border-border pt-5">
-          <h3 className="text-xl font-semibold text-foreground">
-            {cycle.label} snapshot
-          </h3>
-          <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-surface">
-            <Image
-              alt={`${cycle.label} summary image, ${period}`}
-              className="h-auto w-full"
-              height={1000}
-              sizes="(min-width: 1400px) 1320px, (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)"
-              src={cycle.imageSrc}
-              width={2000}
-            />
-          </div>
-          {cycle.updatedAt ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Story updated {formatDate(cycle.updatedAt)}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
     </Surface>
   );
 }

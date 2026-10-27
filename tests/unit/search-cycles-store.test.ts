@@ -29,7 +29,7 @@ describe("search cycles store", () => {
       endDate: "2026-04-02",
       title: "First full-time search after graduation",
       goals: ["Find a job", "Keep some data analysis content in the role"],
-      imageSrc: "/job-search-cycle-01.png"
+      imageSrc: null
     });
     expect(cycles[1]).toMatchObject({
       label: "Search 02",

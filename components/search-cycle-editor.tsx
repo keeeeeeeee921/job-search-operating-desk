@@ -177,19 +177,6 @@ export function SearchCycleStoryEditor({ cycle }: { cycle: SearchCycle }) {
                 />
               </Field>
             </div>
-            <Field
-              hint="A file in public/ (e.g. /job-search-cycle-01.png) or an https:// URL."
-              htmlFor={`${ids}-image`}
-              label="Summary image"
-            >
-              <Input
-                defaultValue={cycle.imageSrc ?? ""}
-                id={`${ids}-image`}
-                maxLength={500}
-                name="imageSrc"
-                placeholder="/job-search-cycle-02.png"
-              />
-            </Field>
           </div>
           <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p aria-live="polite" className="text-sm text-rose-700" role={error ? "alert" : undefined}>
