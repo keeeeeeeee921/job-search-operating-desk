@@ -388,6 +388,20 @@ export function capitalizeWords(input: string) {
   return restoreAcronymCasing(titleCased);
 }
 
+/**
+ * Title-cases scraped text only when it arrives all upper or all lower case.
+ * Mixed-case titles already carry the poster's casing ("(GBS)", "TikTok
+ * Shop", "MBA"), which a blanket title-case pass would flatten; they only
+ * get whitelisted acronyms restored ("Analyst Ii" -> "Analyst II").
+ */
+export function titleCaseIfFlat(input: string) {
+  if (/[a-z]/.test(input) && /[A-Z]/.test(input)) {
+    return restoreAcronymCasing(input);
+  }
+
+  return capitalizeWords(input);
+}
+
 export function tokenOverlapScore(a: string, b: string) {
   const aTokens = new Set(tokenize(a));
   const bTokens = new Set(tokenize(b));

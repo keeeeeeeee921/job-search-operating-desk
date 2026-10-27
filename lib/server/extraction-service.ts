@@ -14,6 +14,7 @@ import {
   capitalizeWords,
   hostToCompany,
   normalizeUrl,
+  titleCaseIfFlat,
   uniqueValues
 } from "@/lib/utils";
 
@@ -390,7 +391,7 @@ function parseJsonLd(raw: string) {
 }
 
 function cleanTitle(value: string) {
-  return capitalizeWords(
+  return titleCaseIfFlat(
     decodeFieldEntities(value)
       .replace(/^title\s*:\s*/i, "")
       .replace(/\|.*$/, "")

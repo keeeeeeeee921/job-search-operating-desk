@@ -5,7 +5,7 @@ import {
   restoreAcronymCasing,
   stripLocationNoise
 } from "@/lib/field-noise";
-import { capitalizeWords } from "@/lib/utils";
+import { capitalizeWords, titleCaseIfFlat } from "@/lib/utils";
 
 describe("decodeHtmlEntities", () => {
   it("decodes named, decimal and hex entities, including double-encoded ones", () => {
@@ -94,6 +94,22 @@ describe("capitalizeWords", () => {
     expect(capitalizeWords("phd data scientist, b2b saas")).toBe("PhD Data Scientist, B2B SaaS");
     expect(capitalizeWords("data analyst - hit it rich")).toBe("Data Analyst - Hit It Rich");
     expect(capitalizeWords("it data analyst")).toBe("IT Data Analyst");
+  });
+});
+
+describe("titleCaseIfFlat", () => {
+  it("keeps the poster's casing on mixed-case titles", () => {
+    expect(
+      titleCaseIfFlat("Data Business Analyst Graduate (GBS) - 2027 Start")
+    ).toBe("Data Business Analyst Graduate (GBS) - 2027 Start");
+    expect(
+      titleCaseIfFlat("Strategy & Analytics Associate Graduate (TikTok Shop) - 2027 Start (MBA)")
+    ).toBe("Strategy & Analytics Associate Graduate (TikTok Shop) - 2027 Start (MBA)");
+  });
+
+  it("title-cases all-caps and all-lowercase titles", () => {
+    expect(titleCaseIfFlat("DATA ANALYST II")).toBe("Data Analyst II");
+    expect(titleCaseIfFlat("senior fp&a analyst")).toBe("Senior FP&A Analyst");
   });
 });
 
