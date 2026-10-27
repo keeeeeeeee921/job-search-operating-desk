@@ -146,9 +146,7 @@ test("comments persist after blur", async ({ page }) => {
 test("update by email archives manually", async ({ page }) => {
   await page.goto("/update-by-email");
   const rejectionText = `Hello,\n\nWe appreciate your interest in the Associate Business Analyst - Entry Level role with IBM Canada. After reviewing your background, we have chosen to move forward with other candidates.\n\nThank you again for applying.\n\nIBM Canada Recruiting`;
-  const emailInput = page.getByPlaceholder(
-    "Paste a rejection email or job title + company..."
-  );
+  const emailInput = page.getByLabel("Email text or job title and company");
   await emailInput.fill(rejectionText);
   await emailInput.press("Enter");
   await expect(
