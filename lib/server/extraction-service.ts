@@ -7,6 +7,7 @@ import {
   stripLocationNoise
 } from "@/lib/field-noise";
 import { getMockJobBySlug } from "@/lib/mock-jobs";
+import { containsTemplateSyntax } from "@/lib/field-noise";
 import { validateJobDraft } from "@/lib/recordValidation";
 import { detectSource } from "@/lib/sourceDetection";
 import type { ExtractionResult, JobField } from "@/lib/types";
@@ -411,7 +412,7 @@ function providerHostCompany(hostname: string) {
 }
 
 function isUsefulTitleCandidate(value: string) {
-  if (!value || value.length > 120) {
+  if (!value || value.length > 120 || containsTemplateSyntax(value)) {
     return false;
   }
 
@@ -496,7 +497,7 @@ function isUsefulCompanyCandidate(value: string) {
 }
 
 function isUsefulLocationCandidate(value: string) {
-  if (!value || value.length > 100) {
+  if (!value || value.length > 100 || containsTemplateSyntax(value)) {
     return false;
   }
 
@@ -514,7 +515,7 @@ function isUsefulLocationCandidate(value: string) {
 }
 
 function isUsefulDescriptionCandidate(value: string) {
-  if (!value || value.length < 40) {
+  if (!value || value.length < 40 || containsTemplateSyntax(value)) {
     return false;
   }
 
@@ -682,7 +683,7 @@ function parseGreenhouseCompanyFromUrl(parsedUrl: URL) {
 }
 
 function prioritizeCompanyCandidates(values: string[]) {
-  const deduped = uniqueValues(values);
+  const deduped = uniqueValues(values).filter((value) => !containsTemplateSyntax(value));
   const publicFacing = deduped.filter(
     (value) => !looksLikeInternalCompanyCandidate(value)
   );
@@ -1485,7 +1486,112 @@ function collectWorkdayFamilyCandidates(
   return candidates;
 }
 
+function isBrassringHost(hostname: string) {
+  return hostname.toLowerCase().endsWith("brassring.com");
+}
+
+type BrassringQuestion = {
+  QuestionName?: unknown;
+  AnswerValue?: unknown;
+  VerityZone?: unknown;
+};
+
+/**
+ * Brassring (TalentGateway) pages are rendered by Angular, so the served HTML
+ * only has "{{...}}" placeholders. The posting itself ships in the hidden
+ * #preLoadJSON input: Jobdetails.JobDetailQuestions holds one entry per field,
+ * keyed by a tenant-specific VerityZone ("formtext11"), and
+ * JobFieldsToDisplay says which zone is the public title and summary.
+ * Expired postings carry Jobdetails: null.
+ */
+function parseBrassringPreload(value: string) {
+  try {
+    const parsed = JSON.parse(value) as {
+      Jobdetails?: { JobDetailQuestions?: unknown } | null;
+      JobFieldsToDisplay?: { JobTitle?: unknown; Summary?: unknown } | null;
+      JobDetailFieldsToDisplay?: { Section2Fields?: unknown } | null;
+    };
+    const questions = parsed.Jobdetails?.JobDetailQuestions;
+    if (!Array.isArray(questions)) {
+      return null;
+    }
+
+    const answers = (questions as BrassringQuestion[])
+      .filter((question) => typeof question.AnswerValue === "string")
+      .map((question) => ({
+        name: typeof question.QuestionName === "string" ? question.QuestionName.trim() : "",
+        zone: typeof question.VerityZone === "string" ? question.VerityZone : "",
+        value: (question.AnswerValue as string).trim()
+      }))
+      .filter((answer) => answer.value);
+    const zoneValue = (zone: unknown) =>
+      typeof zone === "string" ? answers.find((answer) => answer.zone === zone)?.value ?? "" : "";
+    const namedValue = (pattern: RegExp) =>
+      answers.find((answer) => pattern.test(answer.name))?.value ?? "";
+
+    const sectionZones = parsed.JobDetailFieldsToDisplay?.Section2Fields;
+    const summaryZone = parsed.JobFieldsToDisplay?.Summary;
+    const descriptionZones = [
+      summaryZone,
+      ...(Array.isArray(sectionZones) ? sectionZones : [])
+    ];
+    const descriptionParts = uniqueValues(
+      descriptionZones
+        .map((zone) => answers.find((answer) => answer.zone === zone))
+        .filter((answer): answer is (typeof answers)[number] => Boolean(answer))
+        .filter((answer) => answer.value.length >= 40)
+        .map((answer) =>
+          answer.name ? `${answer.name}\n${stripHtml(answer.value)}` : stripHtml(answer.value)
+        )
+    );
+
+    const city = namedValue(/^city\b/i);
+    const state = namedValue(/^state\b/i);
+
+    return {
+      title: zoneValue(parsed.JobFieldsToDisplay?.JobTitle) || zoneValue("jobtitle"),
+      location: [city, state].filter(Boolean).join(", "),
+      description: descriptionParts.join("\n\n"),
+      companyText: answers
+        .filter((answer) => /company|eeo|equal opportunity/i.test(answer.name))
+        .map((answer) => stripHtml(answer.value))
+    };
+  } catch {
+    return null;
+  }
+}
+
+function collectBrassringFamilyCandidates(
+  context: ExtractionFamilyContext
+): ExtractionCandidates {
+  const preload = context.$("input#preLoadJSON").attr("value");
+  const payload = preload ? parseBrassringPreload(preload) : null;
+  if (!payload) {
+    return emptyExtractionCandidates();
+  }
+
+  const candidates = emptyExtractionCandidates();
+  if (payload.title) {
+    candidates.roleTitle.push(cleanTitle(payload.title));
+  }
+  if (payload.location) {
+    candidates.location.push(payload.location);
+  }
+  if (payload.description) {
+    candidates.jobDescription.push(payload.description);
+  }
+  candidates.company.push(...extractCompanyFromDescriptions(payload.companyText));
+
+  candidates.notes?.push("Brassring job payload was parsed from #preLoadJSON.");
+  return candidates;
+}
+
 const extractionFamilyStrategies: ExtractionFamilyStrategy[] = [
+  {
+    id: "brassring",
+    matches: (context) => isBrassringHost(context.parsedUrl.hostname),
+    collect: collectBrassringFamilyCandidates
+  },
   {
     id: "dayforce",
     matches: (context) =>
@@ -1636,7 +1742,8 @@ export function extractCandidatesFromHtml(html: string, normalizedUrl: string) {
         ...(
           parsedUrl.hostname.includes("myworkdayjobs.com") ||
           parsedUrl.hostname.includes("rec.pro.ukg.net") ||
-          parsedUrl.hostname.includes("greenhouse.io")
+          parsedUrl.hostname.includes("greenhouse.io") ||
+          isBrassringHost(parsedUrl.hostname)
             ? []
             : [hostToCompany(parsedUrl.hostname)]
         )

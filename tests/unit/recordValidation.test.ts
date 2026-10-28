@@ -28,6 +28,19 @@ describe("validateJobDraft", () => {
     expect(validateJobDraft(baseDraft)).toEqual([]);
   });
 
+  it("flags unrendered template text so the draft pauses for review", () => {
+    const issues = validateJobDraft({
+      ...baseDraft,
+      roleTitle: "{{welcomeTitle.replace('[FIRSTNAME]',( !(ProfileDetails.PreferredName == ''",
+      location: "Criterion : {{op}} None"
+    });
+
+    expect(issues.map((issue) => `${issue.field}:${issue.type}`)).toEqual([
+      "roleTitle:suspicious",
+      "location:suspicious"
+    ]);
+  });
+
   it("flags derived and missing fields", () => {
     const issues = validateJobDraft({
       ...baseDraft,

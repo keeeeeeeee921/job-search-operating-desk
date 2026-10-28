@@ -45,6 +45,14 @@ const AMBIGUOUS_ACRONYMS = new Set(["it", "ms", "bs"]);
 const ACRONYM_CONTEXT_NOUNS =
   /^(analyst|analytics|data|infrastructure|operations|ops|support|systems?|security|services?|business|manager|specialist|intern|project|program|product|help\s*desk|service\s*desk|engineer|technician|director|lead|audit|governance|risk|compliance|strategy|consultant|coordinator|administrator|architect|team|department|degree|student)\b/i;
 
+/**
+ * True for unrendered client-side template text ("{{welcomeTitle...", "{{op}}")
+ * that a JS-rendered careers page serves before its script fills it in.
+ */
+export function containsTemplateSyntax(value: string) {
+  return /\{\{|\}\}/.test(value);
+}
+
 /** Returns the canonical spelling when `token` is a known acronym. */
 export function canonicalAcronym(token: string) {
   return acronymByLowercase.get(token.toLowerCase()) ?? null;

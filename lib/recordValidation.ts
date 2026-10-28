@@ -5,6 +5,7 @@ import {
   type JobField,
   type ValidationIssue
 } from "@/lib/types";
+import { containsTemplateSyntax } from "@/lib/field-noise";
 import { normalizeUrl } from "@/lib/utils";
 
 const weakRoleWords = new Set([
@@ -59,6 +60,16 @@ export function validateJobDraft(draft: JobDraft) {
         field,
         type: "suspicious",
         message: `${labelForField(field)} came from the link and should be checked.`
+      });
+    }
+  });
+
+  (["roleTitle", "company", "location"] as const).forEach((field) => {
+    if (containsTemplateSyntax(draft[field])) {
+      issues.push({
+        field,
+        type: "suspicious",
+        message: `${labelForField(field)} is unrendered page template text.`
       });
     }
   });

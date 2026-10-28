@@ -171,6 +171,32 @@ describe("server extraction service", () => {
     expect(result.extractionStatus).toBe("confirmed");
   });
 
+  it("parses Brassring #preLoadJSON instead of the unrendered Angular template", () => {
+    const html = readFixture("brassring-preload.html");
+    const url =
+      "https://xjobs.brassring.com/TGnewUI/Search/home/HomeWithPreLoad?partnerid=26144&siteid=5496&PageType=JobDetails&jobid=772092";
+    const result = extractCandidatesFromHtml(html, url);
+
+    expect(result.fields.roleTitle).toBe("Production Mechanic");
+    expect(result.fields.company).toBe("Progress Rail");
+    expect(result.fields.location).toBe("Henderson, Nevada");
+    expect(result.fields.jobDescription).toContain(
+      "performs preventative maintenance on locomotive motors"
+    );
+    expect(result.extractionStatus).toBe("confirmed");
+
+    // Expired postings ship Jobdetails: null; the template text must not
+    // stand in for the missing fields, and the host is not the employer.
+    const expired = extractCandidatesFromHtml(
+      html.replace(/value="[^"]*"/, 'value="{&quot;Jobdetails&quot;:null}"'),
+      url
+    );
+    expect(expired.fields.roleTitle).toBe("");
+    expect(expired.fields.company).toBe("");
+    expect(expired.fields.location).toBe("");
+    expect(expired.extractionStatus).toBe("needs_review");
+  });
+
   it("prefers Greenhouse title and meta hints over page copy and form placeholders", () => {
     const result = extractCandidatesFromHtml(
       `
