@@ -16,7 +16,7 @@ export const jobStageOrder: JobStage[] = [
 export const jobStageLabels: Record<JobStage, string> = {
   no_response: "No Response",
   rejected: "Rejected",
-  screening_oa: "Screening/OA",
+  screening_oa: "Screening / OA",
   unpaid: "Unpaid",
   round_1: "Round 1",
   round_2: "Round 2",

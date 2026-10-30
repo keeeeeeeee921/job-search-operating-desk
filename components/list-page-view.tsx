@@ -20,7 +20,7 @@ export type SearchCycleView = {
   olderCount: number;
 };
 
-function buildListHref(
+export function buildListHref(
   basePath: string,
   input: { page?: number; query?: string; olderCycles?: boolean }
 ) {
@@ -51,32 +51,35 @@ function CycleToggle({
   cycleView: SearchCycleView;
   query: string;
 }) {
-  const linkClassName = cn(
-    "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
-    "border-border bg-surface text-foreground hover:border-accent/20 hover:bg-white"
-  );
-
-  if (cycleView.mode === "older") {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
-        <span>Before {cycleView.currentLabel}</span>
-        <Link className={linkClassName} href={buildListHref(basePath, { query })}>
-          Back to {cycleView.currentLabel} ({cycleView.currentCount})
-        </Link>
-      </div>
+  const olderActive = cycleView.mode === "older";
+  const optionClassName = (active: boolean) =>
+    cn(
+      "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45",
+      active
+        ? "bg-foreground text-background"
+        : "text-muted-foreground hover:bg-surface hover:text-foreground"
     );
-  }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-1 text-sm text-muted-foreground">
-      <span>{cycleView.currentLabel}</span>
+    <nav
+      aria-label="Search cycle"
+      className="flex w-fit shrink-0 gap-1 rounded-full border border-border bg-muted p-1"
+    >
       <Link
-        className={linkClassName}
+        aria-current={olderActive ? undefined : "page"}
+        className={optionClassName(!olderActive)}
+        href={buildListHref(basePath, { query })}
+      >
+        {cycleView.currentLabel} ({cycleView.currentCount})
+      </Link>
+      <Link
+        aria-current={olderActive ? "page" : undefined}
+        className={optionClassName(olderActive)}
         href={buildListHref(basePath, { query, olderCycles: true })}
       >
         Older cycles ({cycleView.olderCount})
       </Link>
-    </div>
+    </nav>
   );
 }
 
@@ -113,34 +116,37 @@ export function ListPageView({
   const pageHref = (page: number) =>
     buildListHref(basePath, { page, query, olderCycles });
 
+  const detailSearch = (() => {
+    const href = buildListHref(basePath, { page: pageData.page, query, olderCycles });
+    const index = href.indexOf("?");
+    return index === -1 ? "" : href.slice(index);
+  })();
+
   return (
     <div className="space-y-6">
-        <div className="flex flex-col gap-5 px-1 lg:flex-row lg:items-end lg:justify-between">
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
-          <div className="text-sm text-muted-foreground">{formatRange(pageData)}</div>
-        </div>
+      <div className="flex items-baseline gap-3 px-1">
+        <h1 className="text-4xl font-semibold tracking-tight text-foreground">{title}</h1>
+        <span className="text-sm tabular-nums text-muted-foreground">{formatRange(pageData)}</span>
+      </div>
 
-        {cycleView ? (
-          <CycleToggle basePath={basePath} cycleView={cycleView} query={query} />
-        ) : null}
-
-        {searchable ? (
-          <form action={basePath} className="flex max-w-2xl flex-col gap-3 sm:flex-row">
-            {olderCycles ? (
-              <input name={OLDER_CYCLES_PARAM} type="hidden" value={OLDER_CYCLES_VALUE} />
-            ) : null}
-            <Input
-              aria-label={searchPlaceholder}
-              defaultValue={query}
-              name="q"
-              placeholder={searchPlaceholder}
-            />
-            <div className="flex gap-2">
-              <Button type="submit">Search</Button>
+      {searchable || cycleView ? (
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {searchable ? (
+            <form action={basePath} className="flex w-full max-w-2xl gap-2">
+              {olderCycles ? (
+                <input name={OLDER_CYCLES_PARAM} type="hidden" value={OLDER_CYCLES_VALUE} />
+              ) : null}
+              <Input
+                aria-label={searchPlaceholder}
+                defaultValue={query}
+                name="q"
+                placeholder={searchPlaceholder}
+              />
+              <Button className="shrink-0" type="submit">Search</Button>
               {query ? (
                 <Link
                   className={cn(
-                    "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
+                    "inline-flex shrink-0 items-center justify-center rounded-2xl border px-4 py-2 text-sm font-semibold transition duration-200",
                     "border-transparent bg-transparent text-muted-foreground hover:bg-surface hover:text-foreground"
                   )}
                   href={buildListHref(basePath, { olderCycles })}
@@ -148,12 +154,17 @@ export function ListPageView({
                   Clear
                 </Link>
               ) : null}
-            </div>
-          </form>
-        ) : null}
+            </form>
+          ) : null}
+          {cycleView ? (
+            <CycleToggle basePath={basePath} cycleView={cycleView} query={query} />
+          ) : null}
+        </div>
+      ) : null}
 
       <JobRecordTable
         detailBasePath={detailBasePath}
+        detailSearch={detailSearch}
         emptyTitle={
           query
             ? `No matches in ${title}`

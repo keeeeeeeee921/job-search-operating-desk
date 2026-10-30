@@ -34,13 +34,13 @@ export function AppShell({
               </span>
             </span>
           </Link>
-          <nav className="grid grid-cols-2 gap-1 rounded-2xl border border-border bg-muted p-1 sm:flex sm:w-fit sm:flex-wrap sm:items-center lg:flex-nowrap lg:rounded-full" aria-label="Primary navigation">
+          <nav className="flex gap-1 overflow-x-auto rounded-full border border-border bg-muted p-1 sm:w-fit lg:flex-nowrap" aria-label="Primary navigation">
             {navigation.map((item) => {
               const active = currentPath === item.href;
               return (
                 <Link
                   className={cn(
-                    "rounded-xl px-3 py-2 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:rounded-full",
+                    "flex-1 whitespace-nowrap rounded-full px-2 py-2 text-center text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/45 focus-visible:ring-offset-2 focus-visible:ring-offset-surface sm:flex-none sm:px-3",
                     active
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:bg-surface hover:text-foreground"

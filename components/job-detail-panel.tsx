@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ExternalLink } from "lucide-react";
 import { useDemoMode } from "@/components/demo-mode-provider";
@@ -19,11 +19,14 @@ function getDraftStorageKey(id: string) {
 
 export function JobDetailPanel({
   record,
+  backHref = "/active",
   onDelete,
   onSaveComments,
   onSaveStage
 }: {
   record: JobRecord;
+  /** The Active list view (cycle, query, page) this record was opened from. */
+  backHref?: string;
   onDelete: () => Promise<void>;
   onSaveComments: (comments: string) => Promise<void>;
   onSaveStage: (stage: JobStage) => Promise<void>;
@@ -32,7 +35,17 @@ export function JobDetailPanel({
   const [comments, setComments] = useState(record.comments);
   const [stage, setStage] = useState(record.stage);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [descriptionOverflows, setDescriptionOverflows] = useState(false);
+  const descriptionRef = useRef<HTMLDivElement>(null);
   const latestCommentsRef = useRef(record.comments);
+
+  // Only offer "Show full description" when the clamp actually hides text.
+  useLayoutEffect(() => {
+    const element = descriptionRef.current;
+    if (element && !descriptionExpanded) {
+      setDescriptionOverflows(element.scrollHeight > element.clientHeight + 1);
+    }
+  }, [descriptionExpanded, record.jobDescription]);
 
   useEffect(() => {
     setComments(record.comments);
@@ -92,83 +105,70 @@ export function JobDetailPanel({
     };
   }, [demoMode, record.comments, record.id]);
 
+  const meta = [
+    record.location,
+    record.sourceType === "unknown" ? null : formatSourceTypeLabel(record.sourceType),
+    record.searchCycleLabel,
+    `Saved ${formatDate(record.timestamp)}`
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div>
-      <Link className="inline-flex items-center gap-1 text-sm font-semibold text-accent transition hover:opacity-80" href="/active">
+      <Link className="inline-flex items-center gap-1 text-sm font-semibold text-accent transition hover:opacity-80" href={backHref}>
         <ChevronLeft aria-hidden="true" className="size-4" />
         Back to Active
       </Link>
 
-      <div className="mt-5 flex flex-col gap-5 px-1 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+      <div className="mt-5 flex flex-col gap-5 px-1 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-accent">{record.company}</p>
           <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {record.roleTitle}
           </h1>
-          <p className="mt-3 text-base text-muted-foreground">
-            {record.location} · Saved {formatDate(record.timestamp)}
-          </p>
+          <p className="mt-3 text-base text-muted-foreground">{meta}</p>
         </div>
-        {record.link ? (
-          <a
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
-            href={record.link}
-            rel="noreferrer"
-            target="_blank"
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
+          <label className="sr-only" htmlFor="job-stage-select">Stage</label>
+          <select
+            aria-describedby={demoMode ? "job-stage-demo-note" : undefined}
+            className="rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground outline-none transition hover:bg-muted focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={demoMode}
+            id="job-stage-select"
+            onChange={(event) => {
+              const nextStage = event.target.value as JobStage;
+              setStage(nextStage);
+              void onSaveStage(nextStage);
+            }}
+            value={stage}
           >
-            <ExternalLink aria-hidden="true" className="size-4" />
-            Open posting
-          </a>
-        ) : null}
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[0.72fr_1.28fr]">
-      <Surface className="p-5 sm:p-6">
-        <h2 className="text-xl font-semibold text-foreground">Record status</h2>
-        <div className="mt-5 space-y-5">
-          <Field label="Location" value={record.location} />
-          <Field
-            label="Source"
-            value={
-              record.sourceType === "unknown"
-                ? "Source unclear"
-                : formatSourceTypeLabel(record.sourceType)
-            }
-          />
-          <Field label="Timestamp" value={formatDate(record.timestamp)} />
-          <Field
-            label="Search Cycle"
-            value={record.searchCycleLabel ?? "Not set"}
-          />
-          <div>
-            <label className="text-xs font-medium text-muted-foreground" htmlFor="job-stage-select">Stage</label>
-            <select
-              aria-describedby={demoMode ? "job-stage-demo-note" : undefined}
-              className="mt-2 w-full rounded-2xl border border-border bg-muted/60 px-3 py-2 text-base text-foreground outline-none transition focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
-              disabled={demoMode}
-              id="job-stage-select"
-              onChange={(event) => {
-                const nextStage = event.target.value as JobStage;
-                setStage(nextStage);
-                void onSaveStage(nextStage);
-              }}
-              value={stage}
+            {selectableJobStages.map((option) => (
+              <option key={option} value={option}>
+                {jobStageLabels[option]}
+              </option>
+            ))}
+          </select>
+          {record.link ? (
+            <a
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-accent/40"
+              href={record.link}
+              rel="noreferrer"
+              target="_blank"
             >
-              {selectableJobStages.map((option) => (
-                <option key={option} value={option}>
-                  {jobStageLabels[option]}
-                </option>
-              ))}
-            </select>
-            {demoMode ? (
-              <p className="mt-2 text-xs text-muted-foreground" id="job-stage-demo-note">
-                Stage changes are disabled in the read-only demo.
-              </p>
-            ) : null}
-          </div>
+              <ExternalLink aria-hidden="true" className="size-4" />
+              Open posting
+            </a>
+          ) : null}
         </div>
-      </Surface>
-      <div className="space-y-6">
+      </div>
+      {demoMode ? (
+        <p className="mt-2 px-1 text-xs text-muted-foreground" id="job-stage-demo-note">
+          Stage changes are disabled in the read-only demo.
+        </p>
+      ) : null}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
         <Surface className="p-5 sm:p-6">
           <h2 className="text-xl font-semibold text-foreground">
             <label htmlFor="job-comments">Notes</label>
@@ -201,45 +201,40 @@ export function JobDetailPanel({
 
         <Surface className="p-5 sm:p-6">
           <h2 className="text-xl font-semibold text-foreground">Job description</h2>
-          <div className={descriptionExpanded ? "" : "max-h-64 overflow-hidden"}>
+          <div
+            className={descriptionExpanded ? "" : "max-h-64 overflow-hidden"}
+            ref={descriptionRef}
+          >
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-foreground">
               {record.jobDescription}
             </p>
           </div>
-          <Button className="mt-4" onClick={() => setDescriptionExpanded((current) => !current)} tone="secondary">
-            {descriptionExpanded ? "Collapse description" : "Show full description"}
-          </Button>
-        </Surface>
-
-        <div className="flex items-center justify-end gap-4 px-1">
-          {demoMode ? (
-            <p className="text-sm text-muted-foreground">
-              Deleting is disabled in the read-only demo.
-            </p>
+          {descriptionOverflows ? (
+            <Button className="mt-4" onClick={() => setDescriptionExpanded((current) => !current)} tone="secondary">
+              {descriptionExpanded ? "Collapse description" : "Show full description"}
+            </Button>
           ) : null}
-          <Button
-            disabled={demoMode}
-            onClick={() => {
-              if (window.confirm("Delete this record permanently? This can't be undone.")) {
-                void onDelete();
-              }
-            }}
-            tone="danger"
-          >
-            Delete record
-          </Button>
-        </div>
+        </Surface>
       </div>
-      </div>
-    </div>
-  );
-}
 
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-2 text-sm text-foreground">{value}</p>
+      <div className="mt-6 flex items-center justify-end gap-4 px-1">
+        {demoMode ? (
+          <p className="text-sm text-muted-foreground">
+            Deleting is disabled in the read-only demo.
+          </p>
+        ) : null}
+        <Button
+          disabled={demoMode}
+          onClick={() => {
+            if (window.confirm("Delete this record permanently? This can't be undone.")) {
+              void onDelete();
+            }
+          }}
+          tone="danger"
+        >
+          Delete record
+        </Button>
+      </div>
     </div>
   );
 }

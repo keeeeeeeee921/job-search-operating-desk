@@ -83,16 +83,65 @@ describe("ListPageView search cycle toggle", () => {
       />
     );
 
-    expect(screen.getByRole("link", { name: "Back to Search 02 (53)" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Search 02 (53)" })).toHaveAttribute(
       "href",
       "/active"
     );
-    expect(screen.getByText("Before Search 02")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Older cycles (1857)" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
     expect(screen.getByText("1-50 of 1857")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Next" })).toHaveAttribute(
       "href",
       "/active?cycle=older&page=2"
     );
     expect(document.querySelector('input[name="cycle"]')).toHaveAttribute("value", "older");
+  });
+
+  it("carries the list view into detail links so Back returns to it", () => {
+    render(
+      <ListPageView
+        basePath="/active"
+        cycleView={{
+          mode: "older",
+          currentLabel: "Search 02",
+          currentCount: 53,
+          olderCount: 1857
+        }}
+        detailBasePath="/active"
+        pageData={{
+          ...emptyPage,
+          records: [
+            {
+              id: "job-1",
+              roleTitle: "Data Analyst",
+              company: "Acme",
+              location: "",
+              link: "",
+              timestamp: "2026-03-01T00:00:00.000Z",
+              stage: "no_response",
+              sourceType: "company",
+              sourceConfidence: "high",
+              extractionStatus: "confirmed",
+              jobDescriptionPreview: ""
+            }
+          ],
+          page: 3,
+          totalCount: 1857,
+          totalPages: 38,
+          hasPreviousPage: true,
+          hasNextPage: true
+        }}
+        query="data"
+        searchable
+        title="Active"
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "Data Analyst" })).toHaveAttribute(
+      "href",
+      "/active/job-1?cycle=older&q=data&page=3"
+    );
   });
 });

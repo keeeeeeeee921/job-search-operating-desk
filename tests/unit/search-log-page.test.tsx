@@ -108,9 +108,6 @@ describe("SearchLogPage", () => {
     expect(within(row02).getByText(/8 applications/)).toBeInTheDocument();
     expect(within(row02).getByText(/0 reached Screening \/ OA/)).toBeInTheDocument();
 
-    expect(screen.getByText("Applications in Search 01")).toBeInTheDocument();
-    expect(screen.getByText("Applications in Search 02")).toBeInTheDocument();
-    expect(screen.getByText("Legacy active records")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
         name: "Search 01: First full-time search after graduation"

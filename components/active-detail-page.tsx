@@ -11,9 +11,11 @@ import { useJobDeskStore } from "@/lib/store";
 import type { JobRecord, JobStage } from "@/lib/types";
 
 export function ActiveDetailPageClient({
-  record
+  record,
+  backHref = "/active"
 }: {
   record: JobRecord | null;
+  backHref?: string;
 }) {
   const pushToast = useJobDeskStore((state) => state.pushToast);
   const router = useRouter();
@@ -23,6 +25,7 @@ export function ActiveDetailPageClient({
     <AppShell currentPath="/active">
       {currentRecord ? (
         <JobDetailPanel
+          backHref={backHref}
           onDelete={async () => {
             const response = await fetch(`/api/jobs/${currentRecord.id}`, {
               method: "DELETE"
@@ -35,7 +38,7 @@ export function ActiveDetailPageClient({
 
             pushToast("Record deleted", "success");
             setCurrentRecord(null);
-            router.push("/active");
+            router.push(backHref);
             router.refresh();
           }}
           onSaveComments={async (comments) => {

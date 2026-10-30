@@ -5,12 +5,15 @@ export function JobRecordTable({
   records,
   emptyTitle,
   emptyDescription,
-  detailBasePath
+  detailBasePath,
+  detailSearch = ""
 }: {
   records: JobListItem[];
   emptyTitle: string;
   emptyDescription?: string;
   detailBasePath?: string;
+  /** List view params ("?cycle=older&page=3") carried into detail links. */
+  detailSearch?: string;
 }) {
   if (records.length === 0) {
     return (
@@ -34,7 +37,7 @@ export function JobRecordTable({
       <div>
         {records.map((record) => (
           <JobRecordRow
-            href={detailBasePath ? `${detailBasePath}/${record.id}` : undefined}
+            href={detailBasePath ? `${detailBasePath}/${record.id}${detailSearch}` : undefined}
             key={record.id}
             record={record}
           />

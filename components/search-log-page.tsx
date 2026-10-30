@@ -12,7 +12,6 @@ import type {
   SearchCycle,
   SearchLogAnalytics
 } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
 
 function cycleSlug(label: string) {
   return label.replace(/\s+/g, "-").toLowerCase();
@@ -159,28 +158,8 @@ export function SearchLogPage({
           Application flow by search cycle
         </h2>
 
-        <div className="mt-6 grid gap-5 border-y border-border py-5 sm:grid-cols-2 lg:grid-cols-3">
-          {flows.map(({ cycle }) => (
-            <div key={cycle.label}>
-              <p className="text-sm text-muted-foreground">Applications in {cycle.label}</p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
-                {cycle.total.toLocaleString("en-US")}
-              </p>
-            </div>
-          ))}
-          <div>
-            <p className="text-sm text-muted-foreground">Legacy active records</p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
-              {analytics.sunkenActiveCount.toLocaleString("en-US")}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Saved before {formatDate(analytics.sunkenThresholdDate)}
-            </p>
-          </div>
-        </div>
-
         {flows.length > 0 ? (
-          <div className="divide-y divide-border">
+          <div className="mt-2 divide-y divide-border">
             {flows.map(({ cycle, flow }) => (
               <section
                 aria-labelledby={`search-log-row-${cycleSlug(cycle.label)}`}

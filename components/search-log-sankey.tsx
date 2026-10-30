@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -52,7 +53,8 @@ const linkFill: Record<SearchLogFlowColor, string> = {
 
 const foreground = "hsl(var(--foreground))";
 const mutedForeground = "hsl(var(--muted-foreground))";
-const halo = "hsl(var(--surface))";
+const surface = "hsl(var(--surface))";
+const muted = "hsl(var(--muted))";
 
 type NodeFrame = { y: number; h: number; show: boolean };
 type LinkFrame = { y0: number; y1: number; w: number };
@@ -259,6 +261,8 @@ export function SearchLogSankey({
   const { applied, screening } = flow.counts;
   const canFocus = screening > 0;
   const [focused, setFocused] = useState(false);
+  // useId output carries ":" / "«»", which url(#...) references choke on.
+  const labelBackdropId = `label-backdrop-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const [frame, setFrame] = useState<Frame>(() => layoutFlow(flow, false));
   const frameRef = useRef(frame);
   const rafRef = useRef<number | null>(null);
@@ -387,6 +391,26 @@ export function SearchLogSankey({
           role="group"
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         >
+          <defs>
+            {/* Labels sit where bands leave their node. Paint the chart's own
+                background (surface + muted/25) behind each label block so it
+                vanishes on empty canvas and masks the band underneath. */}
+            <filter
+              height="1.2"
+              id={labelBackdropId}
+              width="1.04"
+              x="0"
+              y="-0.1"
+            >
+              <feFlood floodColor={surface} result="surface" />
+              <feFlood floodColor={muted} floodOpacity={0.25} result="muted" />
+              <feMerge>
+                <feMergeNode in="surface" />
+                <feMergeNode in="muted" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
           <g>
             {flow.links.map((link, index) => {
               const source = nodeById.get(link.source);
@@ -462,7 +486,7 @@ export function SearchLogSankey({
                   {position.show ? (
                     <g
                       data-node-label={node.id}
-                      style={{ paintOrder: "stroke", stroke: halo, strokeWidth: 3, strokeLinejoin: "round" }}
+                      filter={`url(#${labelBackdropId})`}
                     >
                       <text
                         fontSize={13}

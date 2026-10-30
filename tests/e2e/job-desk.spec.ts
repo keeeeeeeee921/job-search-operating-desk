@@ -86,7 +86,10 @@ test("Active shows the current cycle by default and keeps older cycles one click
   page
 }) => {
   await page.goto("/active");
-  await expect(page.getByText("Search 02", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Search 02 \(\d+\)$/ })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
   await expect(page.getByText("IBM Canada")).toHaveCount(0);
 
   const olderLink = page.getByRole("link", { name: /^Older cycles \(\d+\)$/ });
@@ -101,7 +104,7 @@ test("Active shows the current cycle by default and keeps older cycles one click
   await expect(page).toHaveURL(/q=IBM/);
   await expect(page.getByText("IBM Canada").first()).toBeVisible();
 
-  await page.getByRole("link", { name: /^Back to Search 02 \(\d+\)$/ }).click();
+  await page.getByRole("link", { name: /^Search 02 \(\d+\)$/ }).click();
   await expect(page).toHaveURL(/\/active\?q=IBM$/);
   await expect(page.getByText("No matches in Active")).toBeVisible();
 });
@@ -164,8 +167,8 @@ test("active records can be deleted from the detail page", async ({ page }) => {
   await page.getByRole("link", { name: "Ops Research Scientist I", exact: true }).click();
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete record" }).click();
-  await page.waitForURL("**/active");
-  await page.goto("/active?cycle=older");
+  // Deleting returns to the list view the record was opened from.
+  await page.waitForURL("**/active?cycle=older");
   await expect(
     page.getByRole("link", { name: "Ops Research Scientist I", exact: true })
   ).toHaveCount(0);
@@ -232,7 +235,7 @@ test("starting a new search cycle routes new records to it", async ({ page }) =>
   ).toBeVisible();
 
   await page.goto("/active");
-  await expect(page.getByText("Search 03", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Search 03 \(\d+\)$/ })).toBeVisible();
   await expect(page.getByText("No Active records in Search 03 yet")).toBeVisible();
 
   await page.goto("/");
@@ -254,10 +257,13 @@ SQL`);
   await expect(page.getByText("Saved to Active").first()).toBeVisible();
 
   await page.goto("/active");
-  await expect(page.getByText("Search 03", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Search 03 (1)" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
   await expect(page.getByText("Harbor Metrics")).toBeVisible();
   await expect(page.getByText("IBM Canada")).toHaveCount(0);
 
   await page.goto("/search-log");
-  await expect(page.getByText("Applications in Search 03")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Search 03" })).toBeVisible();
 });
