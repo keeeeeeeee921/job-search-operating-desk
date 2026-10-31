@@ -144,7 +144,7 @@ describe("stale active archive in the repository", () => {
   });
 
   it("counts auto-archived records under Rejected in the Search Log analytics", async () => {
-    const before = await getSearchLogAnalytics(9);
+    const before = await getSearchLogAnalytics();
     const rejectedBefore =
       before.cycles
         .find((cycle) => cycle.label === "Search 01")
@@ -153,7 +153,7 @@ describe("stale active archive in the repository", () => {
 
     await archiveStaleActiveJobs(NOW);
 
-    const after = await getSearchLogAnalytics(9);
+    const after = await getSearchLogAnalytics();
     const rejectedAfter =
       after.cycles
         .find((cycle) => cycle.label === "Search 01")

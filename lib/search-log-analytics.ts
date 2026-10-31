@@ -64,12 +64,6 @@ export function buildInterviewedCompanies(
   );
 }
 
-function subtractMonths(date: Date, months: number) {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() - months);
-  return next;
-}
-
 function compareSearchCycleLabels(left: string, right: string) {
   const leftNumber = Number(left.match(/\d+/)?.[0] ?? Number.NaN);
   const rightNumber = Number(right.match(/\d+/)?.[0] ?? Number.NaN);
@@ -111,14 +105,11 @@ function compareCycleLabels(
 
 export function buildSearchLogAnalyticsFromRows(
   rows: SearchLogAnalyticsRow[],
-  sunkenMonths: number,
   cycles: readonly SearchCycleBoundary[]
 ): SearchLogAnalytics {
-  const threshold = subtractMonths(new Date(), sunkenMonths);
   const bucketMap = new Map<string, SearchLogStageBucket>();
   const totals = new Map<string, number>();
   const rowsByLabel = new Map<string, SearchLogAnalyticsRow[]>();
-  let sunkenActiveCount = 0;
 
   for (const row of rows) {
     const label = normalizeSearchCycleLabel(
@@ -143,10 +134,6 @@ export function buildSearchLogAnalyticsFromRows(
     }
 
     totals.set(label, (totals.get(label) ?? 0) + 1);
-
-    if (row.pool === "active" && new Date(row.timestamp) <= threshold) {
-      sunkenActiveCount += 1;
-    }
   }
 
   const compare = compareCycleLabels(cycles);
@@ -167,10 +154,5 @@ export function buildSearchLogAnalyticsFromRows(
         })
     }));
 
-  return {
-    cycles: cycleAnalytics,
-    sunkenActiveCount,
-    sunkenThresholdDate: threshold.toISOString(),
-    sunkenMonths
-  };
+  return { cycles: cycleAnalytics };
 }

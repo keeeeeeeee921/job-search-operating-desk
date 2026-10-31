@@ -454,7 +454,7 @@ describe("repository", () => {
       rejected.find((record) => record.id === "sankey-rejected-oa")?.searchCycleLabel
     ).toBe("Search 02");
 
-    const analytics = await getSearchLogAnalytics(9);
+    const analytics = await getSearchLogAnalytics();
     const searchOne = analytics.cycles.find((cycle) => cycle.label === "Search 01");
     const searchTwo = analytics.cycles.find((cycle) => cycle.label === "Search 02");
 

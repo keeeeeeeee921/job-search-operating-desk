@@ -897,9 +897,7 @@ export async function getJobsByPool(pool: JobPool) {
   return rows.map(mapJobRow);
 }
 
-export async function getSearchLogAnalytics(
-  sunkenMonths = 9
-): Promise<SearchLogAnalytics> {
+export async function getSearchLogAnalytics(): Promise<SearchLogAnalytics> {
   await ensureDatabaseReady();
   const cycles = await getSearchCycles();
 
@@ -911,7 +909,7 @@ export async function getSearchLogAnalytics(
       searchCycleLabel: record.searchCycleLabel,
       company: record.company
     }));
-    return buildSearchLogAnalyticsFromRows(rows, sunkenMonths, cycles);
+    return buildSearchLogAnalyticsFromRows(rows, cycles);
   }
 
   const rows = await getDb()
@@ -932,7 +930,6 @@ export async function getSearchLogAnalytics(
       searchCycleLabel: row.searchCycleLabel,
       company: row.company
     })),
-    sunkenMonths,
     cycles
   );
 }

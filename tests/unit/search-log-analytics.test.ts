@@ -62,7 +62,6 @@ describe("buildSearchLogAnalyticsFromRows", () => {
         row({ searchCycleLabel: null, timestamp: "2026-04-03T04:00:00.000Z", company: "New Co", stage: "offer" }),
         row({ searchCycleLabel: "Search 02", company: "Quiet Co" })
       ],
-      9,
       initialSearchCycles
     );
 
@@ -88,7 +87,6 @@ describe("buildSearchLogAnalyticsFromRows", () => {
         row({ searchCycleLabel: "Search 09" }),
         row({ searchCycleLabel: "Search 01" })
       ],
-      9,
       cycles
     );
 

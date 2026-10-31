@@ -75,10 +75,7 @@ const analytics: SearchLogAnalytics = {
         }
       ]
     }
-  ],
-  sunkenActiveCount: 4,
-  sunkenThresholdDate: "2025-11-13T00:00:00.000Z",
-  sunkenMonths: 9
+  ]
 };
 
 describe("SearchLogPage", () => {

@@ -188,7 +188,4 @@ export interface SearchLogCycleAnalytics {
 
 export interface SearchLogAnalytics {
   cycles: SearchLogCycleAnalytics[];
-  sunkenActiveCount: number;
-  sunkenThresholdDate: string;
-  sunkenMonths: number;
 }

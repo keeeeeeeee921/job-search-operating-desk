@@ -12,7 +12,7 @@ import { isCurrentRequestAuthorized } from "@/lib/server/auth";
 
 export default async function JobSearchLogPage() {
   const [analytics, cycles, authorized] = await Promise.all([
-    getSearchLogAnalytics(9),
+    getSearchLogAnalytics(),
     getSearchCycles(),
     isCurrentRequestAuthorized()
   ]);
