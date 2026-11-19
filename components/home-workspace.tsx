@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createJobFromLink,
@@ -9,6 +9,7 @@ import {
   saveReviewedJob,
   type CreateJobResult
 } from "@/app/actions";
+import { CaptureBookmarklet } from "@/components/capture-bookmarklet";
 import { DailyGoalsWidget } from "@/components/daily-goals-widget";
 import { useDemoMode } from "@/components/demo-mode-provider";
 import { DuplicateModal } from "@/components/duplicate-modal";
@@ -19,15 +20,29 @@ import { RecentItemsList } from "@/components/recent-items-list";
 import { ReviewModal } from "@/components/review-modal";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
+import {
+  CAPTURE_MESSAGE_TYPE,
+  CAPTURE_READY_MESSAGE,
+  CAPTURE_WINDOW_NAME,
+  parseCapturePayload,
+  type CapturePayload
+} from "@/lib/capture";
 import { toJobListItem } from "@/lib/job-list";
 import { useJobDeskStore } from "@/lib/store";
 import type {
   DailyGoalsState,
   DuplicateCandidate,
-  InputMode,
   JobDraft,
   JobListItem
 } from "@/lib/types";
+
+type AddJobMode = "link" | "text" | "page";
+
+const addJobModes: { mode: AddJobMode; label: string }[] = [
+  { mode: "link", label: "Paste link" },
+  { mode: "text", label: "Paste job text" },
+  { mode: "page", label: "From open page" }
+];
 
 export function HomeWorkspace({
   initialRecentItems,
@@ -40,7 +55,7 @@ export function HomeWorkspace({
   const demoMode = useDemoMode();
   const pushToast = useJobDeskStore((state) => state.pushToast);
 
-  const [inputMode, setInputMode] = useState<InputMode>("link");
+  const [inputMode, setInputMode] = useState<AddJobMode>("link");
   const [linkValue, setLinkValue] = useState("");
   const [textValue, setTextValue] = useState("");
   const [processingStatus, setProcessingStatus] = useState<string | null>(null);
@@ -95,7 +110,90 @@ export function HomeWorkspace({
     }
   }
 
+  // The bookmarklet opens this page in a window it names (lib/capture.ts).
+  // Read the name once: it is cleared below so a later visit in the same tab
+  // does not ask the job page again.
+  const [openedByBookmarklet] = useState(
+    () => typeof window !== "undefined" && window.name === CAPTURE_WINDOW_NAME
+  );
+  const handleCaptureRef = useRef<(payload: CapturePayload) => void>(() => {});
+  handleCaptureRef.current = (payload) => {
+    void (async () => {
+      setInputMode("page");
+      await showProcessingStages([
+        "Reading the captured page...",
+        "Preparing job record..."
+      ]);
+
+      try {
+        const response = await fetch("/api/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: CAPTURE_MESSAGE_TYPE, ...payload })
+        });
+        const body = (await response.json().catch(() => null)) as
+          | CreateJobResult
+          | { error?: string }
+          | null;
+
+        if (response.ok && body && "status" in body) {
+          handleServerResult(body);
+          return;
+        }
+
+        pushToast(
+          (body && "error" in body && body.error) || "Couldn't read the captured page",
+          "error"
+        );
+      } catch {
+        pushToast("Couldn't read the captured page", "error");
+      }
+      setProcessingStatus(null);
+    })();
+  };
+
+  useEffect(() => {
+    if (!openedByBookmarklet || demoMode) {
+      return;
+    }
+
+    window.name = "";
+    const opener = window.opener as Window | null;
+    if (!opener) {
+      // The job site isolates the windows it opens
+      // (Cross-Origin-Opener-Policy), so there is nobody to ask.
+      pushToast("That site blocks the hand-off. Use Paste job text instead.", "warning");
+      return;
+    }
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== opener) {
+        return;
+      }
+
+      const payload = parseCapturePayload(event.data);
+      if (!payload) {
+        return;
+      }
+
+      window.removeEventListener("message", onMessage);
+      handleCaptureRef.current(payload);
+    };
+
+    window.addEventListener("message", onMessage);
+    // Carries no data; the job page answers only if it is waiting for it.
+    opener.postMessage(CAPTURE_READY_MESSAGE, "*");
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+    };
+  }, [demoMode, openedByBookmarklet, pushToast]);
+
   const handleProcess = async () => {
+    if (inputMode === "page") {
+      return;
+    }
+
     const activeValue = inputMode === "link" ? linkValue : textValue;
     if (!activeValue.trim()) {
       return;
@@ -156,32 +254,22 @@ export function HomeWorkspace({
                 className="mb-5 inline-flex gap-1 rounded-xl bg-muted p-1 xl:mb-4"
                 role="group"
               >
-                <Button
-                  aria-pressed={inputMode === "link"}
-                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:underline focus-visible:decoration-2 focus-visible:decoration-foreground/35 focus-visible:underline-offset-4 focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
-                    inputMode === "link"
-                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
-                      : "shadow-none"
-                  }`}
-                  onClick={() => setInputMode("link")}
-                  tone={inputMode === "link" ? "secondary" : "ghost"}
-                  type="button"
-                >
-                  Paste link
-                </Button>
-                <Button
-                  aria-pressed={inputMode === "text"}
-                  className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:underline focus-visible:decoration-2 focus-visible:decoration-foreground/35 focus-visible:underline-offset-4 focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
-                    inputMode === "text"
-                      ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
-                      : "shadow-none"
-                  }`}
-                  onClick={() => setInputMode("text")}
-                  tone={inputMode === "text" ? "secondary" : "ghost"}
-                  type="button"
-                >
-                  Paste job text
-                </Button>
+                {addJobModes.map(({ mode, label }) => (
+                  <Button
+                    aria-pressed={inputMode === mode}
+                    className={`rounded-lg border-transparent transition-[background-color,color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-transparent focus:ring-0 focus:ring-offset-0 focus-visible:text-foreground focus-visible:underline focus-visible:decoration-2 focus-visible:decoration-foreground/35 focus-visible:underline-offset-4 focus-visible:ring-0 focus-visible:ring-offset-0 active:translate-y-0 active:scale-[0.98] active:duration-100 ${
+                      inputMode === mode
+                        ? "shadow-[0_1px_2px_hsl(var(--foreground)/0.08),0_5px_14px_-10px_hsl(var(--foreground)/0.28)] hover:bg-surface"
+                        : "shadow-none"
+                    }`}
+                    key={mode}
+                    onClick={() => setInputMode(mode)}
+                    tone={inputMode === mode ? "secondary" : "ghost"}
+                    type="button"
+                  >
+                    {label}
+                  </Button>
+                ))}
               </div>
               {inputMode === "link" ? (
                 <JobLinkInput
@@ -190,13 +278,15 @@ export function HomeWorkspace({
                   onSubmit={handleProcess}
                   value={linkValue}
                 />
-              ) : (
+              ) : inputMode === "text" ? (
                 <JobTextInput
                   disabled={demoMode}
                   onChange={setTextValue}
                   onSubmit={handleProcess}
                   value={textValue}
                 />
+              ) : (
+                <CaptureBookmarklet disabled={demoMode} />
               )}
               <ProcessingStatus status={processingStatus} />
             </div>

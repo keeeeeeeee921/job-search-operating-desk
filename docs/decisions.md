@@ -107,6 +107,30 @@ not enough. Dates are commit dates.
   "current cycle" (latest start) and "cycle of a record saved now" always
   agree.
 
+## 2026-11-18 — Capture from the open page instead of fetching harder
+
+- Problem: 19 of the 35 Active records in Search 02 held a hand-typed summary
+  instead of the posting. Workday answers the server's fetch with HTTP 429, so
+  a pasted link produced only URL hints, the description was required, and
+  people typed a summary plus application notes into it.
+- Decision: a bookmarklet reads the page the browser already rendered and
+  hands it to the desk (`lib/capture.ts`). No per-site scraper was added; the
+  captured DOM goes through the same generic parser as a pasted link, and the
+  description is the page's rendered text.
+- Cross-origin: the bookmarklet opens the desk as a new tab and passes the
+  page with `postMessage`. Rejected: a credentialed `fetch` from the job page
+  (needs `SameSite=None` on the access cookie and CORS open to every origin,
+  which lets any site call the desk with the reader's session) and a
+  cross-site form POST (Lax cookies are not sent, so a signed-out capture is
+  lost at the login redirect). The bookmarklet holds only the desk's origin.
+- Any site can open the desk in a window with the capture name and offer a
+  draft. That is accepted: the draft is parsed as untrusted text, nothing is
+  fetched, and nothing is saved until a signed-in person presses Save.
+- Captures always stop at review. The review dialog gained a Notes box, saved
+  to `comments`, so application notes have somewhere to go at entry time.
+- Existing records were not touched; the 19 short descriptions stay as they
+  are.
+
 ## Convention
 
 **When removing a feature, say why in the commit body.** Three removals above

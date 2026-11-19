@@ -28,9 +28,13 @@ Paste a link and press Enter. The app detects the likely source, attempts extrac
 
 Paste copied job text and press Enter. This is useful for LinkedIn Easy Apply, recruiter-shared descriptions, and postings where the original link is noisy or not worth storing. The `Link` field may remain empty in this flow.
 
+### Capture from an open job page
+
+Some job sites refuse to be fetched by a server (Workday answers with HTTP 429), so a pasted link yields only what the URL says. The `From open page` tab on the home page gives a bookmark to drag to the bookmarks bar. Clicking it on a posting opens the desk in a new tab and hands over the page's rendered text and address. The text is stored as shown, not summarized; selecting the posting text first limits the capture to that selection. This flow always stops at review, even when every field was read from the page.
+
 ### Review uncertain records
 
-If required fields are missing or extraction confidence is low, the app pauses for manual review instead of pretending extraction succeeded.
+If required fields are missing or extraction confidence is low, the app pauses for manual review instead of pretending extraction succeeded. The review dialog has an optional Notes box for application details (date applied, resume file, confirmation email); it is saved to the record's Notes, never into the job description.
 
 ### Manage the working set
 

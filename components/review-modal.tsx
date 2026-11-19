@@ -165,6 +165,27 @@ export function ReviewModal({
                 </div>
               );
             })}
+            <div className="rounded-[24px] border border-border bg-surface px-4 py-4">
+              <label
+                className="text-sm font-semibold text-foreground"
+                htmlFor="review-notes"
+              >
+                Notes
+              </label>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Optional. Date applied, resume file, confirmation email. Kept
+                apart from the job description.
+              </p>
+              <Textarea
+                className="mt-3 min-h-20"
+                id="review-notes"
+                onChange={(event) =>
+                  setLocalDraft({ ...localDraft, notes: event.target.value })
+                }
+                placeholder="Add a note..."
+                value={localDraft.notes ?? ""}
+              />
+            </div>
           </div>
         </div>
         <div className="flex shrink-0 justify-end gap-3 border-t border-border/80 bg-surface pt-4">

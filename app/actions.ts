@@ -68,7 +68,7 @@ function createRecordFromDraft(
     pool: "active",
     stage: "no_response",
     searchCycleLabel: resolveSearchCycleLabel(timestamp, cycles),
-    comments: "",
+    comments: typeof draft.notes === "string" ? draft.notes.trim() : "",
     applyCountedDateKey: null,
     sourceType: draft.sourceType,
     sourceConfidence: draft.sourceConfidence,

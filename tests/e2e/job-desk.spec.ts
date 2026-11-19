@@ -218,8 +218,9 @@ test("editing a cycle's saved story shows the new title", async ({ page }) => {
   ).toBeVisible();
 });
 
-// Keep this test last: it moves the working set to a new cycle for the rest
-// of the run (the e2e store is wiped before the next `pnpm test:e2e`).
+// Keep this after every test that expects Search 02 to be current: it moves
+// the working set to a new cycle for the rest of the run (the e2e store is
+// wiped before the next `pnpm test:e2e`). Only the capture tests follow it.
 test("starting a new search cycle routes new records to it", async ({ page }) => {
   await page.goto("/search-log");
   await page.getByRole("button", { name: "Start a new search cycle" }).click();
@@ -266,4 +267,124 @@ SQL`);
 
   await page.goto("/search-log");
   await expect(page.getByRole("region", { name: "Search 03" })).toBeVisible();
+});
+
+// "From open page": the job page and the desk are different origins here
+// too (localhost vs 127.0.0.1), so this exercises the real window hand-off.
+async function readBookmarkletScript(page: import("@playwright/test").Page) {
+  await page.goto("/");
+  await page.getByRole("button", { name: "From open page" }).click();
+  const link = page.getByTestId("capture-bookmarklet");
+  await expect(link).toHaveAttribute("href", /^javascript:/);
+  const href = (await link.getAttribute("href")) ?? "";
+  return decodeURIComponent(href.slice("javascript:".length));
+}
+
+function jobPageUrl(baseURL: string | undefined) {
+  const url = new URL(baseURL ?? "http://127.0.0.1:3000");
+  url.hostname = "localhost";
+  url.pathname = "/mock-jobs/aurora-data-analyst";
+  return url.toString();
+}
+
+test("captures an open job page into review and keeps notes apart from the description", async ({
+  page,
+  context,
+  baseURL
+}) => {
+  const script = await readBookmarkletScript(page);
+  expect(script).not.toContain("e2e-access-token");
+
+  const jobPage = await context.newPage();
+  await jobPage.goto(jobPageUrl(baseURL));
+
+  const capture = async () => {
+    const [desk] = await Promise.all([
+      context.waitForEvent("page"),
+      jobPage.evaluate(script)
+    ]);
+    const review = desk.getByRole("dialog", { name: "Review before saving" });
+    await expect(review).toBeVisible();
+    return { desk, review };
+  };
+
+  // Every field was read from the page, and it still stops at review.
+  const first = await capture();
+  expect(new URL(first.desk.url()).search).toBe("");
+  await expect(first.review.getByLabel("Role Title")).toHaveValue("Data Analyst");
+  await expect(first.review.getByLabel("Company")).toHaveValue("Aurora Labs");
+  await expect(first.review.getByLabel("Job Description")).toHaveValue(
+    /Analyze growth funnels, build recurring KPI reporting/
+  );
+  await expect(first.review.getByLabel("Link")).toHaveValue(/localhost.*aurora-data-analyst/);
+  await first.review
+    .getByLabel("Notes")
+    .fill("Applied 2026-11-18 with resume_v7.pdf");
+  await first.review.getByRole("button", { name: "Save to Active" }).click();
+
+  // The first test of this run already saved this posting from its link, so
+  // the existing duplicate check may step in; say yes once to get a record.
+  const duplicate = first.desk.getByRole("heading", { name: "Possible duplicate" });
+  const saved = first.desk.getByText("Saved to Active").first();
+  await expect(duplicate.or(saved).first()).toBeVisible();
+  if (await duplicate.isVisible()) {
+    await first.desk.getByRole("button", { name: "Save anyway" }).click();
+  }
+  await expect(saved).toBeVisible();
+
+  await first.desk.getByRole("link", { name: "Data Analyst" }).first().click();
+  await expect(first.desk.getByPlaceholder("Add a note...")).toHaveValue(
+    "Applied 2026-11-18 with resume_v7.pdf"
+  );
+  const description = first.desk
+    .getByRole("heading", { name: "Job description" })
+    .locator("xpath=following-sibling::div[1]");
+  await expect(description).toContainText(
+    "Analyze growth funnels, build recurring KPI reporting"
+  );
+  await expect(description).not.toContainText("Applied 2026-11-18");
+  await first.desk.close();
+
+  // Sending the same page again is caught, not saved twice.
+  const second = await capture();
+  await second.review.getByRole("button", { name: "Save to Active" }).click();
+  await expect(
+    second.desk.getByRole("heading", { name: "Possible duplicate" })
+  ).toBeVisible();
+  await second.desk.getByRole("button", { name: "Cancel" }).click();
+  await expect(second.desk.getByText("Saved to Active")).toHaveCount(0);
+});
+
+test("refuses a capture from a signed-out browser", async ({ page, browser, baseURL }) => {
+  const script = await readBookmarkletScript(page);
+
+  const signedOut = await browser.newContext();
+  try {
+    const response = await signedOut.request.post(
+      `${baseURL ?? "http://127.0.0.1:3000"}/api/capture`,
+      {
+        data: {
+          type: "job-desk-capture",
+          url: "https://example.com/jobs/1",
+          title: "Data Analyst",
+          text: "A posting body.",
+          html: ""
+        }
+      }
+    );
+    expect(response.status()).toBe(401);
+
+    // The bookmarklet itself lands on the sign-in page, with no draft shown.
+    const jobPage = await signedOut.newPage();
+    await jobPage.goto(jobPageUrl(baseURL));
+    const [desk] = await Promise.all([
+      signedOut.waitForEvent("page"),
+      jobPage.evaluate(script)
+    ]);
+    await expect(desk).toHaveURL(/\/login$/);
+    await expect(desk.getByRole("heading", { name: "Enter the access token" })).toBeVisible();
+    await expect(desk.getByRole("dialog")).toHaveCount(0);
+  } finally {
+    await signedOut.close();
+  }
 });

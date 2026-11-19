@@ -112,6 +112,12 @@ export interface JobDraft {
   candidateValues: Partial<Record<JobField, string[]>>;
   issues: ValidationIssue[];
   unsupportedReason?: string;
+  /**
+   * Application notes typed in the review dialog (date applied, resume file,
+   * confirmation email). Saved to the record's `comments`, never into the
+   * job description.
+   */
+  notes?: string;
 }
 
 export interface DuplicateCandidate {
