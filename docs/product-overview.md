@@ -30,7 +30,7 @@ Paste copied job text and press Enter. This is useful for LinkedIn Easy Apply, r
 
 ### Capture from an open job page
 
-Some job sites refuse to be fetched by a server (Workday answers with HTTP 429), so a pasted link yields only what the URL says. The `From open page` tab on the home page gives a bookmark to drag to the bookmarks bar. Clicking it on a posting opens the desk in a new tab and hands over the page's rendered text and address. The text is stored as shown, not summarized; selecting the posting text first limits the capture to that selection. This flow always stops at review, even when every field was read from the page.
+Some job sites refuse to be fetched by a server (Workday answers with HTTP 429), so a pasted link yields only what the URL says. The `From open page` tab on the home page gives a bookmark to drag to the bookmarks bar. Clicking it on a posting opens the desk in a new tab and hands over the page's rendered text and address. The text is stored as shown, not summarized. When the page marks its own posting body (structured data or a description element), the saved text is cut to that body, so navigation and footer lines are left out; when that match is not clear-cut, the whole page text is kept. Selecting the posting text first limits the capture to that selection. Click the bookmark after the page has finished loading: what is not rendered yet is not captured. This flow always stops at review, even when every field was read from the page.
 
 ### Review uncertain records
 

@@ -130,6 +130,18 @@ not enough. Dates are commit dates.
   to `comments`, so application notes have somewhere to go at entry time.
 - Existing records were not touched; the 19 short descriptions stay as they
   are.
+- Follow-up the next day, from the first live capture (Ameren, Workday): the
+  description began with "Skip to main content / Sign In" and ended with the
+  footer, and the location was the tenant's site code
+  ("001X HQ (St_Louis_MO), United States") shown as "Looks good".
+  - The description is now cut to the posting body the page itself publishes
+    (`locatePostingBody`). The published text only locates the start and the
+    end; what is saved is still the rendered text. The cut is skipped unless
+    both ends are found, the span is the same size as the published body and
+    it is at least half the page, so a teaser can never shorten a record.
+  - A location containing an underscore is treated as an internal label by
+    the shared parser (this also applies to pasted links). For a capture the
+    location then comes from the page's visible text.
 
 ## Convention
 

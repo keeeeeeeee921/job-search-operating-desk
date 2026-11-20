@@ -9,8 +9,10 @@ import {
 } from "@/lib/capture";
 import {
   buildCaptureDraft,
+  locatePostingBody,
   normalizeCapturedText
 } from "@/lib/server/capture-service";
+import { extractCandidatesFromHtml } from "@/lib/server/extraction-service";
 
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn()
@@ -179,9 +181,166 @@ describe("buildCaptureDraft", () => {
   });
 
   it("tidies whitespace without changing the wording", () => {
-    expect(normalizeCapturedText("  Line one \r\n\r\n\r\n\r\nLine two\t\n")).toBe(
-      "Line one\n\nLine two"
+    expect(
+      normalizeCapturedText("  Line one \r\n\r\n\r\n\r\n\u200bLine\u00a0two\t\n")
+    ).toBe("Line one\n\nLine two");
+  });
+});
+
+// A posting as a Workday-style page renders it: navigation above, the body in
+// the middle, the footer below. The structured data carries the same body on
+// one line and an internal site code as the locality.
+const bodyParagraphs = [
+  "About the team",
+  "The Missouri analytics group turns meter, outage and billing data into the weekly operating read for regional leadership.",
+  "Key responsibilities",
+  "Build and maintain the weekly performance reporting for the regional operations leads.",
+  "Investigate week-over-week movements and explain what drove them in plain language.",
+  "Qualifications",
+  "Bachelor's degree and two or more years of analytical experience with SQL and a BI tool.",
+  "All qualified applicants will receive consideration for employment without regard to any status protected by law."
+];
+const renderedBody = bodyParagraphs.join("\n\n");
+const flattenedBody = bodyParagraphs.join(" ");
+const pageWithChrome = `Skip to main content
+Sign In
+Search for Jobs
+Data Analyst (Regional Analytics)
+Apply
+locations
+St. Louis, MO
+time type
+Full time
+job requisition id
+034518
+
+${renderedBody}
+
+Follow Us
+© 2026 Example ATS, Inc. All rights reserved.`;
+
+function postingHtml(description: string, locality: string) {
+  const jsonLd = {
+    "@context": "http://schema.org",
+    "@type": "JobPosting",
+    title: "Data Analyst (Regional Analytics)",
+    description,
+    hiringOrganization: { "@type": "Organization", name: "Example Utility" },
+    jobLocation: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressCountry: "United States of America",
+        addressLocality: locality
+      }
+    }
+  };
+
+  return `<html><head><title>Data Analyst (Regional Analytics)</title>
+<script type="application/ld+json">${JSON.stringify(jsonLd)}</script></head>
+<body><div id="root"></div></body></html>`;
+}
+
+const exampleWorkdayUrl =
+  "https://example.wd1.myworkdayjobs.com/en-US/External/job/St-Louis-MO/Data-Analyst_034518";
+
+describe("locatePostingBody", () => {
+  it("returns the rendered body between the description's first and last words", () => {
+    expect(locatePostingBody(pageWithChrome, flattenedBody)).toBe(renderedBody);
+  });
+
+  it("matches regardless of case and spacing differences in the rendering", () => {
+    const shouting = pageWithChrome.replace("About the team", "ABOUT THE TEAM");
+    expect(locatePostingBody(shouting, flattenedBody)).toBe(
+      renderedBody.replace("About the team", "ABOUT THE TEAM")
     );
+  });
+
+  it("leaves the page alone for a teaser", () => {
+    expect(locatePostingBody(pageWithChrome, flattenedBody.slice(0, 160))).toBeNull();
+  });
+
+  it("leaves the page alone when the described body is under half of the page", () => {
+    // Most of this page is something the description does not cover, so the
+    // description may be partial; nothing is cut.
+    const longPage = `${pageWithChrome}\n\n${"More about working here. ".repeat(40)}`;
+    expect(locatePostingBody(longPage, flattenedBody)).toBeNull();
+  });
+
+  it("leaves the page alone when either end cannot be found", () => {
+    expect(
+      locatePostingBody(pageWithChrome, `${flattenedBody} Apply before the closing date shown above.`)
+    ).toBeNull();
+    expect(
+      locatePostingBody(pageWithChrome, `Posted by the talent team this week. ${flattenedBody}`)
+    ).toBeNull();
+  });
+
+  it("leaves the page alone when the two ends are much further apart than the description", () => {
+    const padded = pageWithChrome.replace(
+      "Qualifications",
+      `${"An unrelated block the description does not contain. ".repeat(12)}\n\nQualifications`
+    );
+    expect(locatePostingBody(padded, flattenedBody)).toBeNull();
+  });
+});
+
+describe("capture of a page with navigation and an internal site code", () => {
+  it("drops the internal location label in the shared parser", () => {
+    const result = extractCandidatesFromHtml(
+      postingHtml(flattenedBody, "001X HQ (St_Louis_MO)"),
+      exampleWorkdayUrl
+    );
+
+    expect(result.candidateValues.location ?? []).toEqual([]);
+    expect(result.fieldOrigins.location).toBe("missing");
+  });
+
+  it("keeps an ordinary locality in the shared parser", () => {
+    const result = extractCandidatesFromHtml(
+      postingHtml(flattenedBody, "St. Louis"),
+      exampleWorkdayUrl
+    );
+
+    expect(result.fields.location).toBe("St. Louis, United States");
+  });
+
+  it("saves the body without the page chrome and reads the location off the page", () => {
+    const built = buildCaptureDraft({
+      url: exampleWorkdayUrl,
+      title: "Data Analyst (Regional Analytics)",
+      text: pageWithChrome,
+      html: postingHtml(flattenedBody, "001X HQ (St_Louis_MO)")
+    });
+
+    expect(built.ok).toBe(true);
+    if (!built.ok) {
+      return;
+    }
+
+    const { draft } = built;
+    expect(draft.jobDescription).toBe(renderedBody);
+    expect(draft.jobDescription).not.toContain("Skip to main content");
+    expect(draft.jobDescription).not.toContain("All rights reserved");
+    expect(draft.location).toBe("St. Louis, MO");
+    expect(draft.fieldOrigins.location).toBe("confirmed");
+    expect(draft.location).not.toContain("_");
+    expect(draft.roleTitle).toBe("Data Analyst (Regional Analytics)");
+    expect(draft.company).toBe("Example Utility");
+  });
+
+  it("keeps the whole page text when the page publishes only a teaser", () => {
+    const built = buildCaptureDraft({
+      url: exampleWorkdayUrl,
+      title: "Data Analyst (Regional Analytics)",
+      text: pageWithChrome,
+      html: postingHtml(flattenedBody.slice(0, 160), "St. Louis")
+    });
+
+    expect(built.ok).toBe(true);
+    if (built.ok) {
+      expect(built.draft.jobDescription).toBe(pageWithChrome);
+    }
   });
 });
 

@@ -469,6 +469,12 @@ function looksLikeInternalCompanyCandidate(value: string) {
 }
 
 function looksLikeInternalLocationCandidate(value: string) {
+  // Workday tenants publish site codes such as "001X HQ (St_Louis_MO)" as
+  // the address locality. No place name is written with an underscore.
+  if (/[A-Za-z]_[A-Za-z]/.test(value)) {
+    return true;
+  }
+
   return /^(treehouse|headquarters|hq|support center)(,\s*(united states|canada))?$/i.test(
     value.trim()
   );
